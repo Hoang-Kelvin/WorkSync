@@ -19,6 +19,7 @@ import type {
   ViewKey,
 } from './model';
 import type { FileFormat } from './importRules';
+import type { AppSettings, StorageInfo } from './settings';
 import type { Batch, ReadAnswer } from './aiBatch';
 import type { PendingChange, WritePlan, WriteResult } from './writes';
 import type { ReportOptions } from './reports';
@@ -58,6 +59,9 @@ export type Startup =
       projects: Project[];
       tasks: Task[];
       sources: SourceFile[];
+      settings: AppSettings;
+      /** A warning about where the data folder is, such as in a synced folder. */
+      warning: string | null;
     }
   | { ok: false; dataFolder: string; message: string };
 
@@ -70,6 +74,18 @@ export type ProjectPatch = Partial<ProjectInput> & {
 export interface WorkSyncApi {
   getAppInfo(): Promise<AppInfo>;
   start(): Promise<Startup>;
+
+  updateSettings(patch: Partial<AppSettings>): Promise<AppSettings>;
+  storageInfo(): Promise<StorageInfo>;
+  /** Asks for a backup folder; null when cancelled. */
+  chooseBackupFolder(): Promise<string | null>;
+  backupNow(): Promise<StorageInfo>;
+  /** Asks for a backup file kept elsewhere, such as on a USB drive. */
+  chooseBackupFile(): Promise<string | null>;
+  inspectBackup(file: string): Promise<{ projects: number; tasks: number }>;
+  /** Backs up the current data, puts the backup in its place and restarts. */
+  restoreBackup(file: string): Promise<void>;
+  openFolder(which: 'data' | 'backups' | 'logs'): Promise<void>;
 
   createProject(input: ProjectInput): Promise<Project>;
   updateProject(id: string, patch: ProjectPatch): Promise<Project>;
@@ -174,6 +190,14 @@ export const SOURCES_EVENT = 'worksync:sources-changed';
 export const API_METHODS = [
   'getAppInfo',
   'start',
+  'updateSettings',
+  'storageInfo',
+  'chooseBackupFolder',
+  'backupNow',
+  'chooseBackupFile',
+  'inspectBackup',
+  'restoreBackup',
+  'openFolder',
   'createProject',
   'updateProject',
   'addSampleProject',

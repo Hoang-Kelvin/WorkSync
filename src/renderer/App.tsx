@@ -22,6 +22,7 @@ import { TasksView } from './tasksView';
 import { PublishDialog, PublishedView, usePublishStatus } from './publish';
 import { WriteDialog, usePendingCount } from './writeCopy';
 import { ReportDialog } from './reports';
+import { SettingsDialog } from './settings';
 import { LinkWizard } from './LinkWizard';
 import { AiDialog, GlossaryDialog, type AiSession } from './ai';
 import type { SourceFile } from '../shared/sources';
@@ -58,6 +59,7 @@ type Dialog =
   | { kind: 'glossary'; projectId: string }
   | { kind: 'publish'; projectId: string }
   | { kind: 'write' }
+  | { kind: 'settings' }
   | { kind: 'report'; projectId: string };
 
 export function App() {
@@ -79,12 +81,18 @@ export function App() {
   }
   return (
     <AppProvider initial={startup}>
-      <Shell dataFolder={startup.dataFolder} />
+      <Shell dataFolder={startup.dataFolder} warning={startup.warning} />
     </AppProvider>
   );
 }
 
-function Shell({ dataFolder }: { dataFolder: string }) {
+function Shell({
+  dataFolder,
+  warning,
+}: {
+  dataFolder: string;
+  warning: string | null;
+}) {
   const {
     projects,
     tasks,
@@ -109,6 +117,7 @@ function Shell({ dataFolder }: { dataFolder: string }) {
   const viewRef = useRef<HTMLElement>(null);
   const [headEl, setHeadEl] = useState<HTMLDivElement | null>(null);
   const [aiSession, setAiSession] = useState<AiSession | null>(null);
+  const [dataWarning, setDataWarning] = useState(warning);
 
   // Keep the route valid when a view is turned off or a project changes.
   useEffect(() => {
@@ -385,6 +394,13 @@ function Shell({ dataFolder }: { dataFolder: string }) {
               </button>
             </div>
           </div>
+          <button
+            className="nav-item custom side-settings"
+            onClick={() => setDialog({ kind: 'settings' })}
+          >
+            <Icon name="sliders" />
+            <span className="grow">Settings</span>
+          </button>
           <div className="side-foot">
             <span>
               <Icon name="lock" />
@@ -522,53 +538,74 @@ function Shell({ dataFolder }: { dataFolder: string }) {
               <span className="lbl">New task</span>
             </button>
           </header>
-          {pubStatus && pubStatus.tampered.length > 0 && currentProjectId && (
-            <div className="notice warn" role="status">
-              <Icon name="alert" />
-              <span className="notice-text">
-                <b>The published {pubStatus.tampered.join(' and ')} changed</b>{' '}
-                · someone edited or deleted it in the shared folder after you
-                published
-              </span>
-              <span className="notice-actions">
-                <button
-                  className="btn sm accent-outline"
-                  onClick={() =>
-                    setDialog({ kind: 'publish', projectId: currentProjectId })
-                  }
-                >
-                  Publish again
-                </button>
-              </span>
-            </div>
-          )}
-          {changedSources.length > 0 && (
-            <div className="notice" role="status">
-              <Icon name="refresh" />
-              <span className="notice-text">
-                <b>
-                  {changedSources.length === 1
-                    ? `${baseName(changedSources[0].currentFile)} changed`
-                    : `${changedSources.length} linked files changed`}
-                </b>
-                {' · '}
-                {changedSources
-                  .map((s) => project(s.projectId)?.name)
-                  .filter((v, i, a) => v && a.indexOf(v) === i)
-                  .join(', ')}
-              </span>
-              <span className="notice-actions">
-                <button
-                  className="btn sm accent-outline"
-                  onClick={() =>
-                    setDialog({ kind: 'review', source: changedSources[0] })
-                  }
-                >
-                  Review changes
-                </button>
-              </span>
-            </div>
-          )}
+          <div className="notices">
+            {dataWarning && (
+              <div className="notice warn" role="alert">
+                <Icon name="alert" />
+                <span className="notice-text">{dataWarning}</span>
+                <span className="notice-actions">
+                  <button
+                    className="btn sm"
+                    onClick={() => setDataWarning(null)}
+                  >
+                    Not now
+                  </button>
+                </span>
+              </div>
+            )}
+            {pubStatus && pubStatus.tampered.length > 0 && currentProjectId && (
+              <div className="notice warn" role="status">
+                <Icon name="alert" />
+                <span className="notice-text">
+                  <b>
+                    The published {pubStatus.tampered.join(' and ')} changed
+                  </b>{' '}
+                  · someone edited or deleted it in the shared folder after you
+                  published
+                </span>
+                <span className="notice-actions">
+                  <button
+                    className="btn sm accent-outline"
+                    onClick={() =>
+                      setDialog({
+                        kind: 'publish',
+                        projectId: currentProjectId,
+                      })
+                    }
+                  >
+                    Publish again
+                  </button>
+                </span>
+              </div>
+            )}
+            {changedSources.length > 0 && (
+              <div className="notice" role="status">
+                <Icon name="refresh" />
+                <span className="notice-text">
+                  <b>
+                    {changedSources.length === 1
+                      ? `${baseName(changedSources[0].currentFile)} changed`
+                      : `${changedSources.length} linked files changed`}
+                  </b>
+                  {' · '}
+                  {changedSources
+                    .map((s) => project(s.projectId)?.name)
+                    .filter((v, i, a) => v && a.indexOf(v) === i)
+                    .join(', ')}
+                </span>
+                <span className="notice-actions">
+                  <button
+                    className="btn sm accent-outline"
+                    onClick={() =>
+                      setDialog({ kind: 'review', source: changedSources[0] })
+                    }
+                  >
+                    Review changes
+                  </button>
+                </span>
+              </div>
+            )}
+          </div>
           <div
             className={`vhead ${scrolled ? 'scrolled' : ''}`}
             ref={setHeadEl}
@@ -666,6 +703,9 @@ function Shell({ dataFolder }: { dataFolder: string }) {
           preselect={dialog.preselect}
           onClose={() => setDialog(null)}
         />
+      )}
+      {dialog?.kind === 'settings' && (
+        <SettingsDialog onClose={() => setDialog(null)} />
       )}
       {dialog?.kind === 'write' && (
         <WriteDialog onClose={() => setDialog(null)} />

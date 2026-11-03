@@ -21,7 +21,18 @@ import {
 import { toIsoDate } from '../shared/model';
 import { SOURCES_EVENT } from '../shared/ipc';
 import { dataFolderPath, isNetworkPath } from './dataFolder';
-import { SCHEMA_VERSION, backupDaily, migrate, openDatabase } from './db';
+import { writeTargetProblem } from './fileLinks';
+import { SCHEMA_VERSION, migrate, openDatabase } from './db';
+import {
+  backupAtStart,
+  backupBefore,
+  backupDaily,
+  inspectBackup,
+  listBackups,
+  replaceDatabase,
+} from './backups';
+import { log, logFolder, startLog } from './log';
+import { sharedFolderWarning, type StorageInfo } from '../shared/settings';
 import { addSampleProject } from './sample';
 import { FileLinks } from './fileLinks';
 import { CopyWriter } from './copyWriter';
@@ -43,6 +54,13 @@ const writtenCopies = new Set<string>();
 /** Files the owner picked in this session; only these and linked files are read. */
 const chosenFiles = new Set<string>();
 let startup: Startup | null = null;
+let dataFolder = '';
+/** Backup files the owner picked from elsewhere in this session. */
+const chosenBackups = new Set<string>();
+
+const defaultBackups = () => path.join(dataFolder, 'backups');
+const backupFolder = () =>
+  store?.getSettings().backupFolder || defaultBackups();
 
 const today = () => toIsoDate(new Date());
 
@@ -55,10 +73,11 @@ function open(): Startup {
           projects: store!.listProjects(),
           tasks: store!.listTasks(),
           sources: sources!.list(),
+          settings: store!.getSettings(),
           today: today(),
         }
       : startup;
-  const dataFolder = dataFolderPath();
+  dataFolder = dataFolderPath();
   try {
     if (isNetworkPath(dataFolder)) {
       throw new Error(
@@ -66,22 +85,41 @@ function open(): Startup {
       );
     }
     fs.mkdirSync(dataFolder, { recursive: true });
+    startLog(path.join(dataFolder, 'logs'));
+    log('info', `WorkSync ${app.getVersion()} started, data in ${dataFolder}`);
     const file = path.join(dataFolder, 'worksync.db');
     const existed = fs.existsSync(file);
     db = openDatabase(file);
-    const backups = path.join(dataFolder, 'backups');
+    let chosen: string | null = null;
+    try {
+      const r = db
+        .prepare("SELECT value FROM settings WHERE key = 'backupFolder'")
+        .get() as { value: string } | undefined;
+      chosen = r ? (JSON.parse(r.value) as string | null) : null;
+    } catch {
+      // No settings table before version 8.
+    }
+    const backups = chosen || path.join(dataFolder, 'backups');
     const version = Number(
       (db.prepare('PRAGMA user_version').get() as { user_version: number })
         .user_version,
     );
     if (existed && version > 0 && version < SCHEMA_VERSION) {
-      fs.mkdirSync(backups, { recursive: true });
-      db.exec(
-        `VACUUM INTO '${path.join(backups, `before-upgrade-v${version}-${Date.now()}.db`).replaceAll("'", "''")}'`,
+      backupBefore(db, backups, 'upgrade', `v${version}`);
+      log(
+        'info',
+        `Backed up before upgrading the data from version ${version}`,
       );
     }
     migrate(db);
-    if (existed) backupDaily(db, backups, today());
+    if (existed) {
+      try {
+        backupAtStart(db, backups, today());
+      } catch (error) {
+        // A missing USB drive must not stop the app; the backup is tried again later.
+        log('warn', `Backup at start failed: ${String(error)}`);
+      }
+    }
     store = new Store(db);
     sources = new Sources(db, store);
     links = new FileLinks(sources, path.join(dataFolder, 'snapshots'));
@@ -100,9 +138,14 @@ function open(): Startup {
       projects: [],
       tasks: [],
       sources: [],
+      settings: store.getSettings(),
+      warning: sharedFolderWarning(dataFolder)
+        ? `The data folder ${dataFolder} is in a synced or shared folder. ${sharedFolderWarning(dataFolder)} Move the WorkSync folder to a local folder that is not synced.`
+        : null,
     };
     return open();
   } catch (error) {
+    log('error', `Start failed: ${String(error)}`);
     startup = {
       ok: false,
       dataFolder,
@@ -188,6 +231,82 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
     packaged: app.isPackaged,
   }),
   start: async () => open(),
+  updateSettings: async (patch) => {
+    if (patch.backupFolder) {
+      const problem = writeTargetProblem(
+        patch.backupFolder,
+        needLinks().sources.list(),
+        'another folder',
+      );
+      // Never inside Box or beside a linked customer file (spec 06).
+      if (problem) throw new Error(problem);
+    }
+    return need().updateSettings(patch);
+  },
+  storageInfo: async () => storageInfo(),
+  chooseBackupFolder: async () => {
+    if (process.env.WORKSYNC_TEST_BACKUP_FOLDER)
+      return process.env.WORKSYNC_TEST_BACKUP_FOLDER;
+    const win =
+      BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+    const r = await dialog.showOpenDialog(win, {
+      title: 'Choose the backup folder',
+      defaultPath: backupFolder(),
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    return r.canceled ? null : (r.filePaths[0] ?? null);
+  },
+  backupNow: async () => {
+    if (!db) need();
+    backupBefore(db!, backupFolder(), 'manual');
+    log('info', `Backup made in ${backupFolder()}`);
+    return storageInfo();
+  },
+  chooseBackupFile: async () => {
+    const test = process.env.WORKSYNC_TEST_BACKUP_FILE;
+    let file: string | null = test ?? null;
+    if (!test) {
+      const win =
+        BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+      const r = await dialog.showOpenDialog(win, {
+        title: 'Choose a WorkSync backup',
+        defaultPath: backupFolder(),
+        filters: [{ name: 'WorkSync backup', extensions: ['db'] }],
+        properties: ['openFile'],
+      });
+      file = r.canceled ? null : (r.filePaths[0] ?? null);
+    }
+    if (file) chosenBackups.add(file);
+    return file;
+  },
+  inspectBackup: async (file) =>
+    inspectBackup(allowedBackup(file), SCHEMA_VERSION),
+  restoreBackup: async (file) => {
+    const from = allowedBackup(file);
+    inspectBackup(from, SCHEMA_VERSION);
+    if (!db) need();
+    const safety = backupBefore(db!, backupFolder(), 'restore');
+    log('info', `Restoring ${from}; the data before it is in ${safety}`);
+    // Copy the backup aside first, so restoring from the backup folder works even after pruning.
+    const staged = path.join(dataFolder, 'restore-pending.db');
+    fs.copyFileSync(from, staged);
+    closeStore();
+    replaceDatabase(path.join(dataFolder, 'worksync.db'), staged);
+    fs.rmSync(staged, { force: true });
+    app.relaunch();
+    app.exit(0);
+  },
+  openFolder: async (which) => {
+    const folder =
+      which === 'data'
+        ? dataFolder
+        : which === 'logs'
+          ? (logFolder() ?? dataFolder)
+          : backupFolder();
+    fs.mkdirSync(folder, { recursive: true });
+    const err = await shell.openPath(folder);
+    if (err) throw new Error(err);
+  },
   createProject: async (input) => need().createProject(input),
   updateProject: async (id, patch) => need().updateProject(id, patch),
   addSampleProject: async () => addSampleProject(need(), today()),
@@ -430,12 +549,52 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
 };
 
 /** Registers every IPC handler. Call once, before any window is created. */
+function storageInfo(): StorageInfo {
+  const folder = backupFolder();
+  return {
+    dataFolder,
+    backupFolder: folder,
+    defaultBackupFolder: folder === defaultBackups(),
+    backupWarning: sharedFolderWarning(folder),
+    logFolder: logFolder() ?? path.join(dataFolder, 'logs'),
+    backups: listBackups(folder),
+  };
+}
+
+/** A backup may be restored only from the backup folder or a file the owner picked. */
+function allowedBackup(file: string): string {
+  const inFolder =
+    path.dirname(path.resolve(file)) === path.resolve(backupFolder());
+  if (!inFolder && !chosenBackups.has(file))
+    throw new Error('Choose the backup again.');
+  return file;
+}
+
+/** Called every hour: writes the day's backup once the date changes. */
+export function backupTick(): void {
+  if (!db) return;
+  try {
+    if (backupDaily(db, backupFolder(), today()))
+      log('info', `Daily backup made in ${backupFolder()}`);
+  } catch (error) {
+    log('warn', `Daily backup failed: ${String(error)}`);
+  }
+}
+
 export function registerIpcHandlers(): void {
   for (const method of API_METHODS) {
     const fn = handlers[method] as (...args: unknown[]) => Promise<unknown>;
-    ipcMain.handle(channel(method), (_event, ...args: unknown[]) =>
-      fn(...args),
-    );
+    ipcMain.handle(channel(method), async (_event, ...args: unknown[]) => {
+      try {
+        return await fn(...args);
+      } catch (error) {
+        log(
+          'error',
+          `${method}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        throw error;
+      }
+    });
   }
 }
 

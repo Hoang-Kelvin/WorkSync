@@ -1,6 +1,4 @@
 import { DatabaseSync } from 'node:sqlite';
-import fs from 'node:fs';
-import path from 'node:path';
 
 /**
  * Schema migrations, in order. The database keeps the number of the last one
@@ -153,6 +151,13 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE projects ADD COLUMN table_settings TEXT;
   `,
+  // 8: app settings (spec 03), as keys and JSON values
+  `
+  CREATE TABLE settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
@@ -192,27 +197,4 @@ export function openDatabase(file: string): DatabaseSync {
   return db;
 }
 
-const BACKUPS_KEPT = 14;
-
-/**
- * Backs up the database once a day, named by date, and keeps the last 14
- * (spec 06). Uses VACUUM INTO, which writes a complete copy even while the
- * database is open.
- */
-export function backupDaily(
-  db: DatabaseSync,
-  backupFolder: string,
-  today: string,
-): string | null {
-  fs.mkdirSync(backupFolder, { recursive: true });
-  const target = path.join(backupFolder, `worksync-${today}.db`);
-  if (fs.existsSync(target)) return null;
-  db.exec(`VACUUM INTO '${target.replaceAll("'", "''")}'`);
-  const old = fs
-    .readdirSync(backupFolder)
-    .filter((f) => /^worksync-\d{4}-\d{2}-\d{2}\.db$/.test(f))
-    .sort()
-    .slice(0, -BACKUPS_KEPT);
-  for (const f of old) fs.rmSync(path.join(backupFolder, f));
-  return target;
-}
+export { backupDaily } from './backups';

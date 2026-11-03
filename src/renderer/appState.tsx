@@ -9,6 +9,7 @@ import {
 } from 'react';
 import type { Project, Task } from '../shared/model';
 import type { SourceFile } from '../shared/sources';
+import type { AppSettings } from '../shared/settings';
 import { useEffect } from 'react';
 
 export interface ToastMessage {
@@ -20,6 +21,8 @@ export interface ToastMessage {
 
 interface AppState {
   today: string;
+  settings: AppSettings;
+  setSettings: (s: AppSettings) => void;
   projects: Project[];
   tasks: Task[];
   sources: SourceFile[];
@@ -57,6 +60,7 @@ export function AppProvider({
     projects: Project[];
     tasks: Task[];
     sources: SourceFile[];
+    settings: AppSettings;
   };
   children: ReactNode;
 }) {
@@ -64,6 +68,7 @@ export function AppProvider({
   const [tasks, setTasks] = useState(initial.tasks);
   const [today, setToday] = useState(initial.today);
   const [sources, setSources] = useState(initial.sources);
+  const [settings, setSettings] = useState(initial.settings);
   // Linked files are checked in the main process; it tells the window when their states change.
   useEffect(() => {
     const stop = window.worksync.onSourcesChanged(setSources);
@@ -87,6 +92,8 @@ export function AppProvider({
   const value = useMemo<AppState>(
     () => ({
       today,
+      settings,
+      setSettings,
       projects,
       tasks,
       sources,
@@ -114,6 +121,7 @@ export function AppProvider({
           setProjects(s.projects);
           setTasks(s.tasks);
           setSources(s.sources);
+          setSettings(s.settings);
           setToday(s.today);
         }
       },
@@ -132,7 +140,16 @@ export function AppProvider({
       toastMessage,
       dismissToast: () => setToastMessage(null),
     }),
-    [today, projects, tasks, sources, originalFirst, toastMessage, show],
+    [
+      today,
+      settings,
+      projects,
+      tasks,
+      sources,
+      originalFirst,
+      toastMessage,
+      show,
+    ],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

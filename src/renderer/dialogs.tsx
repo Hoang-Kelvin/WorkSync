@@ -27,16 +27,18 @@ export function ProjectDialog({
   onClose: () => void;
   onSaved: (p: Project) => void;
 }) {
-  const { putProject, attempt, toast } = useApp();
+  const { putProject, attempt, toast, settings } = useApp();
   const [name, setName] = useState(project?.name ?? '');
   const [customer, setCustomer] = useState(project?.customer ?? '');
   const [orig, setOrig] = useState<LanguageCode[]>(
     project?.originalLanguages ?? ['ja'],
   );
   const [work, setWork] = useState<LanguageCode>(
-    project?.workingLanguage ?? 'en',
+    project?.workingLanguage ?? settings.workingLanguage,
   );
-  const [days, setDays] = useState(project?.dueSoonDays ?? 7);
+  const [days, setDays] = useState(
+    project?.dueSoonDays ?? settings.dueSoonDays,
+  );
   const save = async (e: FormEvent) => {
     e.preventDefault();
     const input = {

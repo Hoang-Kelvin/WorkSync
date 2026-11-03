@@ -881,3 +881,83 @@ input.inp.sm {
   background: transparent;
   border-color: transparent;
 }
+
+/* ---------------------------------------------------------- notices, settings */
+.notices:empty {
+  display: none;
+}
+.side-settings {
+  margin-top: auto;
+  margin-bottom: 8px;
+}
+.side-settings + .side-foot {
+  margin-top: 0;
+}
+.settings fieldset {
+  display: grid;
+  gap: 12px;
+}
+.set-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.set-row > span:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  font-size: 13px;
+}
+.set-row code {
+  font: 12px var(--mono);
+  color: var(--fg-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.set-row small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.set-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.set-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+.set-warn {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 12.5px;
+}
+.backup-list {
+  display: grid;
+  max-height: 240px;
+  overflow: auto;
+  border-top: 1px solid var(--line);
+}
+.backup-row {
+  display: grid;
+  grid-template-columns: 140px 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.backup-row .mono {
+  font-family: var(--mono);
+  font-size: 12.5px;
+}

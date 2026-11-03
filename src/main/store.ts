@@ -21,6 +21,7 @@ import {
   type TaskInput,
   type ViewKey,
 } from '../shared/model';
+import { DEFAULT_SETTINGS, type AppSettings } from '../shared/settings';
 
 type Row = Record<string, unknown>;
 const str = (v: unknown): string => (v == null ? '' : String(v));
@@ -92,6 +93,36 @@ export class Store {
     }
   }
 
+  // ------------------------------------------------------------ settings
+
+  getSettings(): AppSettings {
+    const rows = this.db
+      .prepare('SELECT key, value FROM settings')
+      .all() as Row[];
+    const saved = Object.fromEntries(
+      rows.map((r) => [str(r.key), JSON.parse(str(r.value))]),
+    );
+    return { ...DEFAULT_SETTINGS, ...saved };
+  }
+
+  updateSettings(patch: Partial<AppSettings>): AppSettings {
+    const days = patch.dueSoonDays;
+    if (
+      days !== undefined &&
+      !(Number.isInteger(days) && days >= 1 && days <= 60)
+    )
+      throw new Error('Due soon must be between 1 and 60 days.');
+    this.tx(() => {
+      const put = this.db.prepare(
+        'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+      );
+      for (const [k, v] of Object.entries(patch))
+        if (k in DEFAULT_SETTINGS && v !== undefined)
+          put.run(k, JSON.stringify(v));
+    });
+    return this.getSettings();
+  }
+
   // ------------------------------------------------------------ projects
 
   private toProject(r: Row): Project {
@@ -137,7 +168,7 @@ export class Store {
     this.db
       .prepare(
         `INSERT INTO projects (id, name, customer, original_languages, working_language, views, due_soon_days, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, 7, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -146,6 +177,7 @@ export class Store {
         JSON.stringify(input.originalLanguages),
         input.workingLanguage,
         JSON.stringify(DEFAULT_VIEWS),
+        this.getSettings().dueSoonDays,
         this.now(),
       );
     return this.getProject(id);
