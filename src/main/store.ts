@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import {
+  DATE_FORMATS,
   DEFAULT_VIEWS,
   EMPTY_SITUATION,
   LEVEL_NAME,
@@ -10,6 +11,7 @@ import {
   type ActivityEntry,
   type AiResult,
   type BulkChange,
+  type DateFormat,
   type GlossaryTerm,
   type Person,
   type ImportSummary,
@@ -24,6 +26,7 @@ import {
   type ViewKey,
 } from '../shared/model';
 import { DEFAULT_SETTINGS, type AppSettings } from '../shared/settings';
+import type { OwnerTranslation } from '../shared/ownerBatch';
 
 type Row = Record<string, unknown>;
 const str = (v: unknown): string => (v == null ? '' : String(v));
@@ -138,6 +141,11 @@ export class Store {
       dueSoonDays: Number(r.due_soon_days),
       publishFolder: r.publish_folder == null ? null : str(r.publish_folder),
       publishNotes: Number(r.publish_notes) === 1,
+      dateFormat: (DATE_FORMATS as readonly string[]).includes(
+        str(r.date_format),
+      )
+        ? (str(r.date_format) as DateFormat)
+        : 'YYYY/MM/DD',
       tableSettings: r.table_settings
         ? (JSON.parse(str(r.table_settings)) as TableSettings)
         : null,
@@ -190,6 +198,7 @@ export class Store {
     patch: Partial<ProjectInput> & {
       views?: Partial<Record<ViewKey, boolean>>;
       dueSoonDays?: number;
+      dateFormat?: DateFormat;
     },
   ): Project {
     const p = this.getProject(id);
@@ -215,6 +224,10 @@ export class Store {
         next.dueSoonDays,
         id,
       );
+    if (patch.dateFormat && DATE_FORMATS.includes(patch.dateFormat))
+      this.db
+        .prepare('UPDATE projects SET date_format = ? WHERE id = ?')
+        .run(patch.dateFormat, id);
     return this.getProject(id);
   }
 
@@ -716,6 +729,44 @@ export class Store {
 
   deleteGlossaryTerm(id: string): void {
     this.db.prepare('DELETE FROM glossary_terms WHERE id = ?').run(id);
+  }
+
+  // ------------------------------------------------------------ owner translations
+
+  /** The owner's texts translated into a file language, for reports and briefs. */
+  listOwnerTranslations(projectId: string): OwnerTranslation[] {
+    return (
+      this.db
+        .prepare(
+          `SELECT o.* FROM owner_translations o JOIN tasks t ON t.id = o.task_id WHERE t.project_id = ?`,
+        )
+        .all(projectId) as Row[]
+    ).map((r) => ({
+      taskId: str(r.task_id),
+      field: str(r.field),
+      language: str(r.language) as OwnerTranslation['language'],
+      source: str(r.source),
+      text: str(r.text),
+    }));
+  }
+
+  saveOwnerTranslations(list: OwnerTranslation[]): number {
+    const put = this.db.prepare(
+      `INSERT INTO owner_translations (task_id, field, language, source, text, at) VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(task_id, field, language) DO UPDATE SET source = excluded.source, text = excluded.text, at = excluded.at`,
+    );
+    this.tx(() => {
+      for (const x of list) {
+        const text = x.text.trim();
+        if (!text) continue;
+        this.getTask(x.taskId);
+        put.run(x.taskId, x.field, x.language, x.source, text, this.now());
+      }
+    });
+    const tasks = new Set(list.map((x) => x.taskId));
+    for (const id of tasks)
+      this.log(id, 'AI', `Your notes translated for reports and briefs.`);
+    return list.length;
   }
 
   // ------------------------------------------------------------ people

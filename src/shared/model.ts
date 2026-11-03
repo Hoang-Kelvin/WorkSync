@@ -91,7 +91,41 @@ export interface Project {
   publishNotes: boolean;
   /** The Tasks table's columns, sort and filters, or null for the defaults. */
   tableSettings: TableSettings | null;
+  /** How reports write dates (spec 05). */
+  dateFormat: DateFormat;
   createdAt: string;
+}
+
+/** Date formats for reports; the first is the default (spec 05). */
+export const DATE_FORMATS = [
+  'YYYY/MM/DD',
+  'YYYY-MM-DD',
+  'YYYY年M月D日',
+  'DD/MM/YYYY',
+  'MM/DD/YYYY',
+] as const;
+export type DateFormat = (typeof DATE_FORMATS)[number];
+
+/** Writes `2026-11-03` in a report's date format, such as 2026/11/03 or 2026年11月3日. */
+export function formatDate(
+  date: string | null,
+  format: DateFormat = 'YYYY/MM/DD',
+): string {
+  if (!date) return '';
+  const [y, m, d] = date.slice(0, 10).split('-');
+  if (!d) return date;
+  switch (format) {
+    case 'YYYY-MM-DD':
+      return `${y}-${m}-${d}`;
+    case 'YYYY年M月D日':
+      return `${y}年${Number(m)}月${Number(d)}日`;
+    case 'DD/MM/YYYY':
+      return `${d}/${m}/${y}`;
+    case 'MM/DD/YYYY':
+      return `${m}/${d}/${y}`;
+    default:
+      return `${y}/${m}/${d}`;
+  }
 }
 
 /** What the Tasks table remembers per project (spec 03). */

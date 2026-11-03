@@ -1036,3 +1036,48 @@ abbr.gloss {
   text-decoration-thickness: 1.5px;
   cursor: help;
 }
+
+/* ---------------------------------------------------------- reports: selection and translations */
+.report-note {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 12px 0 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgb(var(--hl) / 0.03);
+  font-size: 12.5px;
+}
+.report-note > span {
+  flex: 1;
+}
+.owner-tr {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgb(var(--acc) / 0.45);
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+.owner-tr-head,
+.owner-tr-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.owner-tr-foot {
+  justify-content: flex-end;
+}
+.owner-steps {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+}
+.owner-steps textarea {
+  width: 100%;
+  margin-top: 6px;
+  font: 12.5px var(--mono);
+}

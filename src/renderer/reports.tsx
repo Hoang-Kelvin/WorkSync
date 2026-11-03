@@ -1,4 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  translationMap,
+  untranslated,
+  type OwnerAnswer,
+  type OwnerBatch,
+  type OwnerTranslation,
+} from '../shared/ownerBatch';
 import {
   LANGUAGES,
   LEVELS,
@@ -46,9 +53,12 @@ const remembered = () => {
 /** Reports (spec 05): choose the report, its scope, period and language, then save it. */
 export function ReportDialog({
   project,
+  taskIds,
   onClose,
 }: {
   project: Project;
+  /** Tasks chosen in the Tasks table; the report covers only these. */
+  taskIds?: string[];
   onClose: () => void;
 }) {
   const { tasks, today, attempt, toast } = useApp();
@@ -67,10 +77,41 @@ export function ReportDialog({
     columns: DEFAULT_COLUMNS,
     includeNotes: false,
     preparedBy: remembered(),
+    taskIds: taskIds?.length ? taskIds : undefined,
   });
+  const [done, setDone] = useState<OwnerTranslation[]>([]);
+  const [translating, setTranslating] = useState(false);
+  const loadDone = async () => {
+    const r = await attempt(() =>
+      window.worksync.listOwnerTranslations(project.id),
+    );
+    if (r) setDone(r);
+  };
+  useEffect(() => {
+    void loadDone();
+    // Once, when the dialog opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [busy, setBusy] = useState(false);
   const set = (p: Partial<ReportOptions>) => setO({ ...o, ...p });
-  const count = useMemo(() => reportTasks(tasks, o).length, [tasks, o]);
+  const inReport = useMemo(() => reportTasks(tasks, o), [tasks, o]);
+  const count = inReport.length;
+  const fileLang = project.originalLanguages[0] ?? 'ja';
+  // Your notes in this report that have no translation into the file's language yet.
+  const needing = useMemo(
+    () =>
+      o.language === 'working'
+        ? []
+        : inReport.filter((t) => untranslated(t, done, fileLang).length),
+    [inReport, done, fileLang, o.language],
+  );
+  const needingParts = needing.reduce(
+    (n, t) => n + untranslated(t, done, fileLang).length,
+    0,
+  );
+  const translatedNow = Object.keys(
+    translationMap(inReport, done, fileLang),
+  ).length;
   const labels = [
     ...new Set(
       tasks.filter((t) => t.projectId === project.id).flatMap((t) => t.labels),
@@ -151,6 +192,21 @@ export function ReportDialog({
           </button>
         ))}
       </div>
+      {o.taskIds && (
+        <p className="report-note">
+          <Icon name="check" />
+          <span>
+            Only the {o.taskIds.length} task
+            {o.taskIds.length === 1 ? '' : 's'} you selected in the Tasks table.
+          </span>
+          <button
+            className="btn sm"
+            onClick={() => set({ taskIds: undefined })}
+          >
+            Use the whole project
+          </button>
+        </p>
+      )}
       <div className="form">
         <div className="two">
           <label>
@@ -188,13 +244,35 @@ export function ReportDialog({
             </select>
           </label>
         </div>
-        {o.language === 'original' && (
-          <p className="muted step-help">
-            Titles and headings are in {original}. Your summaries and situation
-            updates are in {LANGUAGES[project.workingLanguage]}, so they are
-            marked as not translated.
-          </p>
-        )}
+        {o.language !== 'working' &&
+          (translating ? (
+            <OwnerTranslate
+              project={project}
+              taskIds={needing.map((t) => t.id)}
+              onDone={async () => {
+                setTranslating(false);
+                await loadDone();
+              }}
+            />
+          ) : (
+            <p className="report-note">
+              <Icon name={needingParts ? 'globe' : 'check'} />
+              <span>
+                {needingParts
+                  ? `${needingParts} of your notes on ${needing.length} task${needing.length === 1 ? '' : 's'} are only in ${LANGUAGES[project.workingLanguage]}. ${o.language === 'original' ? 'They are marked as not translated.' : 'They show without a translation.'}${translatedNow ? ` ${translatedNow} are translated already.` : ''}`
+                  : `Your notes in this report are all translated into ${original}.`}
+              </span>
+              {needingParts > 0 && (
+                <button
+                  className="btn sm accent-outline"
+                  onClick={() => setTranslating(true)}
+                >
+                  <Icon name="spark" />
+                  Translate with Gemini
+                </button>
+              )}
+            </p>
+          ))}
         {o.kind === 'progress' && (
           <div className="two">
             <label>
@@ -330,5 +408,130 @@ export function ReportDialog({
         </div>
       </div>
     </Modal>
+  );
+}
+
+/**
+ * Translates the owner's notes into the file's language with Gemini (spec 05):
+ * copy each request, paste each answer, and save what came back.
+ */
+function OwnerTranslate({
+  project,
+  taskIds,
+  onDone,
+}: {
+  project: Project;
+  taskIds: string[];
+  onDone: () => Promise<void>;
+}) {
+  const { attempt, toast } = useApp();
+  const [batches, setBatches] = useState<OwnerBatch[] | null>(null);
+  const [at, setAt] = useState(0);
+  const [answer, setAnswer] = useState('');
+  const [read, setRead] = useState<OwnerAnswer | null>(null);
+  const [saved, setSaved] = useState(0);
+  useEffect(() => {
+    void attempt(() =>
+      window.worksync.prepareOwnerBatches(project.id, taskIds),
+    ).then((b) => {
+      if (b && !b.length) void onDone();
+      else if (b) setBatches(b);
+    });
+    // Once, for the tasks that needed it when it opened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  if (!batches) return <p className="muted">Preparing the request…</p>;
+  const batch = batches[at];
+  if (!batch) return null;
+  const copy = async () => {
+    await attempt(() => window.worksync.copyText(batch.text));
+    toast(
+      `Request ${batch.number} of ${batch.of} copied. Paste it into Gemini, then paste the answer here.`,
+    );
+  };
+  const check = async (text: string) => {
+    setAnswer(text);
+    setRead(
+      text.trim()
+        ? ((await attempt(() =>
+            window.worksync.readOwnerAnswer(batch, text),
+          )) ?? null)
+        : null,
+    );
+  };
+  const save = async () => {
+    if (!read) return;
+    const n = await attempt(() =>
+      window.worksync.saveOwnerTranslations(read.translations),
+    );
+    if (n === undefined) return;
+    setSaved(saved + n);
+    setAnswer('');
+    setRead(null);
+    if (at + 1 >= batches.length) {
+      toast(`Saved ${saved + n} translations of your notes.`);
+      await onDone();
+    } else setAt(at + 1);
+  };
+  return (
+    <div className="owner-tr">
+      <div className="owner-tr-head">
+        <b>
+          Translate your notes · request {batch.number} of {batch.of}
+        </b>
+        <button className="btn sm" onClick={() => void onDone()}>
+          Cancel
+        </button>
+      </div>
+      <ol className="owner-steps">
+        <li>
+          <button className="btn sm" onClick={() => void copy()}>
+            <Icon name="copy" />
+            Copy request {batch.number}
+          </button>{' '}
+          and paste it into Gemini. {Object.keys(batch.keys).length} tasks.
+        </li>
+        <li>
+          Paste Gemini’s whole answer here:
+          <textarea
+            className="inp"
+            rows={5}
+            value={answer}
+            aria-label="Gemini’s answer"
+            onChange={(e) => void check(e.target.value)}
+          />
+        </li>
+      </ol>
+      {read && (
+        <p
+          className={
+            read.missing.length || read.incomplete.length
+              ? 'warn-text'
+              : 'muted'
+          }
+        >
+          {read.translations.length} translations found
+          {read.missing.length
+            ? ` · ${read.missing.length} tasks missing (${read.missing.join(', ')})`
+            : ''}
+          {read.incomplete.length
+            ? ` · ${read.incomplete.length} lines empty`
+            : ''}
+          {read.unknown.length
+            ? ` · ${read.unknown.length} not asked for, ignored`
+            : ''}
+        </p>
+      )}
+      <div className="owner-tr-foot">
+        <button
+          className="btn primary sm"
+          disabled={!read?.translations.length}
+          onClick={() => void save()}
+        >
+          <Icon name="check" />
+          Save {read?.translations.length ?? 0} translations
+        </button>
+      </div>
+    </div>
   );
 }

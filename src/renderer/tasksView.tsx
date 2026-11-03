@@ -46,10 +46,12 @@ export function TasksView({
   projectId,
   props,
   onCopyForAi,
+  onReport,
 }: {
   projectId: string;
   props: ViewProps;
   onCopyForAi: (ids: string[]) => void;
+  onReport: (ids: string[]) => void;
 }) {
   const { tasks, project, putProject, attempt, people } = useApp();
   const p = project(projectId)!;
@@ -392,6 +394,7 @@ export function TasksView({
           labels={[...new Set(all.flatMap((t) => t.labels))].sort()}
           onClear={() => setSelected(new Set())}
           onCopyForAi={() => onCopyForAi(chosen.map((t) => t.id))}
+          onReport={() => onReport(chosen.map((t) => t.id))}
         />
       )}
     </>
@@ -583,11 +586,13 @@ function BulkBar({
   labels,
   onClear,
   onCopyForAi,
+  onReport,
 }: {
   tasks: Task[];
   labels: string[];
   onClear: () => void;
   onCopyForAi: () => void;
+  onReport: () => void;
 }) {
   const { putTask, toast, attempt } = useApp();
   const [label, setLabel] = useState('');
@@ -711,6 +716,10 @@ function BulkBar({
       <button className="btn sm" onClick={() => void copyBriefs()}>
         <Icon name="copy" />
         Copy briefs
+      </button>
+      <button className="btn sm" onClick={onReport}>
+        <Icon name="note" />
+        Report
       </button>
       <button
         className="btn sm ghost"

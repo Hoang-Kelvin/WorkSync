@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import {
   BUILT_VIEWS,
+  DATE_FORMATS,
+  formatDate,
+  type DateFormat,
   LANGUAGES,
   LEVELS,
   LEVEL_NAME,
@@ -39,6 +42,9 @@ export function ProjectDialog({
   const [days, setDays] = useState(
     project?.dueSoonDays ?? settings.dueSoonDays,
   );
+  const [dateFormat, setDateFormat] = useState<DateFormat>(
+    project?.dateFormat ?? 'YYYY/MM/DD',
+  );
   const save = async (e: FormEvent) => {
     e.preventDefault();
     const input = {
@@ -52,6 +58,7 @@ export function ProjectDialog({
         ? window.worksync.updateProject(project.id, {
             ...input,
             dueSoonDays: days,
+            dateFormat,
           })
         : window.worksync.createProject(input),
     );
@@ -148,6 +155,22 @@ export function ProjectDialog({
             </label>
           )}
         </div>
+        {project && (
+          <label>
+            Dates in reports
+            <select
+              className="inp"
+              value={dateFormat}
+              onChange={(e) => setDateFormat(e.target.value as DateFormat)}
+            >
+              {DATE_FORMATS.map((f) => (
+                <option key={f} value={f}>
+                  {formatDate('2026-11-03', f)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </form>
     </Modal>
   );

@@ -8,10 +8,11 @@ import {
   addDays,
   byPriority,
   daysBetween,
-  fileDate,
   flags,
+  formatDate,
   isClosed,
   shownPriority,
+  type DateFormat,
   type Level,
   type Project,
   type Status,
@@ -71,7 +72,44 @@ export interface ReportOptions {
   columns: string[];
   includeNotes: boolean;
   preparedBy: string;
+  /** Only these tasks, such as the rows selected in the Tasks table. */
+  taskIds?: string[];
+  /** Filled in by the main process from the project. */
+  dateFormat?: DateFormat;
+  /**
+   * The owner's text in the file's language, by the text as written. Filled
+   * in by the main process from the translations the owner accepted.
+   */
+  translations?: Record<string, string>;
 }
+
+const STATUS_JA: Record<Status, string> = {
+  'Not started': '未着手',
+  'In progress': '対応中',
+  'In review': 'レビュー中',
+  'On hold': '保留',
+  Done: '完了',
+  Cancelled: '中止',
+};
+
+/**
+ * A task's status in the report's language: the file's own word when it has
+ * one, and a Japanese word in a Japanese report.
+ */
+export const statusText = (
+  t: Pick<Task, 'status' | 'statusWord' | 'language'>,
+  o: Pick<ReportOptions, 'language'>,
+): string =>
+  t.statusWord ||
+  (o.language === 'original' && t.language === 'ja'
+    ? STATUS_JA[t.status]
+    : t.status);
+
+/** A date in the report's date format. */
+export const dateIn = (
+  date: string | null,
+  o: Pick<ReportOptions, 'dateFormat'>,
+): string => formatDate(date, o.dateFormat);
 
 /** Monday to Sunday of the week that holds `today`, the default period. */
 export function thisWeek(today: string): { from: string; to: string } {
@@ -90,6 +128,7 @@ export function reportTasks(all: Task[], o: ReportOptions): Task[] {
   const label = o.label.trim().toLowerCase();
   return all
     .filter((t) => t.projectId === o.projectId && t.fileState !== 'removed')
+    .filter((t) => !o.taskIds?.length || o.taskIds.includes(t.id))
     .filter((t) => !o.statuses.length || o.statuses.includes(t.status))
     .filter((t) => !o.levels.length || o.levels.includes(shownPriority(t)))
     .filter((t) => !label || t.labels.some((l) => l.toLowerCase() === label))
@@ -151,16 +190,31 @@ export function reportTitle(t: Task, language: ReportLanguage): string {
 }
 
 /**
- * Text the owner writes, such as summaries, is in the working language. In a
- * report in the original language it is marked as not translated (spec 05).
+ * Text the owner writes, such as summaries, is in the working language. A
+ * report in the original language uses the owner's accepted translation, and
+ * marks text without one as not translated (spec 05). Both languages show the
+ * text with its translation under it.
  */
 export function ownerText(
   text: string,
-  language: ReportLanguage,
+  o: Pick<ReportOptions, 'language' | 'translations'>,
   originalIsJapanese: boolean,
 ): string {
-  if (!text || language !== 'original') return text;
+  if (!text || o.language === 'working') return text;
+  const tr = o.translations?.[text];
+  if (o.language === 'both') return tr ? `${text}\n${tr}` : text;
+  if (tr) return tr;
   return `${originalIsJapanese ? '（未翻訳）' : '(not translated) '}${text}`;
+}
+
+/** The owner's texts a report would show, for checking which need a translation. */
+export function ownerTexts(t: Task): string[] {
+  return [
+    t.summary,
+    t.situation.doingNow,
+    t.situation.nextStep,
+    ...t.difficulties.filter((d) => d.open).map((d) => d.text),
+  ].filter((x) => x.trim());
 }
 
 export interface Column {
@@ -188,7 +242,7 @@ export const COLUMNS: Column[] = [
     label: 'Status',
     ja: '状態',
     width: 12,
-    value: (t) => t.statusWord || t.status,
+    value: (t, o) => statusText(t, o),
   },
   {
     key: 'priority',
@@ -216,42 +270,42 @@ export const COLUMNS: Column[] = [
     label: 'Planned start',
     ja: '予定開始',
     width: 12,
-    value: (t) => fileDate(t.plannedStart),
+    value: (t, o) => dateIn(t.plannedStart, o),
   },
   {
     key: 'plannedEnd',
     label: 'Planned end',
     ja: '予定終了',
     width: 12,
-    value: (t) => fileDate(t.plannedEnd),
+    value: (t, o) => dateIn(t.plannedEnd, o),
   },
   {
     key: 'actualStart',
     label: 'Actual start',
     ja: '実績開始',
     width: 12,
-    value: (t) => fileDate(t.actualStart),
+    value: (t, o) => dateIn(t.actualStart, o),
   },
   {
     key: 'actualEnd',
     label: 'Actual end',
     ja: '実績終了',
     width: 12,
-    value: (t) => fileDate(t.actualEnd),
+    value: (t, o) => dateIn(t.actualEnd, o),
   },
   {
     key: 'summary',
     label: 'Summary',
     ja: '概要',
     width: 44,
-    value: (t, o) => ownerText(t.summary, o.language, true),
+    value: (t, o) => ownerText(t.summary, o, true),
   },
   {
     key: 'doingNow',
     label: 'Doing now',
     ja: '現状',
     width: 36,
-    value: (t, o) => ownerText(t.situation.doingNow, o.language, true),
+    value: (t, o) => ownerText(t.situation.doingNow, o, true),
   },
   {
     key: 'difficulties',
@@ -259,14 +313,10 @@ export const COLUMNS: Column[] = [
     ja: '課題',
     width: 36,
     value: (t, o) =>
-      ownerText(
-        t.difficulties
-          .filter((d) => d.open)
-          .map((d) => d.text)
-          .join('\n'),
-        o.language,
-        true,
-      ),
+      t.difficulties
+        .filter((d) => d.open)
+        .map((d) => ownerText(d.text, o, true))
+        .join('\n'),
   },
   {
     key: 'next',
@@ -274,13 +324,9 @@ export const COLUMNS: Column[] = [
     ja: '今後の予定',
     width: 36,
     value: (t, o) =>
-      ownerText(
-        t.situation.nextStep
-          ? `${t.situation.nextStep}${t.situation.nextDate ? ` (${fileDate(t.situation.nextDate)})` : ''}`
-          : '',
-        o.language,
-        true,
-      ),
+      t.situation.nextStep
+        ? `${ownerText(t.situation.nextStep, o, true)}${t.situation.nextDate ? ` (${dateIn(t.situation.nextDate, o)})` : ''}`
+        : '',
   },
   {
     key: 'waitingOn',
@@ -344,41 +390,94 @@ export function briefParts(
   dueSoonDays: number,
 ) {
   const s = t.situation;
+  const ja = t.language === 'ja';
+  // Connecting words in the file's language when the report is in it.
+  const inJa = ja && o.language === 'original';
   const open = t.difficulties.filter((d) => d.open);
+  const doing = s.doingNow ? ownerText(s.doingNow, o, ja) : '';
   const where = [
-    t.statusWord || t.status,
+    statusText(t, o),
     s.handledBy &&
-      (s.doingNow ? `${s.handledBy}: ${lower(s.doingNow)}` : s.handledBy),
+      (doing
+        ? `${s.handledBy}: ${o.language === 'working' ? lower(doing) : doing}`
+        : s.handledBy),
   ]
     .filter(Boolean)
     .join(' · ');
   const f = flags(t, today, dueSoonDays);
   const due =
     t.plannedEnd && !isClosed(t)
-      ? `${f.overdue ? 'Overdue, was due' : 'Due'} ${fileDate(t.plannedEnd)}`
+      ? inJa
+        ? `${f.overdue ? '期限超過、期限' : '期限'} ${dateIn(t.plannedEnd, o)}`
+        : `${f.overdue ? 'Overdue, was due' : 'Due'} ${dateIn(t.plannedEnd, o)}`
       : '';
-  const ja = t.language === 'ja';
+  const waiting =
+    s.waitingOn === 'Nobody'
+      ? ''
+      : inJa
+        ? ` · ボール: ${{ Me: '当方', Customer: 'お客様', 'Our team': '当社チーム' }[s.waitingOn]}`
+        : ` · waiting on ${s.waitingOn === 'Me' ? 'us' : lower(s.waitingOn)}`;
   return {
-    what: ownerText(t.summary || '', o.language, ja),
-    doingNow: ownerText(where, o.language, ja),
-    difficulties: open.map((d) =>
-      ownerText(
-        `${d.text}${d.resolver ? ` (${d.resolver})` : ''}`,
-        o.language,
-        ja,
-      ),
+    what: ownerText(t.summary || '', o, ja),
+    doingNow: where,
+    difficulties: open.map(
+      (d) =>
+        `${ownerText(d.text, o, ja)}${d.resolver ? ` (${d.resolver})` : ''}`,
     ),
-    next: ownerText(
-      s.nextStep
-        ? `${s.nextStep}${s.nextDate ? ` by ${fileDate(s.nextDate)}` : ''}${s.waitingOn !== 'Nobody' ? ` · waiting on ${s.waitingOn === 'Me' ? 'us' : lower(s.waitingOn)}` : ''}`
-        : '',
-      o.language,
-      ja,
-    ),
+    next: s.nextStep
+      ? `${ownerText(s.nextStep, o, ja)}${s.nextDate ? (inJa ? `（${dateIn(s.nextDate, o)}まで）` : ` by ${dateIn(s.nextDate, o)}`) : ''}${waiting}`
+      : '',
     due,
-    asOf: s.asOf ? fileDate(s.asOf) : '',
+    asOf: s.asOf ? dateIn(s.asOf, o) : '',
     stale: s.asOf ? daysBetween(s.asOf, today) : null,
   };
+}
+
+/**
+ * The task brief in the file's language (spec 03, Task brief), from the
+ * owner's accepted translations. Parts without a translation are marked as
+ * not translated.
+ */
+export function briefInFileLanguage(
+  t: Task,
+  translations: Record<string, string>,
+  today: string,
+  dueSoonDays: number,
+  dateFormat?: DateFormat,
+): { text: string; missing: number } {
+  const o = {
+    language: 'original',
+    translations,
+    dateFormat,
+  } as ReportOptions;
+  const b = briefParts(t, o, today, dueSoonDays);
+  const missing = ownerTexts(t).filter((x) => !translations[x]).length;
+  const ja = t.language === 'ja';
+  const L = ja
+    ? {
+        what: '概要',
+        where: '現状',
+        issues: '課題',
+        next: '今後の予定',
+        none: '未定',
+      }
+    : {
+        what: 'What it is',
+        where: 'Where it stands',
+        issues: 'Difficulties',
+        next: 'What happens next',
+        none: 'Not decided yet',
+      };
+  const lines = [
+    `No. ${t.customerId}  ${t.titleOriginal}`,
+    `${L.what}: ${b.what || '—'}`,
+    `${L.where}: ${[b.doingNow, b.due, b.asOf && (ja ? `${b.asOf}時点` : `as of ${b.asOf}`)].filter(Boolean).join(' · ')}`,
+    ...(b.difficulties.length
+      ? [`${L.issues}: ${b.difficulties.join(ja ? '、' : '; ')}`]
+      : []),
+    `${L.next}: ${b.next || L.none}`,
+  ];
+  return { text: lines.join('\n'), missing };
 }
 
 /** The file name for a report, such as "Portal progress report 20261103.docx". */

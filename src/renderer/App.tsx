@@ -62,7 +62,7 @@ type Dialog =
   | { kind: 'publish'; projectId: string }
   | { kind: 'write' }
   | { kind: 'settings' }
-  | { kind: 'report'; projectId: string };
+  | { kind: 'report'; projectId: string; taskIds?: string[] };
 
 export function App() {
   const [startup, setStartup] = useState<Startup | null>(null);
@@ -208,6 +208,9 @@ function Shell({
           startAt: 'choose',
           preselect: ids,
         })
+      }
+      onReport={(ids) =>
+        setDialog({ kind: 'report', projectId: route.projectId, taskIds: ids })
       }
     />
   ) : route.view === 'timeline' ? (
@@ -724,6 +727,7 @@ function Shell({
       {dialog?.kind === 'report' && project(dialog.projectId) && (
         <ReportDialog
           project={project(dialog.projectId)!}
+          taskIds={dialog.taskIds}
           onClose={() => setDialog(null)}
         />
       )}

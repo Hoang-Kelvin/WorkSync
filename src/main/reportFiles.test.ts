@@ -17,6 +17,7 @@ const project: Project = {
   publishFolder: null,
   publishNotes: false,
   tableSettings: null,
+  dateFormat: 'YYYY/MM/DD',
 };
 const base: Task = {
   id: 't1',

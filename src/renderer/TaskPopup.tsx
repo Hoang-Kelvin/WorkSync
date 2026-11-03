@@ -15,6 +15,8 @@ import {
   assigneeText,
 } from '../shared/model';
 import type { PendingChange } from '../shared/writes';
+import { briefInFileLanguage } from '../shared/reports';
+import { translationMap } from '../shared/ownerBatch';
 import { useApp } from './appState';
 import { Icon } from './Icon';
 import {
@@ -430,6 +432,34 @@ export function TaskPopup({
     task.fileState === 'removed' && 'Removed from file',
   ].filter(Boolean) as string[];
 
+  // The brief in the file's language, from the translations of your notes.
+  const fileLang = p?.originalLanguages[0];
+  const canCopyInFile =
+    !!p && task.language === fileLang && fileLang !== p.workingLanguage;
+  const copyBriefInFile = async () => {
+    if (!p) return;
+    const done = await attempt(() =>
+      window.worksync.listOwnerTranslations(p.id),
+    );
+    if (!done) return;
+    const b = briefInFileLanguage(
+      task,
+      translationMap([task], done, task.language),
+      today,
+      p.dueSoonDays,
+      p.dateFormat,
+    );
+    try {
+      await navigator.clipboard.writeText(b.text);
+      toast(
+        b.missing
+          ? `Brief copied in ${LANGUAGES[task.language]}. ${b.missing} of your notes are not translated yet and are marked. Translate them from Make a report.`
+          : `Brief copied in ${LANGUAGES[task.language]}.`,
+      );
+    } catch {
+      toast('Copying was blocked. Try again with the window in front.');
+    }
+  };
   const copyBrief = async () => {
     try {
       await navigator.clipboard.writeText(brief(task).text);
@@ -541,6 +571,16 @@ export function TaskPopup({
               <Icon name="copy" />
               Copy brief
             </button>
+            {canCopyInFile && (
+              <button
+                className="btn"
+                onClick={() => void copyBriefInFile()}
+                title={`The brief in ${LANGUAGES[task.language]}, for the customer side`}
+              >
+                <Icon name="globe" />
+                {task.language === 'ja' ? '日本語で' : LANGUAGES[task.language]}
+              </button>
+            )}
             <button className="btn primary" onClick={() => setUpdating(true)}>
               <Icon name="edit" />
               Update situation

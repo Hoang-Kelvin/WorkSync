@@ -9,6 +9,7 @@
 import type {
   ActivityEntry,
   BulkChange,
+  DateFormat,
   Level,
   Project,
   ProjectInput,
@@ -20,6 +21,7 @@ import type {
 } from './model';
 import type { FileFormat } from './importRules';
 import type { AppSettings, StorageInfo } from './settings';
+import type { OwnerAnswer, OwnerBatch, OwnerTranslation } from './ownerBatch';
 import type { Batch, ReadAnswer } from './aiBatch';
 import type { PendingChange, WritePlan, WriteResult } from './writes';
 import type { ReportOptions } from './reports';
@@ -71,6 +73,7 @@ export type Startup =
 export type ProjectPatch = Partial<ProjectInput> & {
   views?: Partial<Record<ViewKey, boolean>>;
   dueSoonDays?: number;
+  dateFormat?: DateFormat;
 };
 
 /** The API the preload script exposes to the renderer as `window.worksync`. */
@@ -142,6 +145,14 @@ export interface WorkSyncApi {
     input: Omit<GlossaryTerm, 'id'> & { id?: string },
   ): Promise<GlossaryTerm>;
   deleteGlossaryTerm(id: string): Promise<void>;
+  listOwnerTranslations(projectId: string): Promise<OwnerTranslation[]>;
+  /** Requests to translate the owner's text of these tasks into the project's file language. */
+  prepareOwnerBatches(
+    projectId: string,
+    taskIds: string[],
+  ): Promise<OwnerBatch[]>;
+  readOwnerAnswer(batch: OwnerBatch, answer: string): Promise<OwnerAnswer>;
+  saveOwnerTranslations(list: OwnerTranslation[]): Promise<number>;
   listPeople(): Promise<Person[]>;
   savePerson(input: Omit<Person, 'id'> & { id?: string }): Promise<Person>;
   deletePerson(id: string): Promise<void>;
@@ -235,6 +246,10 @@ export const API_METHODS = [
   'listGlossary',
   'saveGlossaryTerm',
   'deleteGlossaryTerm',
+  'listOwnerTranslations',
+  'prepareOwnerBatches',
+  'readOwnerAnswer',
+  'saveOwnerTranslations',
   'listPeople',
   'savePerson',
   'deletePerson',

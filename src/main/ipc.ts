@@ -7,6 +7,12 @@ import {
   shell,
 } from 'electron';
 import { buildBatches, readAnswer } from '../shared/aiBatch';
+import {
+  buildOwnerBatches,
+  readOwnerAnswer,
+  translationMap,
+  untranslated,
+} from '../shared/ownerBatch';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -235,6 +241,26 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
     packaged: app.isPackaged,
   }),
   start: async () => open(),
+  listOwnerTranslations: async (projectId) =>
+    need().listOwnerTranslations(projectId),
+  prepareOwnerBatches: async (projectId, taskIds) => {
+    const st = need();
+    const project = st.getProject(projectId);
+    const to = project.originalLanguages[0] ?? 'ja';
+    const done = st.listOwnerTranslations(projectId);
+    const items = taskIds
+      .map((id) => st.getTask(id))
+      .filter((t) => t.projectId === projectId)
+      .map((task) => ({ task, parts: untranslated(task, done, to) }));
+    return buildOwnerBatches(
+      items,
+      project.workingLanguage,
+      to,
+      st.listGlossary(projectId),
+    );
+  },
+  readOwnerAnswer: async (batch, answer) => readOwnerAnswer(batch, answer),
+  saveOwnerTranslations: async (list) => need().saveOwnerTranslations(list),
   listPeople: async () => need().listPeople(),
   savePerson: async (input) => need().savePerson(input),
   deletePerson: async (id) => need().deletePerson(id),
@@ -504,6 +530,15 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
     const st = need();
     const project = st.getProject(options.projectId);
     const people = st.listPeople(project.id);
+    options = {
+      ...options,
+      dateFormat: project.dateFormat,
+      translations: translationMap(
+        st.listTasks().filter((t) => t.projectId === project.id),
+        st.listOwnerTranslations(project.id),
+        project.originalLanguages[0] ?? 'ja',
+      ),
+    };
     // Assignees in the report's language, from the people list.
     const tasks = reportTasks(st.listTasks(), options).map((t) => ({
       ...t,

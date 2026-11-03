@@ -171,6 +171,19 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX people_project ON people(project_id);
   `,
+  // 10: report date format, and the owner's text translated into the file's language (spec 05)
+  `
+  ALTER TABLE projects ADD COLUMN date_format TEXT NOT NULL DEFAULT 'YYYY/MM/DD';
+  CREATE TABLE owner_translations (
+    task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    field TEXT NOT NULL,          -- summary, doingNow, nextStep or difficulty:<id>
+    language TEXT NOT NULL,
+    source TEXT NOT NULL,         -- the text that was translated; a changed text needs a new translation
+    text TEXT NOT NULL,
+    at TEXT NOT NULL,
+    PRIMARY KEY (task_id, field, language)
+  );
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

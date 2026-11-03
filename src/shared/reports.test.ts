@@ -25,6 +25,7 @@ const project: Project = {
   publishFolder: null,
   publishNotes: false,
   tableSettings: null,
+  dateFormat: 'YYYY/MM/DD',
 };
 
 const task = (o: Partial<Task>): Task => ({
@@ -159,10 +160,10 @@ describe('reports', () => {
     expect(reportTitle(task({ titleTranslation: '' }), 'working')).toBe(
       'ログイン',
     );
-    expect(ownerText('Sessions expire.', 'original', true)).toBe(
+    expect(ownerText('Sessions expire.', { language: 'original' }, true)).toBe(
       '（未翻訳）Sessions expire.',
     );
-    expect(ownerText('Sessions expire.', 'both', true)).toBe(
+    expect(ownerText('Sessions expire.', { language: 'both' }, true)).toBe(
       'Sessions expire.',
     );
     expect(heading({ label: 'Status', ja: '状態' }, 'both', true)).toBe(
@@ -214,5 +215,16 @@ describe('reports', () => {
         '2026-11-03',
       ),
     ).toBe('Portal progress report 20261103.docx');
+  });
+});
+
+describe('report scope', () => {
+  it('covers only the selected tasks when there are some', () => {
+    const all = [task({ id: 'a' }), task({ id: 'b' }), task({ id: 'c' })];
+    expect(
+      reportTasks(all, opts({ kind: 'taskList', taskIds: ['c', 'a'] })).map(
+        (t) => t.id,
+      ),
+    ).toEqual(['a', 'c']);
   });
 });

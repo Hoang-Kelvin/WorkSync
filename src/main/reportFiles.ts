@@ -19,7 +19,6 @@ import {
   LEVEL_NAME,
   addDays,
   daysBetween,
-  fileDate,
   isClosed,
   shownPriority,
   type Level,
@@ -31,6 +30,8 @@ import {
   DEFAULT_COLUMNS,
   REPORTS,
   briefParts,
+  statusText,
+  dateIn,
   heading,
   periodOverview,
   reportTitle,
@@ -66,23 +67,56 @@ const BAR_FILL: Record<Level, string> = {
 };
 const FONT = 'Yu Gothic';
 
+/** True when the report is in Japanese only, so its labels are too. */
+const inJapanese = (h: ReportHead) =>
+  h.options.language === 'original' &&
+  (h.project.originalLanguages[0] ?? 'ja') === 'ja';
+
+/** A label in the report's language: Japanese for a Japanese report, else English. */
+const tr = (h: ReportHead, en: string, ja: string) => (inJapanese(h) ? ja : en);
+
+const REPORT_NAME_JA: Record<ReportOptions['kind'], string> = {
+  progress: '進捗報告書',
+  taskList: 'タスク一覧',
+  schedule: 'スケジュール',
+  briefs: 'タスク概要',
+};
+const LEVEL_JA: Record<Level, string> = {
+  U: '至急',
+  H: '高',
+  N: '中',
+  L: '低',
+};
+/** A priority in the report's language; the file's own word when it has one. */
+const levelName = (h: ReportHead, t: Task) =>
+  inJapanese(h)
+    ? t.priorityOverride
+      ? LEVEL_JA[shownPriority(t)]
+      : t.priorityWord || LEVEL_JA[shownPriority(t)]
+    : LEVEL_NAME[shownPriority(t)];
+const reportName = (h: ReportHead) =>
+  tr(h, REPORTS[h.options.kind].name, REPORT_NAME_JA[h.options.kind]);
+
 function headLines(h: ReportHead): [string, string][] {
   const o = h.options;
   const lines: [string, string][] = [
-    ['Project', h.project.name],
-    ['Customer', h.project.customer],
-    ['Prepared by', o.preparedBy],
-    ['Made', fileDate(h.today)],
-    ['Information as of', fileDate(h.asOf)],
+    [tr(h, 'Project', 'プロジェクト'), h.project.name],
+    [tr(h, 'Customer', 'お客様'), h.project.customer],
+    [tr(h, 'Prepared by', '作成者'), o.preparedBy],
+    [tr(h, 'Made', '作成日'), dateIn(h.today, o)],
+    [tr(h, 'Information as of', '情報の時点'), dateIn(h.asOf, o)],
   ];
   if (o.kind === 'progress')
-    lines.push(['Period', `${fileDate(o.from)} – ${fileDate(o.to)}`]);
+    lines.push([
+      tr(h, 'Period', '期間'),
+      `${dateIn(o.from, o)} – ${dateIn(o.to, o)}`,
+    ]);
   if (o.language !== 'working')
     lines.push([
-      'Language',
+      tr(h, 'Language', '言語'),
       o.language === 'both'
         ? `${LANGUAGES[h.project.originalLanguages[0] ?? 'ja']} and ${LANGUAGES[h.project.workingLanguage]}`
-        : LANGUAGES[h.project.originalLanguages[0] ?? 'ja'],
+        : tr(h, LANGUAGES[h.project.originalLanguages[0] ?? 'ja'], '日本語'),
     ]);
   return lines.filter(([, v]) => v);
 }
@@ -192,7 +226,7 @@ async function xlsxReport(h: ReportHead, tasks: Task[]): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'WorkSync';
   wb.created = new Date(`${h.today}T09:00:00`);
-  const title = REPORTS[o.kind].name;
+  const title = reportName(h);
 
   if (o.kind === 'schedule') {
     scheduleSheet(
@@ -263,8 +297,8 @@ async function xlsxReport(h: ReportHead, tasks: Task[]): Promise<Buffer> {
           values: [
             x.customerId,
             reportTitle(x, o.language),
-            LEVEL_NAME[shownPriority(x)],
-            x.statusWord || x.status,
+            levelName(h, x),
+            statusText(x, o),
             b.due,
             b.what,
             b.doingNow,
@@ -383,14 +417,14 @@ function scheduleSheet(ws: ExcelJS.Worksheet, h: ReportHead, tasks: Task[]) {
     const act = ws.getRow(r + 1);
     plan.getCell(1).value = t.customerId;
     plan.getCell(2).value = reportTitle(t, o.language);
-    plan.getCell(3).value = LEVEL_NAME[level];
-    plan.getCell(4).value = t.statusWord || t.status;
+    plan.getCell(3).value = levelName(h, t);
+    plan.getCell(4).value = statusText(t, o);
     plan.getCell(5).value = ja ? '予定' : 'Plan';
     act.getCell(5).value = ja ? '実績' : 'Actual';
-    plan.getCell(6).value = fileDate(t.plannedStart);
-    plan.getCell(7).value = fileDate(t.plannedEnd);
-    act.getCell(6).value = fileDate(t.actualStart);
-    act.getCell(7).value = fileDate(t.actualEnd);
+    plan.getCell(6).value = dateIn(t.plannedStart, o);
+    plan.getCell(7).value = dateIn(t.plannedEnd, o);
+    act.getCell(6).value = dateIn(t.actualStart, o);
+    act.getCell(7).value = dateIn(t.actualEnd, o);
     for (const row of [plan, act])
       row.eachCell((c) => (c.font = { name: FONT, size: 9 }));
     plan.getCell(3).font = {
@@ -452,7 +486,7 @@ function scheduleSheet(ws: ExcelJS.Worksheet, h: ReportHead, tasks: Task[]) {
   ws.pageSetup.printTitlesRow = `${start0 + 1}:${start0 + 2}`;
   const legend = ws.getRow(r + 1);
   legend.getCell(2).value =
-    `${ja ? '予定' : 'Plan'}: shaded in the priority color · ${ja ? '実績' : 'Actual'}: dark grey · the blue line is today (${fileDate(h.today)})${byWeek ? ' · one column per week' : ''}`;
+    `${ja ? '予定' : 'Plan'}: shaded in the priority color · ${ja ? '実績' : 'Actual'}: dark grey · the blue line is today (${dateIn(h.today, o)})${byWeek ? ' · one column per week' : ''}`;
   legend.getCell(2).font = { name: FONT, size: 9, color: { argb: 'FF6B7280' } };
 }
 
@@ -533,7 +567,7 @@ function briefBlock(t: Task, h: ReportHead): Paragraph[] {
       ...(level === 'U' || level === 'H'
         ? [
             new TextRun({
-              text: `  ${LEVEL_NAME[level]}`,
+              text: `  ${levelName(h, t)}`,
               color: LEVEL_TEXT[level],
               bold: true,
             }),
@@ -549,11 +583,17 @@ function briefBlock(t: Task, h: ReportHead): Paragraph[] {
       children: [
         new TextRun({ text: `${label}  `, bold: true, color: '3D4450' }),
         ...run(
-          Array.isArray(value) ? value.join('\n') || 'None' : value || '—',
+          Array.isArray(value)
+            ? value.join('\n') || tr(h, 'None', 'なし')
+            : value || '—',
         ),
       ],
     });
-  const meta = [t.statusWord || t.status, b.due, b.asOf && `as of ${b.asOf}`]
+  const meta = [
+    statusText(t, o),
+    b.due,
+    b.asOf && tr(h, `as of ${b.asOf}`, `${b.asOf}時点`),
+  ]
     .filter(Boolean)
     .join(' · ');
   return [
@@ -563,15 +603,15 @@ function briefBlock(t: Task, h: ReportHead): Paragraph[] {
       spacing: { after: 60 },
       children: [new TextRun({ text: meta, color: '6B7280', size: 18 })],
     }),
-    line('What it is', b.what),
-    line('現状 Doing now', b.doingNow),
-    line('課題 Difficulties', b.difficulties),
+    line(tr(h, 'What it is', '概要'), b.what),
+    line(tr(h, '現状 Doing now', '現状'), b.doingNow),
+    line(tr(h, '課題 Difficulties', '課題'), b.difficulties),
     new Paragraph({
       indent: { left: 240 },
       spacing: { after: 60 },
       children: [
         new TextRun({
-          text: '今後の予定 Next step  ',
+          text: `${tr(h, '今後の予定 Next step', '今後の予定')}  `,
           bold: true,
           color: '3D4450',
         }),
@@ -657,7 +697,7 @@ function docTable(
 async function docxReport(h: ReportHead, tasks: Task[]): Promise<Buffer> {
   const o = h.options;
   const ja = (h.project.originalLanguages[0] ?? 'ja') === 'ja';
-  const title = REPORTS[o.kind].name;
+  const title = reportName(h);
   const children: (Paragraph | Table)[] = headBlock(h, title);
   let landscape = false;
   if (o.kind === 'progress') {
@@ -771,7 +811,7 @@ async function docxReport(h: ReportHead, tasks: Task[]): Promise<Buffer> {
             spacing: { before: 240 },
             children: [
               new TextRun({
-                text: 'Made with WorkSync',
+                text: tr(h, 'Made with WorkSync', 'WorkSyncで作成'),
                 color: '9AA0A8',
                 size: 16,
               }),
