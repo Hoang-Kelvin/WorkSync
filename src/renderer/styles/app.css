@@ -147,7 +147,7 @@ input[type='date'].inp {
 .btn.danger {
   background: rgba(240, 82, 79, 0.18);
   border-color: rgba(240, 82, 79, 0.6);
-  color: #ffd0cf;
+  color: var(--urgent-ink);
 }
 .btn.danger:hover {
   background: rgba(240, 82, 79, 0.28);
@@ -180,7 +180,7 @@ input[type='date'].inp {
 
 /* ---------- linking files and reviewing versions ---------- */
 .state.miss {
-  color: #ffb0ae;
+  color: var(--urgent-ink);
   background: rgba(240, 82, 79, 0.14);
 }
 .state-detail {
@@ -249,7 +249,7 @@ input[type='date'].inp {
 .steps li.done::before {
   content: '✓';
   color: var(--accent);
-  border-color: rgba(69, 196, 216, 0.5);
+  border-color: rgb(var(--acc) / 0.5);
 }
 .sheet-wrap {
   max-height: 46vh;
@@ -277,7 +277,7 @@ table.sheet td {
 table.sheet tbody th {
   position: sticky;
   left: 0;
-  background: #141922;
+  background: var(--panel);
   color: var(--muted);
   font: 500 11px var(--mono);
   width: 36px;
@@ -285,7 +285,7 @@ table.sheet tbody th {
 table.sheet thead th {
   position: sticky;
   top: 0;
-  background: #1a2029;
+  background: var(--chip);
   z-index: 1;
 }
 table.sheet tbody tr {
@@ -295,7 +295,7 @@ table.sheet.preview tbody tr {
   cursor: default;
 }
 table.sheet tr:hover td {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgb(var(--hl) / 0.03);
 }
 table.sheet tr.is-head td {
   background: var(--accent-soft);
@@ -342,7 +342,7 @@ table.mini td {
   color: var(--fg-2);
 }
 .dsample.bad {
-  color: #ffb0ae;
+  color: var(--urgent-ink);
 }
 .skipped {
   font-size: 12.5px;
@@ -519,7 +519,7 @@ button.bar {
   margin-top: 3px;
 }
 .warn-text {
-  color: #ffb0ae;
+  color: var(--urgent-ink);
 }
 .field .pend {
   display: flex;
@@ -554,7 +554,7 @@ button.bar {
   background: var(--raised);
 }
 .report-kind[aria-checked='true'] {
-  border-color: rgba(69, 196, 216, 0.6);
+  border-color: rgb(var(--acc) / 0.6);
   background: var(--accent-soft);
 }
 .report-kind .ic {
@@ -597,7 +597,7 @@ button.bar {
   background: var(--raised);
   border: 1px solid var(--line-strong);
   border-radius: 12px;
-  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 18px 40px -12px rgb(0 0 0 / calc(0.8 * var(--shadow-k)));
   font-size: 13px;
 }
 .tt-pop-list {
@@ -711,7 +711,7 @@ button.bar {
   padding: 0 8px;
   border-radius: 7px;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.03);
+  background: rgb(var(--hl) / 0.03);
   color: var(--fg);
   font: 12.5px var(--ui);
   min-width: 0;
@@ -725,7 +725,7 @@ button.bar {
   border-color: var(--accent);
 }
 .tt-filter.on {
-  border-color: rgba(69, 196, 216, 0.55);
+  border-color: rgb(var(--acc) / 0.55);
   background: var(--accent-soft);
 }
 select.tt-filter option {
@@ -748,7 +748,7 @@ select.tt-filter option {
   text-overflow: ellipsis;
 }
 .tt-row:hover {
-  background: rgba(255, 255, 255, 0.035);
+  background: rgb(var(--hl) / 0.035);
 }
 .tt-row:focus-visible {
   outline: 2px solid var(--accent);
@@ -763,7 +763,7 @@ select.tt-filter option {
 .tt-row.gone {
   color: var(--muted);
   text-decoration: line-through;
-  text-decoration-color: rgba(214, 226, 255, 0.25);
+  text-decoration-color: rgb(var(--ln) / 0.25);
 }
 .tt-row.gone em {
   font-style: normal;
@@ -832,7 +832,7 @@ select.tt-filter option {
   padding: 1px 7px;
   border-radius: 999px;
   font-size: 11.5px;
-  background: rgba(214, 226, 255, 0.07);
+  background: rgb(var(--ln) / 0.07);
   border: 1px solid var(--line);
   color: var(--fg-2);
 }
@@ -853,8 +853,8 @@ select.tt-filter option {
   padding: 10px 12px;
   border-radius: 14px;
   background: var(--raised);
-  border: 1px solid rgba(69, 196, 216, 0.45);
-  box-shadow: 0 -10px 30px -12px rgba(0, 0, 0, 0.85);
+  border: 1px solid rgb(var(--acc) / 0.45);
+  box-shadow: 0 -10px 30px -12px rgb(0 0 0 / calc(0.85 * var(--shadow-k)));
   width: max-content;
   max-width: 100%;
 }
@@ -939,7 +939,7 @@ input.inp.sm {
   padding: 8px 10px;
   border-radius: 9px;
   border: 1px solid var(--line-strong);
-  background: rgba(255, 255, 255, 0.03);
+  background: rgb(var(--hl) / 0.03);
   font-size: 12.5px;
 }
 .backup-list {
@@ -1026,4 +1026,13 @@ tr.sel td {
   .people-form .wide {
     grid-column: auto;
   }
+}
+
+/* glossary terms in task text */
+abbr.gloss {
+  text-decoration: underline dotted;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+  cursor: help;
 }

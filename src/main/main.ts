@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, nativeTheme } from 'electron';
 import path from 'node:path';
 import {
   backupTick,
@@ -17,7 +17,8 @@ const createWindow = (): void => {
     minWidth: 900,
     minHeight: 600,
     title: 'WorkSync',
-    backgroundColor: '#10141b',
+    // Matches the window color of the theme, so nothing flashes while it loads.
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#10141b' : '#f6f7f9',
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),

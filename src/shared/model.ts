@@ -570,6 +570,47 @@ export function assigneeText(
   return `${shown} (${t.assignee})`;
 }
 
+/**
+ * Splits text into plain parts and glossary terms (spec 03, Text in two
+ * languages). Longer terms win over shorter ones inside them, and Latin
+ * terms match whole words only, ignoring case.
+ */
+export function glossSegments(
+  text: string,
+  terms: Pick<GlossaryTerm, 'term' | 'translation' | 'note'>[],
+): {
+  text: string;
+  term?: Pick<GlossaryTerm, 'term' | 'translation' | 'note'>;
+}[] {
+  const usable = terms
+    .filter((g) => g.term.trim().length > 0)
+    .sort((a, b) => b.term.length - a.term.length);
+  if (!text || !usable.length) return [{ text }];
+  const latin = (t: string) => /^[\x20-\x7e]+$/.test(t);
+  const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(
+    usable
+      .map((g) =>
+        latin(g.term)
+          ? `(?<![A-Za-z0-9])${esc(g.term)}(?![A-Za-z0-9])`
+          : esc(g.term),
+      )
+      .join('|'),
+    'gi',
+  );
+  const byKey = new Map(usable.map((g) => [g.term.toLowerCase(), g]));
+  const out: ReturnType<typeof glossSegments> = [];
+  let at = 0;
+  for (const m of text.matchAll(re)) {
+    const i = m.index ?? 0;
+    if (i > at) out.push({ text: text.slice(at, i) });
+    out.push({ text: m[0], term: byKey.get(m[0].toLowerCase()) });
+    at = i + m[0].length;
+  }
+  if (at < text.length) out.push({ text: text.slice(at) });
+  return out;
+}
+
 /** A translation and summary from an AI batch, accepted by the owner. */
 export interface AiResult {
   taskId: string;

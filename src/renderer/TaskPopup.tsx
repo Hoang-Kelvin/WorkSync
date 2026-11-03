@@ -19,6 +19,7 @@ import { useApp } from './appState';
 import { Icon } from './Icon';
 import {
   DeadlineChip,
+  Glossed,
   StatusChip,
   TaskNumber,
   Titles,
@@ -60,7 +61,7 @@ function Description({ task }: { task: Task }) {
       <div className="single">
         {orig.map((p, i) => (
           <p key={i} lang={task.language}>
-            {p}
+            <Glossed text={p} projectId={task.projectId} />
           </p>
         ))}
       </div>
@@ -90,10 +91,18 @@ function Description({ task }: { task: Task }) {
         {Array.from({ length: n }, (_, i) => (
           <div className="pp" key={i}>
             <p lang={originalFirst ? task.language : undefined}>
-              {left[i] ?? ''}
+              {originalFirst ? (
+                <Glossed text={left[i] ?? ''} projectId={task.projectId} />
+              ) : (
+                (left[i] ?? '')
+              )}
             </p>
             <p lang={originalFirst ? undefined : task.language}>
-              {right[i] ?? ''}
+              {originalFirst ? (
+                (right[i] ?? '')
+              ) : (
+                <Glossed text={right[i] ?? ''} projectId={task.projectId} />
+              )}
             </p>
           </div>
         ))}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  glossSegments,
   assigneeText,
   personFor,
   personName,
@@ -307,5 +308,31 @@ describe('people', () => {
     expect(
       assigneeText(people, { projectId: 'p', assignee: '田中' }, 'original'),
     ).toBe('田中');
+  });
+});
+
+describe('glossary marks', () => {
+  const g = (term: string, translation = 'x') => ({
+    term,
+    translation,
+    note: '',
+  });
+  it('marks the longest term, and Latin terms as whole words', () => {
+    const parts = glossSegments('受入テスト環境でAPIを確認。rapid', [
+      g('テスト'),
+      g('受入テスト', 'acceptance test'),
+      g('api', 'API'),
+      g('API'),
+    ]);
+    expect(parts.filter((p) => p.term).map((p) => p.text)).toEqual([
+      '受入テスト',
+      'API',
+    ]);
+    expect(parts.map((p) => p.text).join('')).toBe(
+      '受入テスト環境でAPIを確認。rapid',
+    );
+  });
+  it('leaves text without terms alone', () => {
+    expect(glossSegments('abc', [])).toEqual([{ text: 'abc' }]);
   });
 });

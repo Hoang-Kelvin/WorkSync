@@ -1,6 +1,7 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import {
   LEVEL_NAME,
+  glossSegments,
   deadline,
   flags,
   isClosed,
@@ -68,6 +69,42 @@ export function Labels({ labels }: { labels: string[] }) {
 }
 
 /** Working-language title first and the original under it, or the other way round. */
+/**
+ * Text with the project's glossary terms underlined with dots; hovering one
+ * shows its translation.
+ */
+export function Glossed({
+  text,
+  projectId,
+}: {
+  text: string;
+  projectId: string;
+}) {
+  const { glossary } = useApp();
+  const terms = useMemo(
+    () => glossary.filter((g) => g.projectId === projectId),
+    [glossary, projectId],
+  );
+  const parts = useMemo(() => glossSegments(text, terms), [text, terms]);
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.term ? (
+          <abbr
+            key={i}
+            className="gloss"
+            title={`${p.term.translation}${p.term.note ? ` · ${p.term.note}` : ''}`}
+          >
+            {p.text}
+          </abbr>
+        ) : (
+          p.text
+        ),
+      )}
+    </>
+  );
+}
+
 export function Titles({ task, big }: { task: Task; big?: boolean }) {
   const { originalFirst } = useApp();
   const Main = big ? 'h2' : 'div';
@@ -82,7 +119,7 @@ export function Titles({ task, big }: { task: Task; big?: boolean }) {
     return (
       <>
         <Main className={mainClass} lang={task.language} {...idProps}>
-          {task.titleOriginal}
+          <Glossed text={task.titleOriginal} projectId={task.projectId} />
           {task.translationState === 'Not translated' && (
             <span className="tag-review">Not translated</span>
           )}
@@ -90,11 +127,15 @@ export function Titles({ task, big }: { task: Task; big?: boolean }) {
       </>
     );
   }
-  const original = <span lang={task.language}>{task.titleOriginal}</span>;
+  const original = (
+    <span lang={task.language}>
+      <Glossed text={task.titleOriginal} projectId={task.projectId} />
+    </span>
+  );
   return originalFirst ? (
     <>
       <Main className={mainClass} lang={task.language} {...idProps}>
-        {task.titleOriginal}
+        <Glossed text={task.titleOriginal} projectId={task.projectId} />
       </Main>
       <div className={subClass}>
         {task.titleTranslation}
