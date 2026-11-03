@@ -11,8 +11,6 @@ macOS first, then Linux.
 > check screen that confirms it can run from its folder and save data beside
 > it. Task features come next.
 
-The specifications and the design mockup are in [docs/](docs/README.md).
-
 ## Tech stack
 
 - [Electron](https://www.electronjs.org/) for the desktop shell
@@ -96,8 +94,7 @@ The renderer has no Node.js access. To expose a new capability:
 - Code signing and notarization (required to distribute on macOS and to avoid
   SmartScreen warnings on Windows). See the note in `forge.config.mts`.
 - Auto-update and an app icon.
-- Task features. See the build plan in
-  [06 Technical architecture](docs/specs/06-technical-architecture.md).
+- Task features, which follow the build plan in the specifications.
 
 ## License
 
