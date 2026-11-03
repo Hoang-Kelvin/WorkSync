@@ -1,0 +1,630 @@
+import { useState, type FormEvent } from 'react';
+import {
+  BUILT_VIEWS,
+  LANGUAGES,
+  LEVELS,
+  LEVEL_NAME,
+  STATUSES,
+  detectLanguage,
+  type LanguageCode,
+  type Project,
+  type Task,
+  type TaskInput,
+  type ViewKey,
+} from '../shared/model';
+import { useApp } from './appState';
+import { Icon, type IconName } from './Icon';
+import { Modal } from './parts';
+
+const CODES = Object.keys(LANGUAGES) as LanguageCode[];
+
+export function ProjectDialog({
+  project,
+  onClose,
+  onSaved,
+}: {
+  project?: Project;
+  onClose: () => void;
+  onSaved: (p: Project) => void;
+}) {
+  const { putProject, attempt, toast } = useApp();
+  const [name, setName] = useState(project?.name ?? '');
+  const [customer, setCustomer] = useState(project?.customer ?? '');
+  const [orig, setOrig] = useState<LanguageCode[]>(
+    project?.originalLanguages ?? ['ja'],
+  );
+  const [work, setWork] = useState<LanguageCode>(
+    project?.workingLanguage ?? 'en',
+  );
+  const [days, setDays] = useState(project?.dueSoonDays ?? 7);
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    const input = {
+      name,
+      customer,
+      originalLanguages: orig,
+      workingLanguage: work,
+    };
+    const p = await attempt(() =>
+      project
+        ? window.worksync.updateProject(project.id, {
+            ...input,
+            dueSoonDays: days,
+          })
+        : window.worksync.createProject(input),
+    );
+    if (p) {
+      putProject(p);
+      toast(project ? 'Project saved.' : `Created ${p.name}.`);
+      onSaved(p);
+    }
+  };
+  return (
+    <Modal
+      title={project ? 'Project settings' : 'New project'}
+      subtitle="Languages are set per project, so projects in different languages sit side by side."
+      onClose={onClose}
+      narrow
+      footer={
+        <>
+          <button className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn primary" form="projectForm" type="submit">
+            <Icon name="check" />
+            {project ? 'Save' : 'Create project'}
+          </button>
+        </>
+      }
+    >
+      <form id="projectForm" className="form" onSubmit={save}>
+        <label>
+          Name
+          <input
+            className="inp"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            placeholder="Logistics Portal Renewal"
+          />
+        </label>
+        <label>
+          Customer
+          <input
+            className="inp"
+            value={customer}
+            onChange={(e) => setCustomer(e.target.value)}
+          />
+        </label>
+        <fieldset>
+          <legend>Original languages, the ones the customer writes in</legend>
+          <div className="checks">
+            {CODES.map((c) => (
+              <label key={c} className="check">
+                <input
+                  type="checkbox"
+                  checked={orig.includes(c)}
+                  onChange={(e) =>
+                    setOrig(
+                      e.target.checked
+                        ? [...orig, c]
+                        : orig.filter((x) => x !== c),
+                    )
+                  }
+                />
+                {LANGUAGES[c]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <div className="two">
+          <label>
+            Working language, the one you read and write in
+            <select
+              className="inp"
+              value={work}
+              onChange={(e) => setWork(e.target.value as LanguageCode)}
+            >
+              {CODES.map((c) => (
+                <option key={c} value={c}>
+                  {LANGUAGES[c]}
+                </option>
+              ))}
+            </select>
+          </label>
+          {project && (
+            <label>
+              Due soon, in days
+              <input
+                className="inp"
+                type="number"
+                min={1}
+                max={60}
+                value={days}
+                onChange={(e) => setDays(Number(e.target.value) || 7)}
+              />
+            </label>
+          )}
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+const blank = (): TaskInput => ({
+  customerId: '',
+  titleOriginal: '',
+  titleTranslation: '',
+  descriptionOriginal: '',
+  descriptionTranslation: '',
+  summary: '',
+  notes: '',
+  status: 'Not started',
+  priority: 'N',
+  labels: [],
+  assignee: '',
+  category: '',
+  remarks: '',
+  plannedStart: null,
+  plannedEnd: null,
+  actualStart: null,
+  actualEnd: null,
+  nextAction: '',
+  nextActionDate: null,
+});
+
+/** Adding a task by hand, or editing any task's fields. */
+export function TaskDialog({
+  projectId,
+  task,
+  onClose,
+  onSaved,
+}: {
+  projectId: string;
+  task?: Task;
+  onClose: () => void;
+  onSaved: (t: Task) => void;
+}) {
+  const { project, putTask, attempt, toast } = useApp();
+  const p = project(projectId)!;
+  const [v, setV] = useState<TaskInput>(() =>
+    task ? { ...blank(), ...pickInput(task) } : blank(),
+  );
+  const [labels, setLabels] = useState((task?.labels ?? []).join(', '));
+  const set =
+    <K extends keyof TaskInput>(k: K) =>
+    (e: { target: { value: string } }) =>
+      setV({
+        ...v,
+        [k]:
+          (k.endsWith('Start') || k.endsWith('End') || k.endsWith('Date')) &&
+          !e.target.value
+            ? null
+            : e.target.value,
+      });
+  const lang = v.titleOriginal.trim()
+    ? detectLanguage(v.titleOriginal, p.originalLanguages)
+    : null;
+  const needsTranslation = lang !== null && lang !== p.workingLanguage;
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    const input = {
+      ...v,
+      labels: labels
+        .split(/[,、]/)
+        .map((l) => l.trim())
+        .filter(Boolean),
+    };
+    const t = await attempt(() =>
+      task
+        ? window.worksync.updateTask(task.id, input)
+        : window.worksync.createTask(projectId, input),
+    );
+    if (t) {
+      putTask(t);
+      toast(task ? `Saved No. ${t.customerId}.` : `Added No. ${t.customerId}.`);
+      onSaved(t);
+    }
+  };
+
+  return (
+    <Modal
+      title={task ? `Edit No. ${task.customerId}` : 'New task'}
+      subtitle={
+        task
+          ? p.name
+          : `${p.name} · added by hand, so it is never written to a customer file`
+      }
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn primary" form="taskForm" type="submit">
+            <Icon name="check" />
+            {task ? 'Save' : 'Add task'}
+          </button>
+        </>
+      }
+    >
+      <form id="taskForm" className="form" onSubmit={save}>
+        <div className="two narrow-first">
+          <label>
+            No.
+            <input
+              className="inp mono"
+              value={v.customerId}
+              onChange={set('customerId')}
+              placeholder="Next number"
+            />
+          </label>
+          <label>
+            <span>
+              Original title
+              {lang && <span className="hint"> · {LANGUAGES[lang]}</span>}
+            </span>
+            <input
+              className="inp"
+              value={v.titleOriginal}
+              onChange={set('titleOriginal')}
+              required
+              placeholder="As written by the customer"
+            />
+          </label>
+        </div>
+        {needsTranslation && (
+          <label>
+            Title in {LANGUAGES[p.workingLanguage]}
+            <input
+              className="inp"
+              value={v.titleTranslation}
+              onChange={set('titleTranslation')}
+              placeholder="Leave empty if not translated yet"
+            />
+          </label>
+        )}
+        <label>
+          Summary, in your own words
+          <textarea
+            className="inp"
+            rows={2}
+            value={v.summary}
+            onChange={set('summary')}
+            placeholder="What is this task really about?"
+          />
+        </label>
+        <div className="three">
+          <label>
+            Status
+            <select className="inp" value={v.status} onChange={set('status')}>
+              {STATUSES.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Priority
+            <select
+              className="inp"
+              value={v.priority}
+              onChange={set('priority')}
+            >
+              {LEVELS.map((l) => (
+                <option key={l} value={l}>
+                  {LEVEL_NAME[l]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Labels
+            <input
+              className="inp"
+              value={labels}
+              onChange={(e) => setLabels(e.target.value)}
+              placeholder="Auth, Release 2.1"
+            />
+          </label>
+        </div>
+        <div className="four">
+          <label>
+            Planned start
+            <input
+              className="inp"
+              type="date"
+              value={v.plannedStart ?? ''}
+              onChange={set('plannedStart')}
+            />
+          </label>
+          <label>
+            Planned end
+            <input
+              className="inp"
+              type="date"
+              value={v.plannedEnd ?? ''}
+              onChange={set('plannedEnd')}
+            />
+          </label>
+          <label>
+            Actual start
+            <input
+              className="inp"
+              type="date"
+              value={v.actualStart ?? ''}
+              onChange={set('actualStart')}
+            />
+          </label>
+          <label>
+            Actual end
+            <input
+              className="inp"
+              type="date"
+              value={v.actualEnd ?? ''}
+              onChange={set('actualEnd')}
+            />
+          </label>
+        </div>
+        <div className="three">
+          <label>
+            Assignee
+            <input
+              className="inp"
+              value={v.assignee}
+              onChange={set('assignee')}
+            />
+          </label>
+          <label>
+            Category
+            <input
+              className="inp"
+              value={v.category}
+              onChange={set('category')}
+              placeholder="Bug, request, question"
+            />
+          </label>
+          <label>
+            Remarks
+            <input
+              className="inp"
+              value={v.remarks}
+              onChange={set('remarks')}
+            />
+          </label>
+        </div>
+        <label>
+          Original description
+          <textarea
+            className="inp"
+            rows={4}
+            value={v.descriptionOriginal}
+            onChange={set('descriptionOriginal')}
+            placeholder="Paste the customer’s text. Blank lines separate paragraphs."
+          />
+        </label>
+        {needsTranslation && (
+          <label>
+            Description in {LANGUAGES[p.workingLanguage]}
+            <textarea
+              className="inp"
+              rows={4}
+              value={v.descriptionTranslation}
+              onChange={set('descriptionTranslation')}
+              placeholder="Keep the same paragraphs, so they line up side by side."
+            />
+          </label>
+        )}
+        <fieldset>
+          <legend>Only for you</legend>
+          <div className="two">
+            <label>
+              Next action
+              <input
+                className="inp"
+                value={v.nextAction}
+                onChange={set('nextAction')}
+                placeholder="Your own to-do for this task"
+              />
+            </label>
+            <label>
+              By
+              <input
+                className="inp"
+                type="date"
+                value={v.nextActionDate ?? ''}
+                onChange={set('nextActionDate')}
+              />
+            </label>
+          </div>
+          <label>
+            Notes
+            <textarea
+              className="inp"
+              rows={3}
+              value={v.notes}
+              onChange={set('notes')}
+              placeholder="Background: technical context, decisions and links"
+            />
+          </label>
+        </fieldset>
+      </form>
+    </Modal>
+  );
+}
+
+function pickInput(t: Task): TaskInput {
+  const b = blank();
+  return Object.fromEntries(
+    Object.keys(b).map((k) => [k, t[k as keyof Task]]),
+  ) as unknown as TaskInput;
+}
+
+const VIEW_INFO: Record<
+  ViewKey,
+  { name: string; icon: IconName; desc: string }
+> = {
+  focus: {
+    name: 'Focus',
+    icon: 'focus',
+    desc: 'Tasks that need attention now. Always on.',
+  },
+  board: {
+    name: 'Board',
+    icon: 'board',
+    desc: 'Columns by status. Drag to change a status.',
+  },
+  tasks: { name: 'Tasks', icon: 'menu', desc: 'A table of every task.' },
+  timeline: {
+    name: 'Timeline',
+    icon: 'timeline',
+    desc: 'Planned and actual dates as a Gantt chart.',
+  },
+  calendar: {
+    name: 'Calendar',
+    icon: 'calendar',
+    desc: 'Tasks on their due dates.',
+  },
+  dashboard: {
+    name: 'Dashboard',
+    icon: 'gauge',
+    desc: 'Counts, priorities and what waits on the customer.',
+  },
+  published: {
+    name: 'Published page',
+    icon: 'globe',
+    desc: 'The read-only page your manager opens.',
+  },
+  files: {
+    name: 'Files',
+    icon: 'file',
+    desc: 'Linked Excel files and their state.',
+  },
+};
+export const viewName = (k: ViewKey) => VIEW_INFO[k].name;
+export const viewIcon = (k: ViewKey) => VIEW_INFO[k].icon;
+
+export function ViewsDialog({
+  project,
+  onClose,
+}: {
+  project: Project;
+  onClose: () => void;
+}) {
+  const { putProject, attempt, toast } = useApp();
+  const toggle = async (k: ViewKey) => {
+    const on = !project.views[k];
+    const p = await attempt(() =>
+      window.worksync.updateProject(project.id, { views: { [k]: on } }),
+    );
+    if (p) {
+      putProject(p);
+      toast(
+        on
+          ? `${viewName(k)} is shown again, with all its data.`
+          : `${viewName(k)} hidden for this project. Its data is kept.`,
+      );
+    }
+  };
+  return (
+    <Modal
+      title="Choose views"
+      subtitle={`Pick the views ${project.name} needs. Each project keeps its own choice.`}
+      onClose={onClose}
+      narrow
+      footer={
+        <button className="btn primary" onClick={onClose}>
+          Done
+        </button>
+      }
+    >
+      <div>
+        {(Object.keys(VIEW_INFO) as ViewKey[]).map((k) => {
+          const built = BUILT_VIEWS.includes(k);
+          const on = project.views[k];
+          return (
+            <div
+              key={k}
+              className={`vrow ${on ? 'on' : ''} ${built ? '' : 'later'}`}
+            >
+              <span className="vic">
+                <Icon name={VIEW_INFO[k].icon} />
+              </span>
+              <span>
+                <b>{VIEW_INFO[k].name}</b>
+                <small>
+                  {built
+                    ? VIEW_INFO[k].desc
+                    : `${VIEW_INFO[k].desc} Comes in a later build.`}
+                </small>
+              </span>
+              <button
+                className="switch"
+                role="switch"
+                aria-checked={on}
+                aria-label={`Show ${VIEW_INFO[k].name}`}
+                disabled={k === 'focus'}
+                onClick={() => void toggle(k)}
+              >
+                <span />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      <div className="keepnote">
+        <Icon name="shield" />
+        <span>
+          Turning a view off only hides it from this project. Tasks, dates,
+          situations and history stay exactly as they are.
+        </span>
+      </div>
+    </Modal>
+  );
+}
+
+export function ConfirmDelete({
+  task,
+  onClose,
+  onDeleted,
+}: {
+  task: Task;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const { removeTask, attempt, toast } = useApp();
+  const del = async () => {
+    const ok = await attempt(async () => {
+      await window.worksync.deleteTask(task.id);
+      return true;
+    });
+    if (ok) {
+      removeTask(task.id);
+      toast(`Deleted No. ${task.customerId}.`);
+      onDeleted();
+    }
+  };
+  return (
+    <Modal
+      title={`Delete No. ${task.customerId}?`}
+      subtitle="The task, its situation updates and its history are deleted. This cannot be undone."
+      onClose={onClose}
+      narrow
+      footer={
+        <>
+          <button className="btn" onClick={onClose}>
+            Keep it
+          </button>
+          <button className="btn danger" onClick={() => void del()}>
+            <Icon name="trash" />
+            Delete task
+          </button>
+        </>
+      }
+    >
+      <div className="field">
+        <div className="v">{task.titleTranslation || task.titleOriginal}</div>
+      </div>
+    </Modal>
+  );
+}

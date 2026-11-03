@@ -1,0 +1,262 @@
+import { useEffect, useRef, type ReactNode } from 'react';
+import {
+  LEVEL_NAME,
+  deadline,
+  flags,
+  isClosed,
+  shownPriority,
+  type Status,
+  type Task,
+} from '../shared/model';
+import { useApp } from './appState';
+import { Icon } from './Icon';
+
+const STATUS_CLASS: Record<Status, string> = {
+  'Not started': 'st-ns',
+  'In progress': 'st-ip',
+  'In review': 'st-ir',
+  'On hold': 'st-oh',
+  Done: 'st-dn',
+  Cancelled: 'st-cx',
+};
+
+export const StatusChip = ({ status }: { status: Status }) => (
+  <span className={`st ${STATUS_CLASS[status]}`}>{status}</span>
+);
+
+/** The class that gives a card its priority color. Closed tasks lose it. */
+export const priorityClass = (t: Task) =>
+  `pri-${shownPriority(t)}${isClosed(t) ? ' is-done' : ''}`;
+
+/** The priority name, shown for Urgent and High, and always for an override. */
+export function PriorityTag({ task }: { task: Task }) {
+  const level = shownPriority(task);
+  if (task.priorityOverride) {
+    return (
+      <span
+        className={`ptag ${level} ovr`}
+        title={`Your priority. The task's own level is ${LEVEL_NAME[task.priority]}.`}
+      >
+        <Icon name="user" />
+        {LEVEL_NAME[level]}
+        <span className="sr">, your override</span>
+      </span>
+    );
+  }
+  if ((level !== 'U' && level !== 'H') || isClosed(task)) return null;
+  return <span className={`ptag ${level}`}>{LEVEL_NAME[level]}</span>;
+}
+
+export const TaskNumber = ({ task }: { task: Task }) => (
+  <span className="tc-id">
+    <small>No.</small>
+    {task.customerId}
+  </span>
+);
+
+export function Labels({ labels }: { labels: string[] }) {
+  if (!labels.length) return null;
+  return (
+    <div className="tc-labels">
+      {labels.map((l) => (
+        <span className="label" key={l}>
+          {l}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** Working-language title first and the original under it, or the other way round. */
+export function Titles({ task, big }: { task: Task; big?: boolean }) {
+  const { originalFirst } = useApp();
+  const Main = big ? 'h2' : 'div';
+  const mainClass = big ? 'tm-title' : 'title clamp2';
+  const subClass = big ? 'tm-orig' : 'orig clamp1';
+  const review =
+    task.translationState === 'Needs review' ? (
+      <span className="tag-review">Needs review</span>
+    ) : null;
+  const idProps = big ? { id: 'tmTitle', tabIndex: -1 } : {};
+  if (task.translationState === 'Not needed' || !task.titleTranslation) {
+    return (
+      <>
+        <Main className={mainClass} lang={task.language} {...idProps}>
+          {task.titleOriginal}
+          {task.translationState === 'Not translated' && (
+            <span className="tag-review">Not translated</span>
+          )}
+        </Main>
+      </>
+    );
+  }
+  const original = <span lang={task.language}>{task.titleOriginal}</span>;
+  return originalFirst ? (
+    <>
+      <Main className={mainClass} lang={task.language} {...idProps}>
+        {task.titleOriginal}
+      </Main>
+      <div className={subClass}>
+        {task.titleTranslation}
+        {review}
+      </div>
+    </>
+  ) : (
+    <>
+      <Main className={mainClass} {...idProps}>
+        {task.titleTranslation}
+        {review}
+      </Main>
+      <div className={subClass} lang={task.language}>
+        {original}
+      </div>
+    </>
+  );
+}
+
+export function DeadlineChip({
+  task,
+  dueSoonDays,
+}: {
+  task: Task;
+  dueSoonDays: number;
+}) {
+  const { today } = useApp();
+  const d = deadline(task, today, dueSoonDays);
+  if (!d) return null;
+  return (
+    <span className={`chip ${d.tone}`}>
+      <Icon name="clock" />
+      {d.text}
+    </span>
+  );
+}
+
+/** Status, deadline, open difficulties and Waiting on. */
+export function MetaChips({
+  task,
+  dueSoonDays,
+}: {
+  task: Task;
+  dueSoonDays: number;
+}) {
+  const { today } = useApp();
+  const f = flags(task, today, dueSoonDays);
+  const w = task.situation.waitingOn;
+  return (
+    <>
+      <StatusChip status={task.status} />
+      <DeadlineChip task={task} dueSoonDays={dueSoonDays} />
+      {f.openDifficulties > 0 && (
+        <span className="chip">
+          <Icon name="alert" />
+          {f.openDifficulties} open
+        </span>
+      )}
+      {w !== 'Nobody' && !isClosed(task) && (
+        <span className="chip">
+          <Icon name="ball" />
+          {w === 'Me' ? 'Waiting on me' : `Waiting: ${w}`}
+        </span>
+      )}
+    </>
+  );
+}
+
+/** A dialog over a blurred background. Esc or a click outside closes it. */
+export function Modal({
+  title,
+  subtitle,
+  onClose,
+  children,
+  footer,
+  narrow,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+  narrow?: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    ref.current
+      ?.querySelector<HTMLElement>(
+        'input, textarea, select, button:not([data-close])',
+      )
+      ?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      opener?.focus?.();
+    };
+  }, []);
+  return (
+    <div
+      className="modal-bg"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        ref={ref}
+        className={`modal ${narrow ? 'narrow' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mTitle"
+      >
+        <div className="m-head">
+          <div>
+            <h2 id="mTitle">{title}</h2>
+            {subtitle && <p>{subtitle}</p>}
+          </div>
+          <button
+            className="icon-btn"
+            data-close
+            aria-label="Close"
+            onClick={onClose}
+          >
+            <Icon name="x" />
+          </button>
+        </div>
+        <div className="m-body">{children}</div>
+        {footer && <div className="m-foot">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+export function Toast() {
+  const { toastMessage: m, dismissToast } = useApp();
+  return (
+    <div
+      className={`toast ${m ? 'on' : ''} ${m?.error ? 'error' : ''}`}
+      role="status"
+      aria-live="polite"
+    >
+      {m && (
+        <>
+          <Icon name={m.error ? 'alert' : 'check'} />
+          <span>{m.text}</span>
+          {m.action && (
+            <button
+              className="btn sm"
+              onClick={() => {
+                dismissToast();
+                m.action!.run();
+              }}
+            >
+              {m.action.label}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

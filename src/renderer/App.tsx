@@ -1,74 +1,476 @@
-import { useEffect, useState } from 'react';
-import type { AppInfo, CheckResult } from '../shared/ipc';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import type { Startup } from '../shared/ipc';
+import { BUILT_VIEWS, inFocus, type Project, type Task } from '../shared/model';
+import { AppProvider, useApp } from './appState';
+import {
+  ConfirmDelete,
+  ProjectDialog,
+  TaskDialog,
+  ViewsDialog,
+  viewIcon,
+  viewName,
+} from './dialogs';
+import { Icon } from './Icon';
+import { Toast } from './parts';
+import { PriorityMenu, type MenuAnchor } from './PriorityMenu';
+import { TaskPopup } from './TaskPopup';
+import { BoardView, FocusView, initials, type ViewProps } from './views';
 
-/**
- * Work PC check: the first test build only confirms that WorkSync runs on the
- * work PC from an unzipped folder and can save data beside it. Task features
- * come in the next build step.
- */
+type Route =
+  | { view: 'focus'; scope: 'all' | string }
+  | { view: 'board'; projectId: string };
+
+type Dialog =
+  | { kind: 'newProject' }
+  | { kind: 'editProject'; project: Project }
+  | { kind: 'views'; projectId: string }
+  | { kind: 'newTask'; projectId: string }
+  | { kind: 'editTask'; task: Task }
+  | { kind: 'deleteTask'; task: Task };
+
 export function App() {
-  const [info, setInfo] = useState<AppInfo | null>(null);
-  const [checks, setChecks] = useState<CheckResult[] | null>(null);
+  const [startup, setStartup] = useState<Startup | null>(null);
+  useEffect(() => {
+    void window.worksync.start().then(setStartup);
+  }, []);
+  if (!startup) return <div className="boot">Opening WorkSync…</div>;
+  if (!startup.ok) {
+    return (
+      <div className="boot">
+        <div className="panel boot-error">
+          <h1>WorkSync could not open its data</h1>
+          <p>{startup.message}</p>
+          <p className="muted">Data folder: {startup.dataFolder}</p>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <AppProvider initial={startup}>
+      <Shell dataFolder={startup.dataFolder} />
+    </AppProvider>
+  );
+}
+
+function Shell({ dataFolder }: { dataFolder: string }) {
+  const {
+    projects,
+    tasks,
+    today,
+    project,
+    originalFirst,
+    setOriginalFirst,
+    attempt,
+    reloadAll,
+    toast,
+  } = useApp();
+  const [route, setRoute] = useState<Route>({ view: 'focus', scope: 'all' });
+  const [active, setActive] = useState<string | null>(projects[0]?.id ?? null);
+  const [query, setQuery] = useState('');
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [menu, setMenu] = useState<MenuAnchor | null>(null);
+  const [scrolled, setScrolled] = useState(false);
+  const [sideOpen, setSideOpen] = useState(false);
+  const search = useRef<HTMLInputElement>(null);
+  const viewRef = useRef<HTMLElement>(null);
+  const [headEl, setHeadEl] = useState<HTMLDivElement | null>(null);
+
+  // Keep the route valid when a view is turned off or a project changes.
+  useEffect(() => {
+    if (route.view === 'board' && !project(route.projectId)?.views.board)
+      setRoute({ view: 'focus', scope: route.projectId });
+  }, [route, project]);
 
   useEffect(() => {
-    window.worksync.getAppInfo().then(setInfo);
-    window.worksync.runPcChecks().then(setChecks);
-  }, []);
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        search.current?.focus();
+        search.current?.select();
+      } else if (e.key === 'Escape' && !dialog && !menu && openId) {
+        setOpenId(null);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [dialog, menu, openId]);
 
-  const allOk = checks?.every((c) => c.ok) ?? false;
+  const go = (r: Route) => {
+    setRoute(r);
+    setSideOpen(false);
+    if (viewRef.current) viewRef.current.scrollTop = 0;
+    setScrolled(false);
+  };
+
+  const openMenu = useCallback(
+    (task: Task, opener: HTMLElement, at?: { x: number; y: number }) =>
+      setMenu({ task, opener, at }),
+    [],
+  );
+  const closeMenu = useCallback(() => setMenu(null), []);
+
+  // Each view renders its header into the fixed area above the scrolling content.
+  const props: ViewProps = {
+    query,
+    openTask: setOpenId,
+    openMenu,
+    header: (title, subtitle, right) =>
+      headEl &&
+      createPortal(
+        <div className="vh">
+          <div>
+            <h1>{title}</h1>
+            <div className="sub">{subtitle}</div>
+          </div>
+          {right}
+        </div>,
+        headEl,
+      ),
+  };
+
+  const addSample = async () => {
+    const id = await attempt(() => window.worksync.addSampleProject());
+    if (id) {
+      await reloadAll();
+      setActive(id);
+      go({ view: 'focus', scope: id });
+      toast('Added the sample project. Delete or keep it as you like.');
+    }
+  };
+
+  const currentProjectId =
+    route.view === 'board'
+      ? route.projectId
+      : route.scope !== 'all'
+        ? route.scope
+        : active;
+  const body = !projects.length ? (
+    <Welcome
+      onNew={() => setDialog({ kind: 'newProject' })}
+      onSample={() => void addSample()}
+    />
+  ) : route.view === 'board' ? (
+    <BoardView projectId={route.projectId} props={props} />
+  ) : (
+    <FocusView
+      scope={route.scope}
+      props={props}
+      onNewTask={() =>
+        currentProjectId &&
+        setDialog({ kind: 'newTask', projectId: currentProjectId })
+      }
+    />
+  );
+
+  const focusCount = (scope: string | 'all') =>
+    tasks.filter(
+      (t) =>
+        (scope === 'all' || t.projectId === scope) &&
+        inFocus(t, today, project(t.projectId)?.dueSoonDays ?? 7),
+    ).length;
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>WorkSync</h1>
-        <p>Work PC check · test build</p>
-      </header>
+    <div className="window" id="app">
+      <div className="shell">
+        <nav
+          className={`sidebar ${sideOpen ? 'on' : ''}`}
+          aria-label="Projects and views"
+        >
+          <div>
+            <div className="nav-label">Today</div>
+            <div className="nav">
+              <button
+                className="nav-item"
+                aria-current={
+                  route.view === 'focus' && route.scope === 'all'
+                    ? 'page'
+                    : undefined
+                }
+                onClick={() => go({ view: 'focus', scope: 'all' })}
+              >
+                <Icon name="focus" />
+                <span className="grow">Focus, all projects</span>
+                <span className="count">{focusCount('all')}</span>
+              </button>
+            </div>
+          </div>
+          <div>
+            <div className="nav-label">Projects</div>
+            <div className="nav">
+              {projects.map((p) => {
+                const isActive = p.id === active;
+                return (
+                  <div className="proj" key={p.id}>
+                    <button
+                      className={`proj-btn ${isActive ? 'active' : ''}`}
+                      aria-expanded={isActive}
+                      onClick={() => setActive(isActive ? null : p.id)}
+                    >
+                      <span className="mono-tile">{initials(p.name)}</span>
+                      <span style={{ minWidth: 0 }}>
+                        <span className="proj-name">{p.name}</span>
+                        <span className="proj-lang">
+                          {p.originalLanguages
+                            .map((l) => l.toUpperCase())
+                            .join(' · ')}{' '}
+                          → {p.workingLanguage.toUpperCase()}
+                        </span>
+                      </span>
+                      <span className="count">{focusCount(p.id)}</span>
+                    </button>
+                    {isActive && (
+                      <div className="subnav">
+                        {BUILT_VIEWS.filter((k) => p.views[k]).map((k) => (
+                          <button
+                            key={k}
+                            className="nav-item"
+                            aria-current={
+                              (k === 'focus' &&
+                                route.view === 'focus' &&
+                                route.scope === p.id) ||
+                              (k === 'board' &&
+                                route.view === 'board' &&
+                                route.projectId === p.id)
+                                ? 'page'
+                                : undefined
+                            }
+                            onClick={() =>
+                              go(
+                                k === 'focus'
+                                  ? { view: 'focus', scope: p.id }
+                                  : { view: 'board', projectId: p.id },
+                              )
+                            }
+                          >
+                            <Icon name={viewIcon(k)} />
+                            <span className="grow">{viewName(k)}</span>
+                          </button>
+                        ))}
+                        <button
+                          className="nav-item custom"
+                          onClick={() =>
+                            setDialog({ kind: 'newTask', projectId: p.id })
+                          }
+                        >
+                          <Icon name="plus" />
+                          <span className="grow">New task</span>
+                        </button>
+                        <button
+                          className="nav-item custom"
+                          onClick={() =>
+                            setDialog({ kind: 'views', projectId: p.id })
+                          }
+                        >
+                          <Icon name="sliders" />
+                          <span className="grow">Choose views</span>
+                        </button>
+                        <button
+                          className="nav-item custom"
+                          onClick={() =>
+                            setDialog({ kind: 'editProject', project: p })
+                          }
+                        >
+                          <Icon name="edit" />
+                          <span className="grow">Project settings</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <button
+                className="nav-item custom"
+                onClick={() => setDialog({ kind: 'newProject' })}
+              >
+                <Icon name="plus" />
+                <span className="grow">New project</span>
+              </button>
+            </div>
+          </div>
+          <div className="side-foot">
+            <span>
+              <Icon name="lock" />
+              Data stays on this PC
+            </span>
+            <span className="path" title={dataFolder}>
+              <Icon name="folder" />
+              <span className="grow-ellipsis">{dataFolder}</span>
+            </span>
+          </div>
+        </nav>
+        <div className="main">
+          <header className="topbar">
+            <button
+              className="icon-btn menu-btn"
+              aria-label="Open the sidebar"
+              onClick={() => setSideOpen(true)}
+            >
+              <Icon name="menu" />
+            </button>
+            <label className="search" htmlFor="q">
+              <Icon name="search" />
+              <input
+                id="q"
+                ref={search}
+                type="search"
+                placeholder="Search by number, label or title"
+                autoComplete="off"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <span className="kbd">Ctrl K</span>
+            </label>
+            <button
+              className="btn"
+              aria-pressed={originalFirst}
+              onClick={() => setOriginalFirst(!originalFirst)}
+            >
+              <Icon name="swap" />
+              <span className="lbl">Original first</span>
+            </button>
+            <button
+              className="btn primary"
+              disabled={!currentProjectId}
+              title={
+                currentProjectId
+                  ? `Add a task to ${project(currentProjectId)?.name}`
+                  : 'Create a project first'
+              }
+              onClick={() =>
+                currentProjectId &&
+                setDialog({ kind: 'newTask', projectId: currentProjectId })
+              }
+            >
+              <Icon name="plus" />
+              <span className="lbl">New task</span>
+            </button>
+          </header>
+          <div
+            className={`vhead ${scrolled ? 'scrolled' : ''}`}
+            ref={setHeadEl}
+          />
+          <main
+            className="view"
+            ref={viewRef}
+            tabIndex={-1}
+            onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}
+          >
+            {body}
+          </main>
+        </div>
+        <div
+          className={`scrim ${sideOpen ? 'on' : ''}`}
+          onClick={() => setSideOpen(false)}
+        />
+      </div>
 
-      <main className="app-main">
-        <section className="panel" aria-live="polite">
-          {checks === null ? (
-            <p className="muted">Checking…</p>
-          ) : (
-            <>
-              <h2 className={allOk ? 'ok' : 'bad'}>
-                {allOk
-                  ? 'WorkSync can run on this PC'
-                  : 'Something needs attention'}
-              </h2>
-              <ul className="checks">
-                {checks.map((c) => (
-                  <li key={c.name} className={c.ok ? 'ok' : 'bad'}>
-                    <span className="mark" aria-hidden="true">
-                      {c.ok ? '✓' : '!'}
-                    </span>
-                    <span>
-                      <b>{c.name}</b>
-                      <span className="detail">{c.detail}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p className="muted">
-                {allOk
-                  ? 'Nothing else to do. You can close this window. Task features come in the next build.'
-                  : 'Note what the failed line says. Often the fix is to unzip WorkSync into a folder on a local drive that you can write to.'}
-              </p>
-            </>
-          )}
-        </section>
-      </main>
+      {openId && (
+        <TaskPopup
+          taskId={openId}
+          onClose={() => setOpenId(null)}
+          onEdit={(task) => setDialog({ kind: 'editTask', task })}
+          onDelete={(task) => setDialog({ kind: 'deleteTask', task })}
+          openMenu={openMenu}
+        />
+      )}
+      {menu && (
+        <PriorityMenu
+          anchor={{
+            ...menu,
+            task: tasks.find((t) => t.id === menu.task.id) ?? menu.task,
+          }}
+          onClose={closeMenu}
+        />
+      )}
+      {dialog?.kind === 'newProject' && (
+        <ProjectDialog
+          onClose={() => setDialog(null)}
+          onSaved={(p) => {
+            setDialog(null);
+            setActive(p.id);
+            go({ view: 'focus', scope: p.id });
+          }}
+        />
+      )}
+      {dialog?.kind === 'editProject' && (
+        <ProjectDialog
+          project={dialog.project}
+          onClose={() => setDialog(null)}
+          onSaved={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === 'views' && project(dialog.projectId) && (
+        <ViewsDialog
+          project={project(dialog.projectId)!}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === 'newTask' && (
+        <TaskDialog
+          projectId={dialog.projectId}
+          onClose={() => setDialog(null)}
+          onSaved={(t) => {
+            setDialog(null);
+            setOpenId(t.id);
+          }}
+        />
+      )}
+      {dialog?.kind === 'editTask' && (
+        <TaskDialog
+          projectId={dialog.task.projectId}
+          task={dialog.task}
+          onClose={() => setDialog(null)}
+          onSaved={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === 'deleteTask' && (
+        <ConfirmDelete
+          task={dialog.task}
+          onClose={() => setDialog(null)}
+          onDeleted={() => {
+            setDialog(null);
+            setOpenId(null);
+          }}
+        />
+      )}
+      <Toast />
+    </div>
+  );
+}
 
-      <footer className="app-footer">
-        {info ? (
-          <span>
-            {info.name} v{info.version} · {info.platform} {info.arch} · Electron{' '}
-            {info.electronVersion}
-            {info.packaged ? '' : ' · development'}
-          </span>
-        ) : (
-          <span>Loading…</span>
-        )}
-      </footer>
+function Welcome({
+  onNew,
+  onSample,
+}: {
+  onNew: () => void;
+  onSample: () => void;
+}) {
+  return (
+    <div className="welcome">
+      <h1>Welcome to WorkSync</h1>
+      <p>
+        Start with a project for one customer. You can add tasks by hand now.
+        Importing the customer’s Excel file comes in a later build.
+      </p>
+      <div
+        style={{
+          display: 'flex',
+          gap: 10,
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+        }}
+      >
+        <button className="btn primary" onClick={onNew}>
+          <Icon name="plus" />
+          New project
+        </button>
+        <button className="btn" onClick={onSample}>
+          <Icon name="spark" />
+          Try the sample project
+        </button>
+      </div>
     </div>
   );
 }

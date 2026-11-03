@@ -1,14 +1,16 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
-import { registerIpcHandlers } from './ipc';
+import { closeStore, registerIpcHandlers } from './ipc';
 
 const createWindow = (): void => {
   const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 800,
+    width: 1360,
+    height: 860,
+    minWidth: 900,
     minHeight: 600,
     title: 'WorkSync',
+    backgroundColor: '#10141b',
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       // The renderer is treated as untrusted web content: it gets no Node.js
@@ -52,3 +54,5 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+
+app.on('will-quit', closeStore);

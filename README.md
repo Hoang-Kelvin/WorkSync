@@ -7,9 +7,9 @@ work visually, and publishes a read-only copy to a shared folder. It runs from
 an unzipped folder with no installation and no server. Targets Windows and
 macOS first, then Linux.
 
-> **Status:** step 1 of the build plan, the work PC test build. The app opens a
-> check screen that confirms it can run from its folder and save data beside
-> it. Task features come next.
+> **Status:** step 2 of the build plan. Projects and tasks entered by hand,
+> the Focus card grid, the Board, the task popup with situation updates and
+> the task brief, and the priority menu. Excel import comes next.
 
 ## Tech stack
 
@@ -37,6 +37,7 @@ npm start
 | `npm run package`   | Build an unpacked app for the current OS into `out/` |
 | `npm run make`      | Build installers/distributables for the current OS   |
 | `npm run typecheck` | Type-check the whole project                         |
+| `npm test`          | Run the unit tests                                   |
 | `npm run lint`      | Run oxlint and check formatting                      |
 | `npm run lint:fix`  | Auto-fix lint issues and format the code             |
 
@@ -57,7 +58,10 @@ types, then builds on Windows, macOS and Linux. To try the app on a Windows PC:
 4. Run `worksync.exe` in the `WorkSync-win32-x64` folder.
 
 The app keeps its data in a `WorkSync-data` folder beside the app folder, so
-replacing the app folder with a new version keeps the data. Builds are not
+replacing the app folder with a new version keeps the data. The folder holds
+the SQLite database, `worksync.db`, and a `backups` folder with one backup a
+day for the last 14 days. With `npm start` the data goes into the user's
+app-data folder instead. Builds are not
 code signed yet, so Windows SmartScreen may warn the first time: choose
 **More info**, then **Run anyway**.
 
@@ -65,10 +69,13 @@ code signed yet, so Windows SmartScreen may warn the first time: choose
 
 ```
 src/
-  main/       Electron main process (windows, app lifecycle, IPC handlers)
+  main/       Electron main process: window, IPC handlers and the data
+    db.ts       SQLite schema, migrations and daily backups (node:sqlite)
+    store.ts    All reads and writes of projects, tasks and history
   preload/    Preload script: the only bridge between main and renderer
   renderer/   React UI (runs as sandboxed web content)
-  shared/     Types and constants used by more than one process
+  shared/     Types and rules used by more than one process
+    model.ts    The task model: flags, focus list, sorting, language detection
 forge.config.mts        Packaging, makers and Electron fuses
 vite.*.config.mts       Vite config for the main, preload and renderer builds
 ```
@@ -77,10 +84,14 @@ vite.*.config.mts       Vite config for the main, preload and renderer builds
 
 The renderer has no Node.js access. To expose a new capability:
 
-1. Add a channel name and the types to `src/shared/ipc.ts` (and a method on `WorkSyncApi`).
-2. Implement the handler in `src/main/ipc.ts`.
-3. Expose the method in `src/preload/preload.ts`.
-4. Call it from React as `window.worksync.<method>()`.
+1. Add the method to `WorkSyncApi` and its name to `API_METHODS` in `src/shared/ipc.ts`.
+2. Implement it in the `handlers` object in `src/main/ipc.ts`.
+3. Call it from React as `window.worksync.<method>()`. The preload script
+   exposes every method in `API_METHODS`.
+
+Database changes go in a new entry at the end of `MIGRATIONS` in
+`src/main/db.ts`. Never edit a migration that has shipped. The app backs up
+the database before applying new migrations.
 
 ## Security defaults
 

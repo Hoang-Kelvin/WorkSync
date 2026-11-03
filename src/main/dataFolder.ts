@@ -1,7 +1,5 @@
 import { app } from 'electron';
-import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { CheckResult } from '../shared/ipc';
 
 /**
  * Where WorkSync keeps its data.
@@ -23,55 +21,6 @@ export function dataFolderPath(): string {
   return path.join(path.dirname(appFolder), 'WorkSync-data');
 }
 
-const isNetworkPath = (p: string): boolean =>
+/** True for a path on a network share, such as \\server\share. */
+export const isNetworkPath = (p: string): boolean =>
   p.startsWith('\\\\') || p.startsWith('//');
-
-/**
- * Checks that the app can run from where it was unzipped and keep its data
- * there. Used by the work PC check in the first test build.
- */
-export async function runPcChecks(): Promise<CheckResult[]> {
-  const results: CheckResult[] = [];
-  const folder = dataFolderPath();
-
-  results.push({
-    name: 'App started',
-    ok: true,
-    detail: `Running from ${path.dirname(process.execPath)}`,
-  });
-
-  if (isNetworkPath(folder)) {
-    results.push({
-      name: 'Data folder on a local drive',
-      ok: false,
-      detail: `${folder} is on a network drive. Unzip WorkSync to a local drive, such as C: or D:.`,
-    });
-  } else {
-    results.push({
-      name: 'Data folder on a local drive',
-      ok: true,
-      detail: folder,
-    });
-  }
-
-  try {
-    await fs.mkdir(folder, { recursive: true });
-    const probe = path.join(folder, `.write-test-${process.pid}`);
-    await fs.writeFile(probe, 'WorkSync write test');
-    const back = await fs.readFile(probe, 'utf8');
-    await fs.rm(probe);
-    results.push({
-      name: 'Can save data',
-      ok: back === 'WorkSync write test',
-      detail: `Created, read and deleted a test file in ${folder}`,
-    });
-  } catch (error) {
-    results.push({
-      name: 'Can save data',
-      ok: false,
-      detail: `Could not write to ${folder}: ${error instanceof Error ? error.message : String(error)}`,
-    });
-  }
-
-  return results;
-}
