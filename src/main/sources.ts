@@ -203,10 +203,14 @@ export class Sources {
     });
   }
 
-  private recordVersion(id: string, v: ReadVersion): void {
+  private recordVersion(
+    id: string,
+    v: ReadVersion,
+    summary: { added: number; changed: number; removed: number },
+  ): void {
     this.db
       .prepare(
-        'INSERT INTO file_versions (id, source_id, read_at, fingerprint, snapshot, file_name) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO file_versions (id, source_id, read_at, fingerprint, snapshot, file_name, summary) VALUES (?, ?, ?, ?, ?, ?, ?)',
       )
       .run(
         randomUUID(),
@@ -215,6 +219,7 @@ export class Sources {
         v.fingerprint,
         v.snapshot,
         path.basename(v.file),
+        JSON.stringify(summary),
       );
     this.db
       .prepare(
@@ -270,7 +275,11 @@ export class Sources {
           this.now(),
           this.now(),
         );
-      this.recordVersion(id, v);
+      this.recordVersion(id, v, {
+        added: read.rows.length,
+        changed: 0,
+        removed: 0,
+      });
       for (const row of read.rows)
         this.addTask(
           input.projectId,
@@ -506,7 +515,7 @@ export class Sources {
         );
         removed++;
       }
-      this.recordVersion(sourceId, v);
+      this.recordVersion(sourceId, v, { added, changed, removed });
     });
     return { added, changed, removed };
   }

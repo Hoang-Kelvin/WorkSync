@@ -43,7 +43,7 @@ export const LANGUAGES = {
 } as const;
 export type LanguageCode = keyof typeof LANGUAGES;
 
-/** Views a project can show. Focus, Board and Files exist in this build. */
+/** Views a project can show. The Tasks table and the Published page come in later builds. */
 export const VIEW_KEYS = [
   'focus',
   'board',
@@ -55,7 +55,14 @@ export const VIEW_KEYS = [
   'files',
 ] as const;
 export type ViewKey = (typeof VIEW_KEYS)[number];
-export const BUILT_VIEWS: ViewKey[] = ['focus', 'board', 'files'];
+export const BUILT_VIEWS: ViewKey[] = [
+  'focus',
+  'board',
+  'timeline',
+  'calendar',
+  'dashboard',
+  'files',
+];
 export const DEFAULT_VIEWS: Record<ViewKey, boolean> = {
   focus: true,
   board: true,
@@ -475,4 +482,12 @@ export interface AiResult {
   title?: string;
   description?: string;
   summary?: string;
+}
+
+/** What the last import of a project's files changed, for the dashboard. */
+export interface ImportSummary {
+  at: string;
+  added: number;
+  changed: number;
+  removed: number;
 }

@@ -267,6 +267,7 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
   readAiAnswer: async (batch, answer) => readAnswer(batch, answer),
   applyAiResults: async (results) => need().applyAiResults(results),
   copyText: async (text) => clipboard.writeText(text),
+  lastImport: async (projectId) => need().lastImport(projectId),
   openSourceFile: async (id) => {
     const src = needLinks().sources.get(id);
     const err = await shell.openPath(src.currentFile);

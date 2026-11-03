@@ -9,6 +9,7 @@ import {
   type ActivityEntry,
   type AiResult,
   type GlossaryTerm,
+  type ImportSummary,
   type Level,
   type Project,
   type ProjectInput,
@@ -662,5 +663,23 @@ export class Store {
         return this.getTask(t.id);
       }),
     );
+  }
+
+  /** What the newest import of the project's files changed, as recorded when it was applied. */
+  lastImport(projectId: string): ImportSummary | null {
+    const r = this.db
+      .prepare(
+        `SELECT v.read_at, v.summary FROM file_versions v JOIN source_files s ON s.id = v.source_id
+         WHERE s.project_id = ? AND v.summary IS NOT NULL ORDER BY v.read_at DESC, v.rowid DESC LIMIT 1`,
+      )
+      .get(projectId) as Row | undefined;
+    if (!r) return null;
+    const c = JSON.parse(str(r.summary)) as Omit<ImportSummary, 'at'>;
+    return {
+      at: str(r.read_at),
+      added: c.added,
+      changed: c.changed,
+      removed: c.removed,
+    };
   }
 }

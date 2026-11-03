@@ -148,6 +148,11 @@ describe('Sources', () => {
       source: 'file',
       titleOriginal: '新機能',
     });
+    expect(store.lastImport(projectId)).toMatchObject({
+      added: 1,
+      changed: 2,
+      removed: 1,
+    });
     expect(store.listActivity(after['1'].id)[0].text).toBe(
       'From WBS.xlsx: Status 対応中 → 完了; 備考 (empty) → 確認済み.',
     );

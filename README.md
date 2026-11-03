@@ -12,8 +12,9 @@ macOS first, then Linux.
 > files: set up a file format once, link the file by its path, and review
 > each new version before it changes anything. Gemini batches: Copy for AI
 > builds one request for many tasks with the project glossary, and Paste from
-> AI checks the answer before filling in translations and summaries.
-> Timeline, calendar and dashboard come next.
+> AI checks the answer before filling in translations and summaries. The
+> Timeline, Calendar and Dashboard views. Publishing to the shared folder
+> comes next.
 
 ## Tech stack
 

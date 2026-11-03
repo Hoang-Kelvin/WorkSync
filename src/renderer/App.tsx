@@ -17,13 +17,17 @@ import { PriorityMenu, type MenuAnchor } from './PriorityMenu';
 import { TaskPopup } from './TaskPopup';
 import { BoardView, FocusView, initials, type ViewProps } from './views';
 import { FilesView, ReviewDialog } from './files';
+import { CalendarView, DashboardView, TimelineView } from './views2';
 import { LinkWizard } from './LinkWizard';
 import { AiDialog, GlossaryDialog, type AiSession } from './ai';
 import type { SourceFile } from '../shared/sources';
 
 type Route =
   | { view: 'focus'; scope: 'all' | string }
-  | { view: 'board' | 'files'; projectId: string };
+  | {
+      view: 'board' | 'files' | 'timeline' | 'calendar' | 'dashboard';
+      projectId: string;
+    };
 
 type Dialog =
   | { kind: 'newProject' }
@@ -163,6 +167,12 @@ function Shell({ dataFolder }: { dataFolder: string }) {
     />
   ) : route.view === 'board' ? (
     <BoardView projectId={route.projectId} props={props} />
+  ) : route.view === 'timeline' ? (
+    <TimelineView projectId={route.projectId} props={props} />
+  ) : route.view === 'calendar' ? (
+    <CalendarView projectId={route.projectId} props={props} />
+  ) : route.view === 'dashboard' ? (
+    <DashboardView projectId={route.projectId} props={props} />
   ) : route.view === 'files' ? (
     <FilesView
       projectId={route.projectId}
@@ -261,7 +271,10 @@ function Shell({ dataFolder }: { dataFolder: string }) {
                                 k === 'focus'
                                   ? { view: 'focus', scope: p.id }
                                   : {
-                                      view: k as 'board' | 'files',
+                                      view: k as Exclude<
+                                        Route['view'],
+                                        'focus'
+                                      >,
                                       projectId: p.id,
                                     },
                               )
@@ -459,7 +472,7 @@ function Shell({ dataFolder }: { dataFolder: string }) {
             tabIndex={-1}
             onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}
           >
-            {body}
+            <div className={`v-${route.view}`}>{body}</div>
           </main>
         </div>
         <div

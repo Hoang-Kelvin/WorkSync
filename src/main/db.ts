@@ -128,6 +128,10 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX glossary_project ON glossary_terms(project_id);
   `,
+  // 4: what each import changed, for the dashboard
+  `
+  ALTER TABLE file_versions ADD COLUMN summary TEXT;
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

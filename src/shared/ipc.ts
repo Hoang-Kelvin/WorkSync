@@ -18,7 +18,7 @@ import type {
 } from './model';
 import type { FileFormat } from './importRules';
 import type { Batch, ReadAnswer } from './aiBatch';
-import type { AiResult, GlossaryTerm } from './model';
+import type { AiResult, GlossaryTerm, ImportSummary } from './model';
 import type {
   ApplySelection,
   FileInspection,
@@ -116,6 +116,7 @@ export interface WorkSyncApi {
   /** Fills in what the owner accepted. */
   applyAiResults(results: AiResult[]): Promise<Task[]>;
   copyText(text: string): Promise<void>;
+  lastImport(projectId: string): Promise<ImportSummary | null>;
 
   /** Called whenever linked files change state. Returns a function that stops listening. */
   onSourcesChanged(listener: (sources: SourceFile[]) => void): () => void;
@@ -159,6 +160,7 @@ export const API_METHODS = [
   'readAiAnswer',
   'applyAiResults',
   'copyText',
+  'lastImport',
 ] as const satisfies readonly Exclude<keyof WorkSyncApi, 'onSourcesChanged'>[];
 
 export const channel = (method: (typeof API_METHODS)[number]): string =>
