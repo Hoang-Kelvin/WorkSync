@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { API_METHODS, channel, type WorkSyncApi } from '../shared/ipc';
+import {
+  API_METHODS,
+  SOURCES_EVENT,
+  channel,
+  type WorkSyncApi,
+} from '../shared/ipc';
+import type { SourceFile } from '../shared/sources';
 
 // Expose a narrow, typed API instead of ipcRenderer itself, so the renderer
 // can only call the methods listed in API_METHODS.
@@ -23,5 +29,12 @@ const api = Object.fromEntries(
     },
   ]),
 ) as unknown as WorkSyncApi;
+
+api.onSourcesChanged = (listener) => {
+  const handler = (_e: Electron.IpcRendererEvent, list: SourceFile[]) =>
+    listener(list);
+  ipcRenderer.on(SOURCES_EVENT, handler);
+  return () => ipcRenderer.removeListener(SOURCES_EVENT, handler);
+};
 
 contextBridge.exposeInMainWorld('worksync', api);

@@ -16,10 +16,13 @@ import { Toast } from './parts';
 import { PriorityMenu, type MenuAnchor } from './PriorityMenu';
 import { TaskPopup } from './TaskPopup';
 import { BoardView, FocusView, initials, type ViewProps } from './views';
+import { FilesView, ReviewDialog } from './files';
+import { LinkWizard } from './LinkWizard';
+import type { SourceFile } from '../shared/sources';
 
 type Route =
   | { view: 'focus'; scope: 'all' | string }
-  | { view: 'board'; projectId: string };
+  | { view: 'board' | 'files'; projectId: string };
 
 type Dialog =
   | { kind: 'newProject' }
@@ -27,7 +30,9 @@ type Dialog =
   | { kind: 'views'; projectId: string }
   | { kind: 'newTask'; projectId: string }
   | { kind: 'editTask'; task: Task }
-  | { kind: 'deleteTask'; task: Task };
+  | { kind: 'deleteTask'; task: Task }
+  | { kind: 'link'; projectId: string }
+  | { kind: 'review'; source: SourceFile };
 
 export function App() {
   const [startup, setStartup] = useState<Startup | null>(null);
@@ -64,6 +69,7 @@ function Shell({ dataFolder }: { dataFolder: string }) {
     attempt,
     reloadAll,
     toast,
+    sources,
   } = useApp();
   const [route, setRoute] = useState<Route>({ view: 'focus', scope: 'all' });
   const [active, setActive] = useState<string | null>(projects[0]?.id ?? null);
@@ -79,7 +85,7 @@ function Shell({ dataFolder }: { dataFolder: string }) {
 
   // Keep the route valid when a view is turned off or a project changes.
   useEffect(() => {
-    if (route.view === 'board' && !project(route.projectId)?.views.board)
+    if (route.view !== 'focus' && !project(route.projectId)?.views[route.view])
       setRoute({ view: 'focus', scope: route.projectId });
   }, [route, project]);
 
@@ -141,7 +147,7 @@ function Shell({ dataFolder }: { dataFolder: string }) {
   };
 
   const currentProjectId =
-    route.view === 'board'
+    route.view !== 'focus'
       ? route.projectId
       : route.scope !== 'all'
         ? route.scope
@@ -153,9 +159,16 @@ function Shell({ dataFolder }: { dataFolder: string }) {
     />
   ) : route.view === 'board' ? (
     <BoardView projectId={route.projectId} props={props} />
+  ) : route.view === 'files' ? (
+    <FilesView
+      projectId={route.projectId}
+      props={props}
+      onLink={() => setDialog({ kind: 'link', projectId: route.projectId })}
+      onReview={(source) => setDialog({ kind: 'review', source })}
+    />
   ) : (
     <FocusView
-      scope={route.scope}
+      scope={route.view === 'focus' ? route.scope : route.projectId}
       props={props}
       onNewTask={() =>
         currentProjectId &&
@@ -163,6 +176,9 @@ function Shell({ dataFolder }: { dataFolder: string }) {
       }
     />
   );
+
+  const changedSources = sources.filter((s) => s.state === 'changed');
+  const baseName = (f: string) => f.split(/[\\/]/).pop() ?? f;
 
   const focusCount = (scope: string | 'all') =>
     tasks.filter(
@@ -230,8 +246,8 @@ function Shell({ dataFolder }: { dataFolder: string }) {
                               (k === 'focus' &&
                                 route.view === 'focus' &&
                                 route.scope === p.id) ||
-                              (k === 'board' &&
-                                route.view === 'board' &&
+                              (k !== 'focus' &&
+                                route.view === k &&
                                 route.projectId === p.id)
                                 ? 'page'
                                 : undefined
@@ -240,7 +256,10 @@ function Shell({ dataFolder }: { dataFolder: string }) {
                               go(
                                 k === 'focus'
                                   ? { view: 'focus', scope: p.id }
-                                  : { view: 'board', projectId: p.id },
+                                  : {
+                                      view: k as 'board' | 'files',
+                                      projectId: p.id,
+                                    },
                               )
                             }
                           >
@@ -347,6 +366,33 @@ function Shell({ dataFolder }: { dataFolder: string }) {
               <span className="lbl">New task</span>
             </button>
           </header>
+          {changedSources.length > 0 && (
+            <div className="notice" role="status">
+              <Icon name="refresh" />
+              <span className="notice-text">
+                <b>
+                  {changedSources.length === 1
+                    ? `${baseName(changedSources[0].currentFile)} changed`
+                    : `${changedSources.length} linked files changed`}
+                </b>
+                {' · '}
+                {changedSources
+                  .map((s) => project(s.projectId)?.name)
+                  .filter((v, i, a) => v && a.indexOf(v) === i)
+                  .join(', ')}
+              </span>
+              <span className="notice-actions">
+                <button
+                  className="btn sm accent-outline"
+                  onClick={() =>
+                    setDialog({ kind: 'review', source: changedSources[0] })
+                  }
+                >
+                  Review changes
+                </button>
+              </span>
+            </div>
+          )}
           <div
             className={`vhead ${scrolled ? 'scrolled' : ''}`}
             ref={setHeadEl}
@@ -424,6 +470,19 @@ function Shell({ dataFolder }: { dataFolder: string }) {
           onClose={() => setDialog(null)}
           onSaved={() => setDialog(null)}
         />
+      )}
+      {dialog?.kind === 'link' && project(dialog.projectId) && (
+        <LinkWizard
+          project={project(dialog.projectId)!}
+          onClose={() => setDialog(null)}
+          onLinked={() => {
+            setDialog(null);
+            go({ view: 'focus', scope: dialog.projectId });
+          }}
+        />
+      )}
+      {dialog?.kind === 'review' && (
+        <ReviewDialog source={dialog.source} onClose={() => setDialog(null)} />
       )}
       {dialog?.kind === 'deleteTask' && (
         <ConfirmDelete

@@ -403,6 +403,7 @@ export function TaskPopup({
     f.nextStepOverdue && 'Next step overdue',
     f.lateToStart && 'Late to start',
     f.briefIncomplete && 'Brief incomplete',
+    task.fileState === 'removed' && 'Removed from file',
   ].filter(Boolean) as string[];
 
   const copyBrief = async () => {
@@ -731,14 +732,7 @@ export function TaskPopup({
               </div>
             </section>
             <History task={task} />
-            <section className="sec">
-              <h3>Source</h3>
-              <div className="field">
-                <div className="v">
-                  Added by hand in WorkSync · {LANGUAGES[task.language]}
-                </div>
-              </div>
-            </section>
+            <SourceSection task={task} />
           </aside>
         </div>
       </div>
@@ -752,3 +746,61 @@ const Field = ({ k, v }: { k: React.ReactNode; v: React.ReactNode }) => (
     <div className="v">{v}</div>
   </div>
 );
+
+/** Where a task came from: the file, sheet and row, and the columns that were not matched. */
+function SourceSection({ task }: { task: Task }) {
+  const { sources, attempt } = useApp();
+  if (task.source !== 'file') {
+    return (
+      <section className="sec">
+        <h3>Source</h3>
+        <div className="field">
+          <div className="v">
+            Added by hand in WorkSync · {LANGUAGES[task.language]}
+          </div>
+        </div>
+      </section>
+    );
+  }
+  const src = sources.find((s) => s.id === task.sourceFileId);
+  const extra = Object.entries(task.extra);
+  return (
+    <section className="sec">
+      <h3>From the file</h3>
+      <div className="fields">
+        {extra.map(([k, v]) => (
+          <Field
+            key={k}
+            k={<span lang={task.language}>{k}</span>}
+            v={<span lang={task.language}>{v}</span>}
+          />
+        ))}
+        <div className="field">
+          <div className="v">
+            <Icon name="file" />{' '}
+            {src
+              ? (src.currentFile.split(/[\\/]/).pop() ?? src.currentFile)
+              : 'Unlinked file'}
+            <br />
+            <span className="muted">
+              {src ? `sheet ${src.format.sheet} · ` : ''}row{' '}
+              {task.sheetRow ?? '–'}
+              {task.fileState === 'removed' ? ' · no longer in the file' : ''}
+            </span>
+          </div>
+          {src && (
+            <button
+              className="btn sm"
+              style={{ marginTop: 8 }}
+              onClick={() =>
+                void attempt(() => window.worksync.openSourceFile(src.id))
+              }
+            >
+              Open in Excel
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}

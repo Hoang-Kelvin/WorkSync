@@ -10,6 +10,7 @@ import {
   proposeStatus,
   readRows,
   suggestHeaderRow,
+  suggestHeaderRows,
   suggestMapping,
   type FileFormat,
   type Grid,
@@ -141,6 +142,31 @@ describe('headers', () => {
       '実績 終了',
       '状態',
     ]);
+  });
+
+  it('suggests the second header row, with or without merged cells filled in', () => {
+    expect(suggestHeaderRows(WBS)).toEqual([3, 4]);
+    // The reader fills merged cells, so 予定 also sits over 終了 and No. over the row under it.
+    const filled = WBS.map((r) => [...r]);
+    filled[3][4] = '予定';
+    filled[3][6] = '実績';
+    filled[4][0] = 'No.';
+    expect(suggestHeaderRows(filled)).toEqual([3, 4]);
+    expect(headerNames(filled, [3, 4]).slice(0, 5)).toEqual([
+      'No.',
+      '件名',
+      '担当者',
+      '予定 開始',
+      '予定 終了',
+    ]);
+    // A single header row followed by task rows stays one row.
+    expect(
+      suggestHeaderRows([
+        ['No.', '件名', '状態'],
+        ['1', 'ログイン', '完了'],
+        ['2', '出荷', '未着手'],
+      ]),
+    ).toEqual([0]);
   });
 
   it('suggests a column for each field from the usual headers', () => {

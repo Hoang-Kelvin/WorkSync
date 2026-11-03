@@ -43,7 +43,7 @@ export const LANGUAGES = {
 } as const;
 export type LanguageCode = keyof typeof LANGUAGES;
 
-/** Views a project can show. Only Focus and Board exist in this build. */
+/** Views a project can show. Focus, Board and Files exist in this build. */
 export const VIEW_KEYS = [
   'focus',
   'board',
@@ -55,7 +55,7 @@ export const VIEW_KEYS = [
   'files',
 ] as const;
 export type ViewKey = (typeof VIEW_KEYS)[number];
-export const BUILT_VIEWS: ViewKey[] = ['focus', 'board'];
+export const BUILT_VIEWS: ViewKey[] = ['focus', 'board', 'files'];
 export const DEFAULT_VIEWS: Record<ViewKey, boolean> = {
   focus: true,
   board: true,
@@ -279,6 +279,7 @@ export function flags(t: Task, today: string, dueSoonDays = 7): Flags {
 
 /** Whether a task belongs in the focus list. */
 export function inFocus(t: Task, today: string, dueSoonDays = 7): boolean {
+  if (t.fileState === 'removed') return false;
   if (isClosed(t)) return false;
   const f = flags(t, today, dueSoonDays);
   return (

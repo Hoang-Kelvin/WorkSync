@@ -240,6 +240,7 @@ export class Sources {
   link(
     input: LinkInput,
     v: ReadVersion,
+    id: string = randomUUID(),
   ): { source: SourceFile; added: number; skipped: number } {
     const read = readRows(v.grid, input.format, v.readDay);
     if (read.unmappedStatus.length || read.unmappedPriority.length) {
@@ -249,7 +250,6 @@ export class Sources {
     }
     if (!read.rows.length)
       throw new Error('No task rows were found with this file format.');
-    const id = randomUUID();
     this.tx(() => {
       this.db
         .prepare(

@@ -1,6 +1,9 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
-import { closeStore, registerIpcHandlers } from './ipc';
+import { checkLinkedFiles, closeStore, registerIpcHandlers } from './ipc';
+
+/** Linked files are checked at start, when the window comes to the front, and every few minutes (spec 04). */
+const CHECK_EVERY_MS = 3 * 60 * 1000;
 
 const createWindow = (): void => {
   const mainWindow = new BrowserWindow({
@@ -37,6 +40,8 @@ const createWindow = (): void => {
 app.whenReady().then(() => {
   registerIpcHandlers();
   createWindow();
+  setInterval(checkLinkedFiles, CHECK_EVERY_MS);
+  app.on('browser-window-focus', () => checkLinkedFiles());
 
   // On macOS it's common to re-create a window when the dock icon is clicked
   // and there are no other windows open.

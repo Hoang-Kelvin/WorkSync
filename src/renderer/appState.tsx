@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from 'react';
 import type { Project, Task } from '../shared/model';
+import type { SourceFile } from '../shared/sources';
+import { useEffect } from 'react';
 
 export interface ToastMessage {
   id: number;
@@ -20,6 +22,8 @@ interface AppState {
   today: string;
   projects: Project[];
   tasks: Task[];
+  sources: SourceFile[];
+  setSources: (s: SourceFile[]) => void;
   originalFirst: boolean;
   setOriginalFirst: (v: boolean) => void;
   project: (id: string) => Project | undefined;
@@ -48,12 +52,24 @@ export function AppProvider({
   initial,
   children,
 }: {
-  initial: { today: string; projects: Project[]; tasks: Task[] };
+  initial: {
+    today: string;
+    projects: Project[];
+    tasks: Task[];
+    sources: SourceFile[];
+  };
   children: ReactNode;
 }) {
   const [projects, setProjects] = useState(initial.projects);
   const [tasks, setTasks] = useState(initial.tasks);
   const [today, setToday] = useState(initial.today);
+  const [sources, setSources] = useState(initial.sources);
+  // Linked files are checked in the main process; it tells the window when their states change.
+  useEffect(() => {
+    const stop = window.worksync.onSourcesChanged(setSources);
+    void window.worksync.checkSources().then(setSources);
+    return stop;
+  }, []);
   const [originalFirst, setOriginalFirst] = useState(false);
   const [toastMessage, setToastMessage] = useState<ToastMessage | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
@@ -73,6 +89,8 @@ export function AppProvider({
       today,
       projects,
       tasks,
+      sources,
+      setSources,
       originalFirst,
       setOriginalFirst,
       project: (id) => projects.find((p) => p.id === id),
@@ -95,6 +113,7 @@ export function AppProvider({
         if (s.ok) {
           setProjects(s.projects);
           setTasks(s.tasks);
+          setSources(s.sources);
           setToday(s.today);
         }
       },
@@ -113,7 +132,7 @@ export function AppProvider({
       toastMessage,
       dismissToast: () => setToastMessage(null),
     }),
-    [today, projects, tasks, originalFirst, toastMessage, show],
+    [today, projects, tasks, sources, originalFirst, toastMessage, show],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

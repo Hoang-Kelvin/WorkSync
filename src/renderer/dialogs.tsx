@@ -206,6 +206,8 @@ export function TaskDialog({
     ? detectLanguage(v.titleOriginal, p.originalLanguages)
     : null;
   const needsTranslation = lang !== null && lang !== p.workingLanguage;
+  // The customer's own text is never edited in the app; it changes when the file does.
+  const fromFile = task?.source === 'file';
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
@@ -269,6 +271,12 @@ export function TaskDialog({
               className="inp"
               value={v.titleOriginal}
               onChange={set('titleOriginal')}
+              readOnly={fromFile}
+              title={
+                fromFile
+                  ? 'From the customer’s file. It changes when the file does.'
+                  : undefined
+              }
               required
               placeholder="As written by the customer"
             />
@@ -400,6 +408,7 @@ export function TaskDialog({
             rows={4}
             value={v.descriptionOriginal}
             onChange={set('descriptionOriginal')}
+            readOnly={fromFile}
             placeholder="Paste the customer’s text. Blank lines separate paragraphs."
           />
         </label>

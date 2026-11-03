@@ -286,6 +286,29 @@ export function suggestHeaderRow(grid: Grid): number {
 }
 
 /**
+ * The header rows to suggest: the header row, and the row under it when that
+ * row holds sub-headers, such as 開始 and 終了 under a merged 予定.
+ */
+export function suggestHeaderRows(grid: Grid): number[] {
+  const h = suggestHeaderRow(grid);
+  const top = (grid[h] ?? []).map(cellText);
+  const next = (grid[h + 1] ?? []).map(cellText);
+  const filled = next.map((t, k) => [t, k] as const).filter(([t]) => t);
+  if (filled.length < 2 || filled.some(([t]) => t.length > 12)) return [h];
+  // A sub-header sits under an empty cell, or under a merged cell whose text repeats beside it.
+  const spanned = filled.filter(
+    ([t, k]) =>
+      t !== top[k] &&
+      (!top[k] || top[k] === top[k - 1] || top[k] === top[k + 1]),
+  );
+  // Task rows have IDs or dates; sub-headers do not.
+  const looksLikeData = filled.some(
+    ([t]) => /^\d+$/.test(t) || parseDate(t, '2000-01-01') !== null,
+  );
+  return spanned.length >= 2 && !looksLikeData ? [h, h + 1] : [h];
+}
+
+/**
  * The header name of each column. With two header rows, such as 予定 over 開始
  * and 終了, the upper row's text carries right over the cells it spans and the
  * names are joined, as 予定 開始.

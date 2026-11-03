@@ -16,6 +16,15 @@ import type {
   TaskInput,
   ViewKey,
 } from './model';
+import type { FileFormat } from './importRules';
+import type {
+  ApplySelection,
+  FileInspection,
+  FormatPreview,
+  LinkInput,
+  Review,
+  SourceFile,
+} from './sources';
 
 export interface AppInfo {
   name: string;
@@ -37,6 +46,7 @@ export type Startup =
       today: string;
       projects: Project[];
       tasks: Task[];
+      sources: SourceFile[];
     }
   | { ok: false; dataFolder: string; message: string };
 
@@ -70,7 +80,33 @@ export interface WorkSyncApi {
 
   listActivity(taskId: string): Promise<ActivityEntry[]>;
   addNote(taskId: string, text: string): Promise<void>;
+
+  /** Opens the system file dialog. Returns the chosen file, or null. */
+  chooseFile(): Promise<string | null>;
+  inspectFile(file: string): Promise<FileInspection>;
+  previewFormat(file: string, format: FileFormat): Promise<FormatPreview>;
+  linkFile(
+    input: LinkInput,
+  ): Promise<{ source: SourceFile; added: number; skipped: number }>;
+  listSources(): Promise<SourceFile[]>;
+  /** Checks every linked file now. */
+  checkSources(): Promise<SourceFile[]>;
+  reviewSource(id: string, byTitle: boolean): Promise<Review>;
+  applySource(
+    id: string,
+    selection: ApplySelection,
+  ): Promise<{ added: number; changed: number; removed: number }>;
+  updateSourceFormat(id: string, format: FileFormat): Promise<SourceFile>;
+  unlinkSource(id: string): Promise<void>;
+  /** Opens the linked file in Excel, or whatever opens it on this PC. */
+  openSourceFile(id: string): Promise<void>;
+
+  /** Called whenever linked files change state. Returns a function that stops listening. */
+  onSourcesChanged(listener: (sources: SourceFile[]) => void): () => void;
 }
+
+/** Sent by the main process when linked files change state. */
+export const SOURCES_EVENT = 'worksync:sources-changed';
 
 /** Every method of the API. Each is sent on the channel `worksync:<name>`. */
 export const API_METHODS = [
@@ -89,7 +125,18 @@ export const API_METHODS = [
   'deleteTask',
   'listActivity',
   'addNote',
-] as const satisfies readonly (keyof WorkSyncApi)[];
+  'chooseFile',
+  'inspectFile',
+  'previewFormat',
+  'linkFile',
+  'listSources',
+  'checkSources',
+  'reviewSource',
+  'applySource',
+  'updateSourceFormat',
+  'unlinkSource',
+  'openSourceFile',
+] as const satisfies readonly Exclude<keyof WorkSyncApi, 'onSourcesChanged'>[];
 
-export const channel = (method: keyof WorkSyncApi): string =>
+export const channel = (method: (typeof API_METHODS)[number]): string =>
   `worksync:${method}`;

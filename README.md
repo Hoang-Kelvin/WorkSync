@@ -7,9 +7,10 @@ work visually, and publishes a read-only copy to a shared folder. It runs from
 an unzipped folder with no installation and no server. Targets Windows and
 macOS first, then Linux.
 
-> **Status:** step 2 of the build plan. Projects and tasks entered by hand,
-> the Focus card grid, the Board, the task popup with situation updates and
-> the task brief, and the priority menu. Excel import comes next.
+> **Status:** step 3 of the build plan. Projects and tasks, the Focus card
+> grid, the Board, the task popup and the priority menu, and linked Excel
+> files: set up a file format once, link the file by its path, and review
+> each new version before it changes anything. Gemini batches come next.
 
 ## Tech stack
 
