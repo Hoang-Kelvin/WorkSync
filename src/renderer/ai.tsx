@@ -37,31 +37,35 @@ export function AiDialog({
   session,
   setSession,
   startAt,
+  preselect,
   onClose,
 }: {
   project: Project;
   session: AiSession | null;
   setSession: (s: AiSession | null) => void;
   startAt: 'choose' | 'paste';
+  /** Tasks chosen elsewhere, such as rows selected in the Tasks table. */
+  preselect?: string[];
   onClose: () => void;
 }) {
   const { tasks, attempt, toast, putTask } = useApp();
   const projectTasks = tasks.filter(
     (t) => t.projectId === project.id && t.fileState !== 'removed',
   );
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(!!preselect?.length);
   const candidates = projectTasks.filter(
     (t) =>
       t.translationState !== 'Not needed' &&
       (showAll || needsWork(t) || !t.summary),
   );
-  const [picked, setPicked] = useState<Set<string>>(
-    () =>
-      new Set(
-        projectTasks
-          .filter((t) => needsWork(t) && !isClosed(t))
-          .map((t) => t.id),
-      ),
+  const [picked, setPicked] = useState<Set<string>>(() =>
+    preselect?.length
+      ? new Set(preselect)
+      : new Set(
+          projectTasks
+            .filter((t) => needsWork(t) && !isClosed(t))
+            .map((t) => t.id),
+        ),
   );
   const [step, setStep] = useState<'choose' | 'copy' | 'paste'>(
     session && startAt === 'paste' ? 'paste' : 'choose',

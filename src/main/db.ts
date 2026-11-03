@@ -149,6 +149,10 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE tasks ADD COLUMN written TEXT NOT NULL DEFAULT '{}';
   `,
+  // 7: the Tasks table's columns, sort and filters per project (spec 03)
+  `
+  ALTER TABLE projects ADD COLUMN table_settings TEXT;
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

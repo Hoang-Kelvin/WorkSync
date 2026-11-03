@@ -24,6 +24,7 @@ const project: Project = {
   createdAt: '',
   publishFolder: null,
   publishNotes: false,
+  tableSettings: null,
 };
 
 const task = (o: Partial<Task>): Task => ({

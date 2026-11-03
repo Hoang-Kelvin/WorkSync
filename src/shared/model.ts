@@ -43,7 +43,7 @@ export const LANGUAGES = {
 } as const;
 export type LanguageCode = keyof typeof LANGUAGES;
 
-/** Views a project can show. The Tasks table comes in a later build. */
+/** Views a project can show. */
 export const VIEW_KEYS = [
   'focus',
   'board',
@@ -60,6 +60,7 @@ export const BUILT_VIEWS: ViewKey[] = [
   'board',
   'timeline',
   'calendar',
+  'tasks',
   'dashboard',
   'files',
 ];
@@ -87,7 +88,25 @@ export interface Project {
   publishFolder: string | null;
   /** Whether the published page includes the owner's notes. */
   publishNotes: boolean;
+  /** The Tasks table's columns, sort and filters, or null for the defaults. */
+  tableSettings: TableSettings | null;
   createdAt: string;
+}
+
+/** What the Tasks table remembers per project (spec 03). */
+export interface TableSettings {
+  columns: string[];
+  sort: { key: string; dir: 'asc' | 'desc' };
+  filters: Record<string, string>;
+}
+
+/** One change applied to several tasks at once from the Tasks table. */
+export interface BulkChange {
+  addLabel?: string;
+  removeLabel?: string;
+  status?: Status;
+  priority?: Level;
+  pinned?: boolean;
 }
 
 export interface Difficulty {

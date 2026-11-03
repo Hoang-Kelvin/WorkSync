@@ -8,11 +8,13 @@
  */
 import type {
   ActivityEntry,
+  BulkChange,
   Level,
   Project,
   ProjectInput,
   SituationInput,
   Task,
+  TableSettings,
   TaskInput,
   ViewKey,
 } from './model';
@@ -79,6 +81,12 @@ export interface WorkSyncApi {
   updateTask(id: string, patch: Partial<TaskInput>): Promise<Task>;
   setPriorityOverride(id: string, level: Level | null): Promise<Task>;
   setPinned(id: string, pinned: boolean): Promise<Task>;
+  /** One change to several tasks, from the Tasks table. */
+  bulkUpdate(ids: string[], change: BulkChange): Promise<Task[]>;
+  setTableSettings(
+    projectId: string,
+    settings: TableSettings | null,
+  ): Promise<Project>;
   addSituationUpdate(id: string, input: SituationInput): Promise<Task>;
   setDifficultyOpen(
     taskId: string,
@@ -174,6 +182,8 @@ export const API_METHODS = [
   'updateTask',
   'setPriorityOverride',
   'setPinned',
+  'bulkUpdate',
+  'setTableSettings',
   'addSituationUpdate',
   'setDifficultyOpen',
   'deleteTask',

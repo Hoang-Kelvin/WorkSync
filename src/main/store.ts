@@ -8,12 +8,14 @@ import {
   translationStateFor,
   type ActivityEntry,
   type AiResult,
+  type BulkChange,
   type GlossaryTerm,
   type ImportSummary,
   type Level,
   type Project,
   type ProjectInput,
   type SituationInput,
+  type TableSettings,
   type Status,
   type Task,
   type TaskInput,
@@ -65,7 +67,20 @@ export class Store {
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
   }
 
+  private depth = 0;
+
+  /** Runs fn in one transaction. Nested calls join the outer transaction. */
   private tx<T>(fn: () => T): T {
+    if (this.depth) return fn();
+    this.depth++;
+    try {
+      return this.txOuter(fn);
+    } finally {
+      this.depth--;
+    }
+  }
+
+  private txOuter<T>(fn: () => T): T {
     this.db.exec('BEGIN');
     try {
       const result = fn();
@@ -90,6 +105,9 @@ export class Store {
       dueSoonDays: Number(r.due_soon_days),
       publishFolder: r.publish_folder == null ? null : str(r.publish_folder),
       publishNotes: Number(r.publish_notes) === 1,
+      tableSettings: r.table_settings
+        ? (JSON.parse(str(r.table_settings)) as TableSettings)
+        : null,
       createdAt: str(r.created_at),
     };
   }
@@ -163,6 +181,15 @@ export class Store {
         next.dueSoonDays,
         id,
       );
+    return this.getProject(id);
+  }
+
+  /** Remembers the Tasks table's columns, sort and filters; null goes back to the defaults. */
+  setTableSettings(id: string, settings: TableSettings | null): Project {
+    this.getProject(id);
+    this.db
+      .prepare('UPDATE projects SET table_settings = ? WHERE id = ?')
+      .run(settings ? JSON.stringify(settings) : null, id);
     return this.getProject(id);
   }
 
@@ -427,6 +454,43 @@ export class Store {
       .prepare('UPDATE tasks SET pinned = ?, updated_at = ? WHERE id = ?')
       .run(pinned ? 1 : 0, this.now(), id);
     return this.getTask(id);
+  }
+
+  /**
+   * Applies one change to several tasks in one transaction (the Tasks table's
+   * bulk actions). Each task records the change in its own history. A
+   * priority on a task from a file is set for the owner only, as an override,
+   * so nothing goes to the file without the owner choosing it task by task.
+   */
+  bulkUpdate(ids: string[], change: BulkChange): Task[] {
+    const addLabel = change.addLabel?.trim();
+    const removeLabel = change.removeLabel?.trim();
+    return this.tx(() =>
+      ids.map((id) => {
+        let t = this.getTask(id);
+        const labels = t.labels.filter(
+          (l) => !removeLabel || l.toLowerCase() !== removeLabel.toLowerCase(),
+        );
+        if (
+          addLabel &&
+          !labels.some((l) => l.toLowerCase() === addLabel.toLowerCase())
+        )
+          labels.push(addLabel);
+        const patch: Partial<TaskInput> = {};
+        if (JSON.stringify(labels) !== JSON.stringify(t.labels))
+          patch.labels = labels;
+        if (change.status && change.status !== t.status)
+          patch.status = change.status;
+        if (change.priority && t.source !== 'file')
+          patch.priority = change.priority;
+        if (Object.keys(patch).length) t = this.updateTask(id, patch);
+        if (change.priority && t.source === 'file')
+          t = this.setPriorityOverride(id, change.priority);
+        if (change.pinned !== undefined && change.pinned !== t.pinned)
+          t = this.setPinned(id, change.pinned);
+        return t;
+      }),
+    );
   }
 
   /**

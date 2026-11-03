@@ -16,6 +16,7 @@ const project: Project = {
   createdAt: '',
   publishFolder: null,
   publishNotes: false,
+  tableSettings: null,
 };
 const base: Task = {
   id: 't1',

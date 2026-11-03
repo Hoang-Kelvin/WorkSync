@@ -141,6 +141,54 @@ describe('Store', () => {
   });
 });
 
+describe('Tasks table', () => {
+  it('applies one change to several tasks, each with its own history', () => {
+    const p = project();
+    const a = store.createTask(p.id, input({ labels: ['Auth'] }));
+    const b = store.createTask(p.id, input({ labels: ['auth', 'UI'] }));
+    const f = store.createTask(p.id, input({ priority: 'L' }));
+    db.prepare("UPDATE tasks SET source = 'file' WHERE id = ?").run(f.id);
+    const out = store.bulkUpdate([a.id, b.id, f.id], {
+      addLabel: 'Release 2',
+      removeLabel: 'AUTH',
+      status: 'In progress',
+      priority: 'H',
+      pinned: true,
+    });
+    expect(out.map((t) => t.labels)).toEqual([
+      ['Release 2'],
+      ['UI', 'Release 2'],
+      ['Release 2'],
+    ]);
+    expect(out.every((t) => t.status === 'In progress' && t.pinned)).toBe(true);
+    // A task from a file gets the level as the owner's override only.
+    expect(out[0].priority).toBe('H');
+    expect(out[2]).toMatchObject({ priority: 'L', priorityOverride: 'H' });
+    expect(store.listActivity(b.id)[0].text).toMatch(/Changed/);
+  });
+
+  it('rolls the whole change back when one task fails', () => {
+    const p = project();
+    const a = store.createTask(p.id, input());
+    expect(() =>
+      store.bulkUpdate([a.id, 'missing'], { status: 'Done' }),
+    ).toThrow();
+    expect(store.getTask(a.id).status).toBe('Not started');
+  });
+
+  it('remembers the table settings per project', () => {
+    const p = project();
+    expect(p.tableSettings).toBeNull();
+    const s = {
+      columns: ['id', 'title'],
+      sort: { key: 'plannedEnd', dir: 'desc' as const },
+      filters: { status: 'On hold' },
+    };
+    expect(store.setTableSettings(p.id, s).tableSettings).toEqual(s);
+    expect(store.setTableSettings(p.id, null).tableSettings).toBeNull();
+  });
+});
+
 describe('glossary and AI batches', () => {
   it('keeps glossary terms per project with their language', () => {
     const p = project();

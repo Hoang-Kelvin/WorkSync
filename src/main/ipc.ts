@@ -197,6 +197,9 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
   setPriorityOverride: async (id, level) =>
     need().setPriorityOverride(id, level),
   setPinned: async (id, pinned) => need().setPinned(id, pinned),
+  bulkUpdate: async (ids, change) => need().bulkUpdate(ids, change),
+  setTableSettings: async (id, settings) =>
+    need().setTableSettings(id, settings),
   addSituationUpdate: async (id, input) => need().addSituationUpdate(id, input),
   setDifficultyOpen: async (taskId, difficultyId, isOpen) =>
     need().setDifficultyOpen(taskId, difficultyId, isOpen),

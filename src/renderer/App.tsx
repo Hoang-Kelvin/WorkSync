@@ -18,6 +18,7 @@ import { TaskPopup } from './TaskPopup';
 import { BoardView, FocusView, initials, type ViewProps } from './views';
 import { FilesView, ReviewDialog } from './files';
 import { CalendarView, DashboardView, TimelineView } from './views2';
+import { TasksView } from './tasksView';
 import { PublishDialog, PublishedView, usePublishStatus } from './publish';
 import { WriteDialog, usePendingCount } from './writeCopy';
 import { ReportDialog } from './reports';
@@ -30,6 +31,7 @@ type Route =
   | {
       view:
         | 'board'
+        | 'tasks'
         | 'files'
         | 'timeline'
         | 'calendar'
@@ -47,7 +49,12 @@ type Dialog =
   | { kind: 'deleteTask'; task: Task }
   | { kind: 'link'; projectId: string }
   | { kind: 'review'; source: SourceFile }
-  | { kind: 'ai'; projectId: string; startAt: 'choose' | 'paste' }
+  | {
+      kind: 'ai';
+      projectId: string;
+      startAt: 'choose' | 'paste';
+      preselect?: string[];
+    }
   | { kind: 'glossary'; projectId: string }
   | { kind: 'publish'; projectId: string }
   | { kind: 'write' }
@@ -179,6 +186,19 @@ function Shell({ dataFolder }: { dataFolder: string }) {
     />
   ) : route.view === 'board' ? (
     <BoardView projectId={route.projectId} props={props} />
+  ) : route.view === 'tasks' ? (
+    <TasksView
+      projectId={route.projectId}
+      props={props}
+      onCopyForAi={(ids) =>
+        setDialog({
+          kind: 'ai',
+          projectId: route.projectId,
+          startAt: 'choose',
+          preselect: ids,
+        })
+      }
+    />
   ) : route.view === 'timeline' ? (
     <TimelineView projectId={route.projectId} props={props} />
   ) : route.view === 'calendar' ? (
@@ -643,6 +663,7 @@ function Shell({ dataFolder }: { dataFolder: string }) {
           session={aiSession?.projectId === dialog.projectId ? aiSession : null}
           setSession={setAiSession}
           startAt={dialog.startAt}
+          preselect={dialog.preselect}
           onClose={() => setDialog(null)}
         />
       )}
