@@ -79,6 +79,42 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX activity_task ON activity(task_id, at);
   `,
+  // 2: linked source files (spec 04)
+  `
+  CREATE TABLE source_files (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    path TEXT NOT NULL,                 -- the file, or the folder for a name pattern
+    pattern TEXT,                       -- such as WBS_*.xlsx; the newest match is read
+    current_file TEXT NOT NULL,         -- the file read last
+    format TEXT NOT NULL,               -- JSON FileFormat
+    main_language TEXT NOT NULL,
+    fingerprint TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    mtime_ms REAL NOT NULL,
+    last_read_at TEXT NOT NULL,
+    state TEXT NOT NULL DEFAULT 'ok',   -- ok, changed, missing, unavailable, unreadable
+    state_detail TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE file_versions (
+    id TEXT PRIMARY KEY,
+    source_id TEXT NOT NULL REFERENCES source_files(id) ON DELETE CASCADE,
+    read_at TEXT NOT NULL,
+    fingerprint TEXT NOT NULL,
+    snapshot TEXT NOT NULL,
+    file_name TEXT NOT NULL
+  );
+  ALTER TABLE tasks ADD COLUMN source_file_id TEXT REFERENCES source_files(id) ON DELETE SET NULL;
+  ALTER TABLE tasks ADD COLUMN sheet_row INTEGER;
+  ALTER TABLE tasks ADD COLUMN file_state TEXT NOT NULL DEFAULT 'hand';
+  ALTER TABLE tasks ADD COLUMN status_word TEXT NOT NULL DEFAULT '';
+  ALTER TABLE tasks ADD COLUMN priority_word TEXT NOT NULL DEFAULT '';
+  ALTER TABLE tasks ADD COLUMN extra TEXT NOT NULL DEFAULT '{}';
+  -- the row as last read from the file, so file changes can be told from the owner's edits
+  ALTER TABLE tasks ADD COLUMN file_row TEXT;
+  CREATE INDEX tasks_source ON tasks(source_file_id);
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

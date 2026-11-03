@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { backupDaily, migrate } from './db';
+import { SCHEMA_VERSION, backupDaily, migrate } from './db';
 import { Store } from './store';
 import type { TaskInput } from '../shared/model';
 
@@ -161,7 +161,7 @@ describe('backups', () => {
     expect(
       (copy.prepare('PRAGMA user_version').get() as { user_version: number })
         .user_version,
-    ).toBe(1);
+    ).toBe(SCHEMA_VERSION);
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });

@@ -646,6 +646,8 @@ export interface Comparison {
     changes: FieldChange[];
   }[];
   unchanged: number;
+  /** Matched rows with no change. */
+  unchangedPairs: { before: ImportedRow; after: ImportedRow }[];
   /** True when many IDs changed while the titles stayed: the file seems renumbered. */
   looksRenumbered: boolean;
 }
@@ -696,7 +698,7 @@ export function compareVersions(
 
   const added: ImportedRow[] = [];
   const changed: Comparison['changed'] = [];
-  let unchanged = 0;
+  const unchangedPairs: Comparison['unchangedPairs'] = [];
   const matched = new Set<ImportedRow>();
   for (const r of after) {
     let old = oldByKey.get(keyOf(r, ca));
@@ -715,7 +717,7 @@ export function compareVersions(
     matched.add(old);
     const changes = diff(old, r);
     if (changes.length) changed.push({ before: old, after: r, changes });
-    else unchanged++;
+    else unchangedPairs.push({ before: old, after: r });
   }
   const removed = before.filter((r) => !matched.has(r));
 
@@ -726,5 +728,12 @@ export function compareVersions(
     !byTitle &&
     sameTitle >= 3 &&
     sameTitle >= Math.max(added.length, removed.length) * 0.5;
-  return { added, removed, changed, unchanged, looksRenumbered };
+  return {
+    added,
+    removed,
+    changed,
+    unchanged: unchangedPairs.length,
+    unchangedPairs,
+    looksRenumbered,
+  };
 }

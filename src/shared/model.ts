@@ -106,6 +106,16 @@ export interface Task {
   customerId: string;
   /** Tasks in this build are all added by hand. */
   source: 'hand' | 'file';
+  /** For tasks from a file: the linked source file, the row and what the file says. */
+  sourceFileId: string | null;
+  sheetRow: number | null;
+  /** In file, Removed from file, or Added by hand. */
+  fileState: 'in_file' | 'removed' | 'hand';
+  /** The file's own status word and priority value, kept for writing back. */
+  statusWord: string;
+  priorityWord: string;
+  /** Columns that were not matched, by header name. */
+  extra: Record<string, string>;
   language: LanguageCode;
   titleOriginal: string;
   titleTranslation: string;
@@ -341,6 +351,8 @@ export function focusReasons(
 export function detectLanguage(
   text: string,
   projectLanguages: LanguageCode[],
+  /** The source file's main language, preferred among languages with the same letters. */
+  fileLanguage?: LanguageCode,
 ): LanguageCode {
   const langs = projectLanguages.length
     ? projectLanguages
@@ -352,6 +364,8 @@ export function detectLanguage(
     latin.includes('vi')
   )
     return 'vi';
+  if (fileLanguage && fileLanguage !== 'ja' && latin.includes(fileLanguage))
+    return fileLanguage;
   return latin[0] ?? langs[0];
 }
 
