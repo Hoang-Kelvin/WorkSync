@@ -100,12 +100,14 @@ export interface TableSettings {
   filters: Record<string, string>;
 }
 
-/** One change applied to several tasks at once from the Tasks table. */
+/**
+ * One change applied to several tasks at once from the Tasks table. Priority
+ * is left out on purpose: it changes one task at a time.
+ */
 export interface BulkChange {
   addLabel?: string;
   removeLabel?: string;
   status?: Status;
-  priority?: Level;
   pinned?: boolean;
 }
 

@@ -147,12 +147,10 @@ describe('Tasks table', () => {
     const a = store.createTask(p.id, input({ labels: ['Auth'] }));
     const b = store.createTask(p.id, input({ labels: ['auth', 'UI'] }));
     const f = store.createTask(p.id, input({ priority: 'L' }));
-    db.prepare("UPDATE tasks SET source = 'file' WHERE id = ?").run(f.id);
     const out = store.bulkUpdate([a.id, b.id, f.id], {
       addLabel: 'Release 2',
       removeLabel: 'AUTH',
       status: 'In progress',
-      priority: 'H',
       pinned: true,
     });
     expect(out.map((t) => t.labels)).toEqual([
@@ -161,9 +159,8 @@ describe('Tasks table', () => {
       ['Release 2'],
     ]);
     expect(out.every((t) => t.status === 'In progress' && t.pinned)).toBe(true);
-    // A task from a file gets the level as the owner's override only.
-    expect(out[0].priority).toBe('H');
-    expect(out[2]).toMatchObject({ priority: 'L', priorityOverride: 'H' });
+    // Priority is never changed in bulk.
+    expect(out[2]).toMatchObject({ priority: 'L', priorityOverride: null });
     expect(store.listActivity(b.id)[0].text).toMatch(/Changed/);
   });
 

@@ -9,13 +9,11 @@ import {
   type MouseEvent,
 } from 'react';
 import {
-  LEVELS,
   LEVEL_NAME,
   STATUSES,
   brief,
   shownPriority,
   type BulkChange,
-  type Level,
   type Status,
   type TableSettings,
   type Task,
@@ -690,35 +688,6 @@ function BulkBar({
         <option value="">Status…</option>
         {STATUSES.map((s) => (
           <option key={s}>{s}</option>
-        ))}
-      </select>
-      <select
-        className="inp sm"
-        aria-label="Set the priority"
-        title={
-          fromFile
-            ? 'Tasks from a file get it as your priority only. To change it in the file, use the priority menu of each task.'
-            : undefined
-        }
-        value=""
-        disabled={busy}
-        onChange={(e) => {
-          const l = e.target.value as Level;
-          if (l)
-            void apply(
-              { priority: l },
-              fromFile
-                ? `${rows} set to ${LEVEL_NAME[l]}. For tasks from a file, it is your priority only.`
-                : `${rows} set to ${LEVEL_NAME[l]}.`,
-            );
-        }}
-      >
-        <option value="">Priority…</option>
-        {LEVELS.map((l) => (
-          <option key={l} value={l}>
-            {LEVEL_NAME[l]}
-            {fromFile ? ' (for me)' : ''}
-          </option>
         ))}
       </select>
       <button

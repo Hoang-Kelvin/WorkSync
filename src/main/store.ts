@@ -458,9 +458,8 @@ export class Store {
 
   /**
    * Applies one change to several tasks in one transaction (the Tasks table's
-   * bulk actions). Each task records the change in its own history. A
-   * priority on a task from a file is set for the owner only, as an override,
-   * so nothing goes to the file without the owner choosing it task by task.
+   * bulk actions). Each task records the change in its own history.
+   * Priority is not among them: it changes one task at a time (spec 03).
    */
   bulkUpdate(ids: string[], change: BulkChange): Task[] {
     const addLabel = change.addLabel?.trim();
@@ -481,11 +480,7 @@ export class Store {
           patch.labels = labels;
         if (change.status && change.status !== t.status)
           patch.status = change.status;
-        if (change.priority && t.source !== 'file')
-          patch.priority = change.priority;
         if (Object.keys(patch).length) t = this.updateTask(id, patch);
-        if (change.priority && t.source === 'file')
-          t = this.setPriorityOverride(id, change.priority);
         if (change.pinned !== undefined && change.pinned !== t.pinned)
           t = this.setPinned(id, change.pinned);
         return t;
