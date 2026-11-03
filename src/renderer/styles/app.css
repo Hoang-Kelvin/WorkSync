@@ -46,15 +46,28 @@
   line-height: 1.6;
 }
 
+/* the data folder path: one line, cut with … when it is too long */
+.side-foot {
+  min-width: 0;
+}
+.side-foot .path {
+  display: flex;
+  min-width: 0;
+}
+.side-foot .path .ic {
+  flex: none;
+}
 .side-foot .grow-ellipsis {
+  display: block;
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font: 400 11px var(--mono);
 }
-.side-foot .path {
-  display: flex;
+.sidebar {
+  overflow-x: hidden;
 }
 
 /* forms in dialogs */
