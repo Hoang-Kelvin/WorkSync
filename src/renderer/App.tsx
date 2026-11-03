@@ -717,8 +717,8 @@ function Welcome({
     <div className="welcome">
       <h1>Welcome to WorkSync</h1>
       <p>
-        Start with a project for one customer. You can add tasks by hand now.
-        Importing the customer’s Excel file comes in a later build.
+        Start with a project for one customer. Link the customer’s Excel file to
+        bring in its tasks, or add tasks by hand.
       </p>
       <div
         style={{

@@ -62,6 +62,7 @@ export const BUILT_VIEWS: ViewKey[] = [
   'calendar',
   'tasks',
   'dashboard',
+  'published',
   'files',
 ];
 export const DEFAULT_VIEWS: Record<ViewKey, boolean> = {
