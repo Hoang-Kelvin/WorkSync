@@ -18,7 +18,12 @@ import type {
 } from './model';
 import type { FileFormat } from './importRules';
 import type { Batch, ReadAnswer } from './aiBatch';
-import type { AiResult, GlossaryTerm, ImportSummary } from './model';
+import type {
+  AiResult,
+  GlossaryTerm,
+  ImportSummary,
+  PublishStatus,
+} from './model';
 import type {
   ApplySelection,
   FileInspection,
@@ -118,6 +123,16 @@ export interface WorkSyncApi {
   copyText(text: string): Promise<void>;
   lastImport(projectId: string): Promise<ImportSummary | null>;
 
+  /** Opens the folder dialog and saves the project's publish folder. Returns null when cancelled. */
+  choosePublishFolder(projectId: string): Promise<Project | null>;
+  setPublishNotes(projectId: string, include: boolean): Promise<Project>;
+  publishStatus(projectId: string): Promise<PublishStatus>;
+  /** Opens the page as it would be published, in its own window. */
+  previewPublish(projectId: string): Promise<void>;
+  publish(projectId: string): Promise<PublishStatus>;
+  /** Opens the published page in the default browser. */
+  openPublished(projectId: string): Promise<void>;
+
   /** Called whenever linked files change state. Returns a function that stops listening. */
   onSourcesChanged(listener: (sources: SourceFile[]) => void): () => void;
 }
@@ -161,6 +176,12 @@ export const API_METHODS = [
   'applyAiResults',
   'copyText',
   'lastImport',
+  'choosePublishFolder',
+  'setPublishNotes',
+  'publishStatus',
+  'previewPublish',
+  'publish',
+  'openPublished',
 ] as const satisfies readonly Exclude<keyof WorkSyncApi, 'onSourcesChanged'>[];
 
 export const channel = (method: (typeof API_METHODS)[number]): string =>

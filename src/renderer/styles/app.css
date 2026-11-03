@@ -468,3 +468,31 @@ button.bar {
   color: var(--muted);
   font-size: 12.5px;
 }
+
+/* ---------- publishing ---------- */
+.keepnote.warn {
+  background: rgba(240, 82, 79, 0.1);
+  border-color: rgba(240, 82, 79, 0.45);
+}
+.keepnote.warn .ic {
+  color: var(--urgent);
+}
+.notice.warn {
+  background: linear-gradient(
+    90deg,
+    rgba(240, 82, 79, 0.14),
+    rgba(240, 82, 79, 0.03)
+  );
+  border-color: rgba(240, 82, 79, 0.4);
+}
+.notice.warn .ic {
+  color: var(--urgent);
+}
+.pub-notes {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--fg-2);
+  cursor: pointer;
+}

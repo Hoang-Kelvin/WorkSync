@@ -43,7 +43,7 @@ export const LANGUAGES = {
 } as const;
 export type LanguageCode = keyof typeof LANGUAGES;
 
-/** Views a project can show. The Tasks table and the Published page come in later builds. */
+/** Views a project can show. The Tasks table comes in a later build. */
 export const VIEW_KEYS = [
   'focus',
   'board',
@@ -83,6 +83,10 @@ export interface Project {
   views: Record<ViewKey, boolean>;
   /** Days ahead that count as Due soon. */
   dueSoonDays: number;
+  /** The folder on the shared drive the project publishes to. */
+  publishFolder: string | null;
+  /** Whether the published page includes the owner's notes. */
+  publishNotes: boolean;
   createdAt: string;
 }
 
@@ -490,4 +494,16 @@ export interface ImportSummary {
   added: number;
   changed: number;
   removed: number;
+}
+
+/** The last publish of a project and what has happened since (spec 05). */
+export interface PublishStatus {
+  folder: string | null;
+  lastAt: string | null;
+  /** Tasks changed since the last publish. */
+  unpublished: number;
+  /** Published files changed or deleted by someone since the last publish. */
+  tampered: string[];
+  /** A reason the folder should not be used, such as being inside a linked file's folder. */
+  folderProblem: string | null;
 }

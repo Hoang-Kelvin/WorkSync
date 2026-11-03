@@ -13,8 +13,9 @@ macOS first, then Linux.
 > each new version before it changes anything. Gemini batches: Copy for AI
 > builds one request for many tasks with the project glossary, and Paste from
 > AI checks the answer before filling in translations and summaries. The
-> Timeline, Calendar and Dashboard views. Publishing to the shared folder
-> comes next.
+> Timeline, Calendar and Dashboard views. Publishing a read-only page and an
+> Excel export to the shared folder. Writing changes into the owner's copy of
+> the customer's file comes next.
 
 ## Tech stack
 

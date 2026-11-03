@@ -18,6 +18,7 @@ import { TaskPopup } from './TaskPopup';
 import { BoardView, FocusView, initials, type ViewProps } from './views';
 import { FilesView, ReviewDialog } from './files';
 import { CalendarView, DashboardView, TimelineView } from './views2';
+import { PublishDialog, PublishedView, usePublishStatus } from './publish';
 import { LinkWizard } from './LinkWizard';
 import { AiDialog, GlossaryDialog, type AiSession } from './ai';
 import type { SourceFile } from '../shared/sources';
@@ -25,7 +26,13 @@ import type { SourceFile } from '../shared/sources';
 type Route =
   | { view: 'focus'; scope: 'all' | string }
   | {
-      view: 'board' | 'files' | 'timeline' | 'calendar' | 'dashboard';
+      view:
+        | 'board'
+        | 'files'
+        | 'timeline'
+        | 'calendar'
+        | 'dashboard'
+        | 'published';
       projectId: string;
     };
 
@@ -39,7 +46,8 @@ type Dialog =
   | { kind: 'link'; projectId: string }
   | { kind: 'review'; source: SourceFile }
   | { kind: 'ai'; projectId: string; startAt: 'choose' | 'paste' }
-  | { kind: 'glossary'; projectId: string };
+  | { kind: 'glossary'; projectId: string }
+  | { kind: 'publish'; projectId: string };
 
 export function App() {
   const [startup, setStartup] = useState<Startup | null>(null);
@@ -173,6 +181,14 @@ function Shell({ dataFolder }: { dataFolder: string }) {
     <CalendarView projectId={route.projectId} props={props} />
   ) : route.view === 'dashboard' ? (
     <DashboardView projectId={route.projectId} props={props} />
+  ) : route.view === 'published' ? (
+    <PublishedView
+      projectId={route.projectId}
+      props={props}
+      onPublish={() =>
+        setDialog({ kind: 'publish', projectId: route.projectId })
+      }
+    />
   ) : route.view === 'files' ? (
     <FilesView
       projectId={route.projectId}
@@ -192,6 +208,7 @@ function Shell({ dataFolder }: { dataFolder: string }) {
   );
 
   const changedSources = sources.filter((s) => s.state === 'changed');
+  const [pubStatus] = usePublishStatus(currentProjectId);
   const baseName = (f: string) => f.split(/[\\/]/).pop() ?? f;
 
   const focusCount = (scope: string | 'all') =>
@@ -419,6 +436,25 @@ function Shell({ dataFolder }: { dataFolder: string }) {
                 )}
             </button>
             <button
+              className="btn"
+              disabled={!currentProjectId}
+              title={
+                pubStatus?.unpublished
+                  ? `${pubStatus.unpublished} changes not published yet`
+                  : 'Publish to the shared folder'
+              }
+              onClick={() =>
+                currentProjectId &&
+                setDialog({ kind: 'publish', projectId: currentProjectId })
+              }
+            >
+              <Icon name="upload" />
+              <span className="lbl">Publish</span>
+              {pubStatus?.folder && pubStatus.unpublished > 0 && (
+                <span className="badge">{pubStatus.unpublished}</span>
+              )}
+            </button>
+            <button
               className="btn primary"
               disabled={!currentProjectId}
               title={
@@ -435,6 +471,26 @@ function Shell({ dataFolder }: { dataFolder: string }) {
               <span className="lbl">New task</span>
             </button>
           </header>
+          {pubStatus && pubStatus.tampered.length > 0 && currentProjectId && (
+            <div className="notice warn" role="status">
+              <Icon name="alert" />
+              <span className="notice-text">
+                <b>The published {pubStatus.tampered.join(' and ')} changed</b>{' '}
+                · someone edited or deleted it in the shared folder after you
+                published
+              </span>
+              <span className="notice-actions">
+                <button
+                  className="btn sm accent-outline"
+                  onClick={() =>
+                    setDialog({ kind: 'publish', projectId: currentProjectId })
+                  }
+                >
+                  Publish again
+                </button>
+              </span>
+            </div>
+          )}
           {changedSources.length > 0 && (
             <div className="notice" role="status">
               <Icon name="refresh" />
@@ -556,6 +612,12 @@ function Shell({ dataFolder }: { dataFolder: string }) {
           session={aiSession?.projectId === dialog.projectId ? aiSession : null}
           setSession={setAiSession}
           startAt={dialog.startAt}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === 'publish' && project(dialog.projectId) && (
+        <PublishDialog
+          project={project(dialog.projectId)!}
           onClose={() => setDialog(null)}
         />
       )}

@@ -24,6 +24,7 @@ import { dataFolderPath, isNetworkPath } from './dataFolder';
 import { SCHEMA_VERSION, backupDaily, migrate, openDatabase } from './db';
 import { addSampleProject } from './sample';
 import { FileLinks } from './fileLinks';
+import { PAGE_FILE, Publisher } from './publisher';
 import { Sources } from './sources';
 import { Store } from './store';
 import { UnreadableFileError } from './workbook';
@@ -32,6 +33,7 @@ let db: DatabaseSync | null = null;
 let store: Store | null = null;
 let sources: Sources | null = null;
 let links: FileLinks | null = null;
+let publisher: Publisher | null = null;
 /** Files the owner picked in this session; only these and linked files are read. */
 const chosenFiles = new Set<string>();
 let startup: Startup | null = null;
@@ -77,6 +79,7 @@ function open(): Startup {
     store = new Store(db);
     sources = new Sources(db, store);
     links = new FileLinks(sources, path.join(dataFolder, 'snapshots'));
+    publisher = new Publisher(store, sources, path.join(dataFolder, 'preview'));
     startup = {
       ok: true,
       dataFolder,
@@ -106,6 +109,12 @@ const needLinks = (): { sources: Sources; links: FileLinks } => {
   if (!sources || !links)
     throw new Error('The data could not be opened. Restart WorkSync.');
   return { sources, links };
+};
+
+const needPublisher = (): Publisher => {
+  if (!publisher)
+    throw new Error('The data could not be opened. Restart WorkSync.');
+  return publisher;
 };
 
 const allowed = (file: string): string => {
@@ -268,6 +277,55 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
   applyAiResults: async (results) => need().applyAiResults(results),
   copyText: async (text) => clipboard.writeText(text),
   lastImport: async (projectId) => need().lastImport(projectId),
+
+  choosePublishFolder: async (projectId) => {
+    const win =
+      BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+    const current = need().getProject(projectId).publishFolder;
+    // Automated tests cannot click through the system dialog; they name the folder instead.
+    let folder = process.env.WORKSYNC_TEST_PICK_FOLDER ?? null;
+    if (!folder) {
+      const r = await dialog.showOpenDialog(win, {
+        title: 'Choose the publish folder on the shared drive',
+        defaultPath: current ?? undefined,
+        properties: ['openDirectory', 'createDirectory'],
+      });
+      folder = r.canceled ? null : (r.filePaths[0] ?? null);
+    }
+    if (!folder) return null;
+    const problem = needPublisher().folderProblem(folder);
+    if (problem) throw new Error(problem);
+    return need().setPublishOptions(projectId, { folder });
+  },
+  setPublishNotes: async (projectId, include) =>
+    need().setPublishOptions(projectId, { notes: include }),
+  publishStatus: async (projectId) => needPublisher().status(projectId),
+  previewPublish: async (projectId) => {
+    const file = needPublisher().preview(projectId);
+    const win = new BrowserWindow({
+      width: 1100,
+      height: 820,
+      title: 'Preview of the published page',
+      backgroundColor: '#10141b',
+      autoHideMenuBar: true,
+      webPreferences: {
+        sandbox: true,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+    // Links in the page open in the browser, never inside the app.
+    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    win.webContents.on('will-navigate', (e) => e.preventDefault());
+    await win.loadFile(file);
+  },
+  publish: async (projectId) => needPublisher().publish(projectId),
+  openPublished: async (projectId) => {
+    const folder = need().getProject(projectId).publishFolder;
+    if (!folder) throw new Error('This project has not been published yet.');
+    const err = await shell.openPath(path.join(folder, PAGE_FILE));
+    if (err) throw new Error(err);
+  },
   openSourceFile: async (id) => {
     const src = needLinks().sources.get(id);
     const err = await shell.openPath(src.currentFile);

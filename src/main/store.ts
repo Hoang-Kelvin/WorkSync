@@ -88,6 +88,8 @@ export class Store {
       workingLanguage: str(r.working_language) as Project['workingLanguage'],
       views: { ...DEFAULT_VIEWS, ...JSON.parse(str(r.views)), focus: true },
       dueSoonDays: Number(r.due_soon_days),
+      publishFolder: r.publish_folder == null ? null : str(r.publish_folder),
+      publishNotes: Number(r.publish_notes) === 1,
       createdAt: str(r.created_at),
     };
   }
@@ -681,5 +683,109 @@ export class Store {
       changed: c.changed,
       removed: c.removed,
     };
+  }
+
+  // ------------------------------------------------------------ publishing
+
+  setPublishOptions(
+    projectId: string,
+    o: { folder?: string | null; notes?: boolean },
+  ): Project {
+    const p = this.getProject(projectId);
+    this.db
+      .prepare(
+        'UPDATE projects SET publish_folder = ?, publish_notes = ? WHERE id = ?',
+      )
+      .run(
+        o.folder === undefined ? p.publishFolder : o.folder,
+        (o.notes ?? p.publishNotes) ? 1 : 0,
+        projectId,
+      );
+    return this.getProject(projectId);
+  }
+
+  lastPublish(
+    projectId: string,
+  ): { at: string; folder: string; files: Record<string, string> } | null {
+    const r = this.db
+      .prepare(
+        'SELECT * FROM publish_records WHERE project_id = ? ORDER BY at DESC LIMIT 1',
+      )
+      .get(projectId) as Row | undefined;
+    return r
+      ? {
+          at: str(r.at),
+          folder: str(r.folder),
+          files: JSON.parse(str(r.files)),
+        }
+      : null;
+  }
+
+  recordPublish(
+    projectId: string,
+    folder: string,
+    files: Record<string, string>,
+  ): string {
+    const at = this.now();
+    this.db
+      .prepare(
+        'INSERT INTO publish_records (id, project_id, at, folder, files) VALUES (?, ?, ?, ?, ?)',
+      )
+      .run(randomUUID(), projectId, at, folder, JSON.stringify(files));
+    return at;
+  }
+
+  /** Every project's newest publish, for the index page in a shared parent folder. */
+  latestPublishes(): {
+    projectId: string;
+    name: string;
+    folder: string;
+    at: string;
+  }[] {
+    const rows = this.db
+      .prepare(
+        `SELECT r.project_id, p.name, r.folder, MAX(r.at) AS at FROM publish_records r JOIN projects p ON p.id = r.project_id GROUP BY r.project_id`,
+      )
+      .all() as Row[];
+    return rows.map((r) => ({
+      projectId: str(r.project_id),
+      name: str(r.name),
+      folder: str(r.folder),
+      at: str(r.at),
+    }));
+  }
+
+  /** Tasks changed since a time, counting a task once. */
+  changedSince(projectId: string, at: string | null): number {
+    const r = (
+      at
+        ? this.db
+            .prepare(
+              'SELECT COUNT(*) AS n FROM tasks WHERE project_id = ? AND updated_at > ?',
+            )
+            .get(projectId, at)
+        : this.db
+            .prepare('SELECT COUNT(*) AS n FROM tasks WHERE project_id = ?')
+            .get(projectId)
+    ) as { n: number };
+    return Number(r.n);
+  }
+
+  /** The newest situation updates of a task. */
+  listSituationUpdates(taskId: string, limit = 3) {
+    return (
+      this.db
+        .prepare(
+          'SELECT * FROM situation_updates WHERE task_id = ? ORDER BY at DESC LIMIT ?',
+        )
+        .all(taskId, limit) as Row[]
+    ).map((r) => ({
+      at: str(r.at),
+      handledBy: str(r.handled_by),
+      doingNow: str(r.doing_now),
+      waitingOn: str(r.waiting_on),
+      nextStep: str(r.next_step),
+      nextDate: opt(r.next_date),
+    }));
   }
 }

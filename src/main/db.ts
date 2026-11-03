@@ -132,6 +132,19 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE file_versions ADD COLUMN summary TEXT;
   `,
+  // 5: publishing to the shared folder (spec 05)
+  `
+  ALTER TABLE projects ADD COLUMN publish_folder TEXT;
+  ALTER TABLE projects ADD COLUMN publish_notes INTEGER NOT NULL DEFAULT 0;
+  CREATE TABLE publish_records (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    at TEXT NOT NULL,
+    folder TEXT NOT NULL,
+    files TEXT NOT NULL               -- JSON: file name -> SHA-256
+  );
+  CREATE INDEX publish_project ON publish_records(project_id, at);
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
