@@ -28,6 +28,11 @@ import type { Sources } from './sources';
 import type { Store } from './store';
 import { readWorkbook } from './workbook';
 import { cellRef, editCells, type CellEdit, type CellValue } from './xlsxCells';
+import { editCsvCells } from './csvCells';
+import { XlsWriteError, editXlsCells } from './xlsCells';
+
+/** The file types WorkSync writes copies of, each by changing only the cells written. */
+const WRITABLE_TYPES = ['.xlsx', '.xlsm', '.xls', '.csv'];
 
 type Row = Record<string, unknown>;
 const str = (v: unknown): string => (v == null ? '' : String(v));
@@ -194,8 +199,8 @@ export class CopyWriter {
         const blocked =
           now.state === 'changed'
             ? 'The file has a new version. Review it first, so the copy is not based on an old file.'
-            : ext !== '.xlsx' && ext !== '.xlsm'
-              ? `Writing to ${ext} files comes in a later version. Update this file in Excel.`
+            : !WRITABLE_TYPES.includes(ext)
+              ? `WorkSync cannot write ${ext} files. Update this file in Excel.`
               : null;
         return {
           sourceId: now.id,
@@ -224,8 +229,8 @@ export class CopyWriter {
     );
     if (problem) throw new Error(problem);
     const ext = path.extname(source.currentFile).toLowerCase();
-    if (ext !== '.xlsx' && ext !== '.xlsm')
-      throw new Error(`Writing to ${ext} files comes in a later version.`);
+    if (!WRITABLE_TYPES.includes(ext))
+      throw new Error(`WorkSync cannot write ${ext} files.`);
 
     const pick = new Set(chosen);
     const changes = this.pending(source).filter(
@@ -248,11 +253,19 @@ export class CopyWriter {
 
     const snapshot = this.latestSnapshot(sourceId);
     const original = fs.readFileSync(snapshot);
-    const { data, skipped, written } = editCells(
-      original,
-      source.format.sheet,
-      edits,
-    );
+    let result: ReturnType<typeof editCells>;
+    try {
+      result =
+        ext === '.csv'
+          ? editCsvCells(original, edits)
+          : ext === '.xls'
+            ? editXlsCells(original, source.format.sheet, edits)
+            : editCells(original, source.format.sheet, edits);
+    } catch (error) {
+      if (error instanceof XlsWriteError) throw new Error(error.message);
+      throw error;
+    }
+    const { data, skipped, written } = result;
     fs.mkdirSync(folder, { recursive: true });
     const target = this.suggestedName(source, folder);
     const tmp = `${target}.${process.pid}.tmp`;
