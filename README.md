@@ -15,8 +15,11 @@ macOS first, then Linux.
 > AI checks the answer before filling in translations and summaries. The
 > Timeline, Calendar and Dashboard views. Publishing a read-only page and an
 > Excel export to the shared folder. Writing changes into the owner's copy of
-> the customer's file, cell by cell. Excel and Word reports. All eight steps
-> of the build plan are in place.
+> the customer's file, cell by cell, for .xlsx, .xlsm, .xls and CSV files.
+> Excel and Word reports, with your notes translated for reports in the
+> customer's language. The Tasks table, the People list, Settings with
+> backups and restore, and light and dark modes. All eight steps of the
+> build plan are in place.
 
 ## Tech stack
 
