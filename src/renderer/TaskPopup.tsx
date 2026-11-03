@@ -12,6 +12,7 @@ import {
   type ActivityEntry,
   type Task,
   type WaitingOn,
+  assigneeText,
 } from '../shared/model';
 import type { PendingChange } from '../shared/writes';
 import { useApp } from './appState';
@@ -374,7 +375,7 @@ export function TaskPopup({
   onDelete: (t: Task) => void;
   openMenu: (task: Task, opener: HTMLElement) => void;
 }) {
-  const { tasks, project, today, putTask, toast, attempt } = useApp();
+  const { tasks, project, today, putTask, toast, attempt, people } = useApp();
   const task = tasks.find((t) => t.id === taskId);
   const [updating, setUpdating] = useState(false);
   const [pending, setPending] = useState<PendingChange[]>([]);
@@ -647,7 +648,13 @@ export function TaskPopup({
                 <Field
                   k="Assignee"
                   pend={pend('assignee')}
-                  v={task.assignee || <span className="muted">Not set</span>}
+                  v={
+                    task.assignee ? (
+                      assigneeText(people, task, 'both')
+                    ) : (
+                      <span className="muted">Not set</span>
+                    )
+                  }
                 />
                 <Field k="Status" v={task.status} pend={pend('status')} />
                 <Field

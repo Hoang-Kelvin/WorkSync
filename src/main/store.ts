@@ -5,11 +5,13 @@ import {
   EMPTY_SITUATION,
   LEVEL_NAME,
   detectLanguage,
+  personKey,
   translationStateFor,
   type ActivityEntry,
   type AiResult,
   type BulkChange,
   type GlossaryTerm,
+  type Person,
   type ImportSummary,
   type Level,
   type Project,
@@ -714,6 +716,71 @@ export class Store {
 
   deleteGlossaryTerm(id: string): void {
     this.db.prepare('DELETE FROM glossary_terms WHERE id = ?').run(id);
+  }
+
+  // ------------------------------------------------------------ people
+
+  listPeople(projectId?: string): Person[] {
+    const rows = (
+      projectId
+        ? this.db
+            .prepare('SELECT * FROM people WHERE project_id = ? ORDER BY name')
+            .all(projectId)
+        : this.db.prepare('SELECT * FROM people ORDER BY name').all()
+    ) as Row[];
+    return rows.map((r) => ({
+      id: str(r.id),
+      projectId: str(r.project_id),
+      name: str(r.name),
+      displayName: str(r.display_name),
+      side: str(r.side) === 'ours' ? 'ours' : 'customer',
+      spellings: JSON.parse(str(r.spellings) || '[]'),
+    }));
+  }
+
+  /** Adds or changes a person. A name or spelling may belong to one person only. */
+  savePerson(input: Omit<Person, 'id'> & { id?: string }): Person {
+    const name = input.name.trim();
+    if (!name)
+      throw new Error('A person needs the name as written in the files.');
+    this.getProject(input.projectId);
+    const spellings = [
+      ...new Set(input.spellings.map((x) => x.trim()).filter(Boolean)),
+    ].filter((x) => personKey(x) !== personKey(name));
+    const mine = [name, ...spellings].map(personKey);
+    const clash = this.listPeople(input.projectId).find(
+      (p) =>
+        p.id !== input.id &&
+        [p.name, ...p.spellings].some((n) => mine.includes(personKey(n))),
+    );
+    if (clash)
+      throw new Error(
+        `${clash.displayName || clash.name} already has that name or spelling.`,
+      );
+    const id = input.id ?? randomUUID();
+    const values = [
+      name,
+      input.displayName.trim(),
+      input.side === 'ours' ? 'ours' : 'customer',
+      JSON.stringify(spellings),
+    ];
+    if (input.id)
+      this.db
+        .prepare(
+          'UPDATE people SET name = ?, display_name = ?, side = ?, spellings = ? WHERE id = ?',
+        )
+        .run(...values, id);
+    else
+      this.db
+        .prepare(
+          'INSERT INTO people (id, project_id, name, display_name, side, spellings, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        )
+        .run(id, input.projectId, ...values, this.now());
+    return this.listPeople(input.projectId).find((p) => p.id === id)!;
+  }
+
+  deletePerson(id: string): void {
+    this.db.prepare('DELETE FROM people WHERE id = ?').run(id);
   }
 
   // ------------------------------------------------------------ AI batches

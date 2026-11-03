@@ -18,7 +18,7 @@ import {
   type Startup,
   type WorkSyncApi,
 } from '../shared/ipc';
-import { toIsoDate } from '../shared/model';
+import { assigneeText, toIsoDate } from '../shared/model';
 import { SOURCES_EVENT } from '../shared/ipc';
 import { dataFolderPath, isNetworkPath } from './dataFolder';
 import { writeTargetProblem } from './fileLinks';
@@ -74,6 +74,8 @@ function open(): Startup {
           tasks: store!.listTasks(),
           sources: sources!.list(),
           settings: store!.getSettings(),
+          people: store!.listPeople(),
+          glossary: store!.listGlossary(),
           today: today(),
         }
       : startup;
@@ -139,6 +141,8 @@ function open(): Startup {
       tasks: [],
       sources: [],
       settings: store.getSettings(),
+      people: [],
+      glossary: [],
       warning: sharedFolderWarning(dataFolder)
         ? `The data folder ${dataFolder} is in a synced or shared folder. ${sharedFolderWarning(dataFolder)} Move the WorkSync folder to a local folder that is not synced.`
         : null,
@@ -231,6 +235,10 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
     packaged: app.isPackaged,
   }),
   start: async () => open(),
+  listPeople: async () => need().listPeople(),
+  savePerson: async (input) => need().savePerson(input),
+  deletePerson: async (id) => need().deletePerson(id),
+  listAllGlossary: async () => need().listGlossary(),
   updateSettings: async (patch) => {
     if (patch.backupFolder) {
       const problem = writeTargetProblem(
@@ -495,7 +503,12 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
   makeReport: async (options) => {
     const st = need();
     const project = st.getProject(options.projectId);
-    const tasks = reportTasks(st.listTasks(), options);
+    const people = st.listPeople(project.id);
+    // Assignees in the report's language, from the people list.
+    const tasks = reportTasks(st.listTasks(), options).map((t) => ({
+      ...t,
+      assignee: assigneeText(people, t, options.language),
+    }));
     const data = await buildReport(project, tasks, options, today());
     const name = reportFileName(project, options, today());
     const folder = path.join(app.getPath('documents'), 'WorkSync', 'Reports');

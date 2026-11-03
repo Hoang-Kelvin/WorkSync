@@ -26,6 +26,7 @@ import type { ReportOptions } from './reports';
 import type {
   AiResult,
   GlossaryTerm,
+  Person,
   ImportSummary,
   PublishStatus,
 } from './model';
@@ -60,6 +61,8 @@ export type Startup =
       tasks: Task[];
       sources: SourceFile[];
       settings: AppSettings;
+      people: Person[];
+      glossary: GlossaryTerm[];
       /** A warning about where the data folder is, such as in a synced folder. */
       warning: string | null;
     }
@@ -139,6 +142,11 @@ export interface WorkSyncApi {
     input: Omit<GlossaryTerm, 'id'> & { id?: string },
   ): Promise<GlossaryTerm>;
   deleteGlossaryTerm(id: string): Promise<void>;
+  listPeople(): Promise<Person[]>;
+  savePerson(input: Omit<Person, 'id'> & { id?: string }): Promise<Person>;
+  deletePerson(id: string): Promise<void>;
+  /** Every glossary term, for marking terms in task text. */
+  listAllGlossary(): Promise<GlossaryTerm[]>;
 
   /** Builds the Gemini requests for the chosen tasks, split into batches. */
   prepareAiBatches(projectId: string, taskIds: string[]): Promise<Batch[]>;
@@ -227,6 +235,10 @@ export const API_METHODS = [
   'listGlossary',
   'saveGlossaryTerm',
   'deleteGlossaryTerm',
+  'listPeople',
+  'savePerson',
+  'deletePerson',
+  'listAllGlossary',
   'prepareAiBatches',
   'readAiAnswer',
   'applyAiResults',

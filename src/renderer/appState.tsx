@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { Project, Task } from '../shared/model';
+import type { GlossaryTerm, Person, Project, Task } from '../shared/model';
 import type { SourceFile } from '../shared/sources';
 import type { AppSettings } from '../shared/settings';
 import { useEffect } from 'react';
@@ -23,6 +23,10 @@ interface AppState {
   today: string;
   settings: AppSettings;
   setSettings: (s: AppSettings) => void;
+  people: Person[];
+  reloadPeople: () => Promise<void>;
+  glossary: GlossaryTerm[];
+  reloadGlossary: () => Promise<void>;
   projects: Project[];
   tasks: Task[];
   sources: SourceFile[];
@@ -61,6 +65,8 @@ export function AppProvider({
     tasks: Task[];
     sources: SourceFile[];
     settings: AppSettings;
+    people: Person[];
+    glossary: GlossaryTerm[];
   };
   children: ReactNode;
 }) {
@@ -69,6 +75,8 @@ export function AppProvider({
   const [today, setToday] = useState(initial.today);
   const [sources, setSources] = useState(initial.sources);
   const [settings, setSettings] = useState(initial.settings);
+  const [people, setPeople] = useState(initial.people);
+  const [glossary, setGlossary] = useState(initial.glossary);
   // Linked files are checked in the main process; it tells the window when their states change.
   useEffect(() => {
     const stop = window.worksync.onSourcesChanged(setSources);
@@ -94,6 +102,11 @@ export function AppProvider({
       today,
       settings,
       setSettings,
+      people,
+      reloadPeople: async () => setPeople(await window.worksync.listPeople()),
+      glossary,
+      reloadGlossary: async () =>
+        setGlossary(await window.worksync.listAllGlossary()),
       projects,
       tasks,
       sources,
@@ -122,6 +135,8 @@ export function AppProvider({
           setTasks(s.tasks);
           setSources(s.sources);
           setSettings(s.settings);
+          setPeople(s.people);
+          setGlossary(s.glossary);
           setToday(s.today);
         }
       },
@@ -143,6 +158,8 @@ export function AppProvider({
     [
       today,
       settings,
+      people,
+      glossary,
       projects,
       tasks,
       sources,

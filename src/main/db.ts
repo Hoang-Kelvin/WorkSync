@@ -158,6 +158,19 @@ const MIGRATIONS: string[] = [
     value TEXT NOT NULL
   );
   `,
+  // 9: the people list per project (spec 02)
+  `
+  CREATE TABLE people (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    display_name TEXT NOT NULL DEFAULT '',
+    side TEXT NOT NULL DEFAULT 'customer',
+    spellings TEXT NOT NULL DEFAULT '[]',  -- JSON array
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX people_project ON people(project_id);
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

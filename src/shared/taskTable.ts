@@ -10,9 +10,17 @@ import {
   fileDate,
   matchesSearch,
   shownPriority,
+  personName,
+  type Person,
   type TableSettings,
   type Task,
 } from './model';
+
+/** What a column may need besides the task. */
+export interface TableContext {
+  people: Person[];
+}
+const NO_CONTEXT: TableContext = { people: [] };
 
 export type FilterKind = 'text' | 'choice' | 'date';
 
@@ -25,9 +33,9 @@ export interface TableColumn {
   /** The choices of a choice filter, as [value, label]. */
   choices?: [string, string][];
   /** The text shown, and matched by a text filter. */
-  text: (t: Task) => string;
+  text: (t: Task, c: TableContext) => string;
   /** What the column sorts by. Empty values always go last. */
-  sortValue: (t: Task) => string | number;
+  sortValue: (t: Task, c: TableContext) => string | number;
   /** The value a choice filter compares. */
   choiceValue?: (t: Task) => string;
 }
@@ -84,8 +92,9 @@ export const TABLE_COLUMNS: TableColumn[] = [
     label: 'Assignee',
     width: 110,
     filter: 'text',
-    text: (t) => t.assignee,
-    sortValue: (t) => t.assignee.toLowerCase(),
+    text: (t, c) => personName(c.people, t.projectId, t.assignee),
+    sortValue: (t, c) =>
+      personName(c.people, t.projectId, t.assignee).toLowerCase(),
   },
   {
     key: 'handledBy',
@@ -231,11 +240,17 @@ export function tableSettings(saved: TableSettings | null): TableSettings {
  * "2026/11", "2026-11-03", or a range such as "2026/11/01-2026/11/15"
  * ("-" alone after a date means from then on), and "none" for no date.
  */
-export function passes(c: TableColumn, t: Task, filter: string): boolean {
+export function passes(
+  c: TableColumn,
+  t: Task,
+  filter: string,
+  ctx: TableContext = NO_CONTEXT,
+): boolean {
   const f = filter.trim();
   if (!f) return true;
-  if (c.filter === 'choice') return (c.choiceValue ?? c.text)(t) === f;
-  const text = c.text(t);
+  if (c.filter === 'choice')
+    return (c.choiceValue ? c.choiceValue(t) : c.text(t, ctx)) === f;
+  const text = c.text(t, ctx);
   if (c.filter === 'date') {
     if (/^(none|empty|-)$/i.test(f)) return !text;
     if (!text) return false;
@@ -250,7 +265,12 @@ export function passes(c: TableColumn, t: Task, filter: string): boolean {
     }
     return d.startsWith(pad(norm(f), false, true));
   }
-  return text.toLowerCase().includes(f.toLowerCase());
+  const needle = f.toLowerCase();
+  // The assignee also matches the name as written in the file.
+  return (
+    text.toLowerCase().includes(needle) ||
+    (c.key === 'assignee' && t.assignee.toLowerCase().includes(needle))
+  );
 }
 
 /** "2026-1" → "2026-01"; as the end of a range, a month means its last day. */
@@ -269,6 +289,7 @@ export function tableRows(
   tasks: Task[],
   settings: TableSettings,
   query: string,
+  ctx: TableContext = NO_CONTEXT,
 ): Task[] {
   const filters = Object.entries(settings.filters)
     .map(([k, v]) => [columnByKey(k), v] as const)
@@ -277,8 +298,8 @@ export function tableRows(
   const dir = settings.sort.dir === 'desc' ? -1 : 1;
   return tasks
     .filter((t) => matchesSearch(t, query))
-    .filter((t) => filters.every(([c, v]) => passes(c!, t, v)))
-    .map((t) => ({ t, v: sortBy.sortValue(t) }))
+    .filter((t) => filters.every(([c, v]) => passes(c!, t, v, ctx)))
+    .map((t) => ({ t, v: sortBy.sortValue(t, ctx) }))
     .sort((a, b) => {
       const ea = a.v === '';
       const eb = b.v === '';

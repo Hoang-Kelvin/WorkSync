@@ -454,13 +454,15 @@ export function GlossaryDialog({
   project: Project;
   onClose: () => void;
 }) {
-  const { attempt, toast } = useApp();
+  const { attempt, toast, reloadGlossary } = useApp();
   const [terms, setTerms] = useState<GlossaryTerm[] | null>(null);
   const [draft, setDraft] = useState({ term: '', translation: '', note: '' });
-  const load = async () =>
+  const load = async () => {
     setTerms(
       (await attempt(() => window.worksync.listGlossary(project.id))) ?? [],
     );
+    await reloadGlossary();
+  };
   useEffect(() => {
     void load();
     // Load once when the dialog opens.
@@ -486,6 +488,7 @@ export function GlossaryDialog({
   };
   const save = async (g: GlossaryTerm) => {
     await attempt(() => window.worksync.saveGlossaryTerm(g));
+    await reloadGlossary();
   };
   const remove = async (g: GlossaryTerm) => {
     await attempt(() => window.worksync.deleteGlossaryTerm(g.id));

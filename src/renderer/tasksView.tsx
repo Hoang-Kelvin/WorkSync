@@ -51,7 +51,7 @@ export function TasksView({
   props: ViewProps;
   onCopyForAi: (ids: string[]) => void;
 }) {
-  const { tasks, project, putProject, attempt } = useApp();
+  const { tasks, project, putProject, attempt, people } = useApp();
   const p = project(projectId)!;
   const [settings, setSettingsState] = useState<TableSettings>(() =>
     tableSettings(p.tableSettings),
@@ -85,8 +85,8 @@ export function TasksView({
     [tasks, projectId],
   );
   const rows = useMemo(
-    () => tableRows(all, settings, props.query),
-    [all, settings, props.query],
+    () => tableRows(all, settings, props.query, { people }),
+    [all, settings, props.query, people],
   );
   const shownIds = useMemo(() => rows.map((t) => t.id), [rows]);
   // Actions apply to the selected rows that the filters still show.
@@ -399,6 +399,7 @@ export function TasksView({
 }
 
 function Cell({ column, task: t }: { column: TableColumn; task: Task }) {
+  const { people } = useApp();
   switch (column.key) {
     case 'id':
       return (
@@ -449,7 +450,7 @@ function Cell({ column, task: t }: { column: TableColumn; task: Task }) {
         </span>
       );
     default:
-      return <>{column.text(t)}</>;
+      return <>{column.text(t, { people })}</>;
   }
 }
 

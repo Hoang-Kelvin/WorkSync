@@ -23,6 +23,7 @@ import { PublishDialog, PublishedView, usePublishStatus } from './publish';
 import { WriteDialog, usePendingCount } from './writeCopy';
 import { ReportDialog } from './reports';
 import { SettingsDialog } from './settings';
+import { PeopleDialog } from './people';
 import { LinkWizard } from './LinkWizard';
 import { AiDialog, GlossaryDialog, type AiSession } from './ai';
 import type { SourceFile } from '../shared/sources';
@@ -57,6 +58,7 @@ type Dialog =
       preselect?: string[];
     }
   | { kind: 'glossary'; projectId: string }
+  | { kind: 'people'; projectId: string }
   | { kind: 'publish'; projectId: string }
   | { kind: 'write' }
   | { kind: 'settings' }
@@ -352,6 +354,15 @@ function Shell({
                         >
                           <Icon name="sliders" />
                           <span className="grow">Choose views</span>
+                        </button>
+                        <button
+                          className="nav-item custom"
+                          onClick={() =>
+                            setDialog({ kind: 'people', projectId: p.id })
+                          }
+                        >
+                          <Icon name="user" />
+                          <span className="grow">People</span>
                         </button>
                         <button
                           className="nav-item custom"
@@ -718,6 +729,12 @@ function Shell({
       )}
       {dialog?.kind === 'publish' && project(dialog.projectId) && (
         <PublishDialog
+          project={project(dialog.projectId)!}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === 'people' && project(dialog.projectId) && (
+        <PeopleDialog
           project={project(dialog.projectId)!}
           onClose={() => setDialog(null)}
         />

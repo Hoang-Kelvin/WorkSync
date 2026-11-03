@@ -502,6 +502,74 @@ export interface GlossaryTerm {
   note: string;
 }
 
+/**
+ * Someone who appears in the files (spec 02, People). The name is as written
+ * in the files; other spellings, such as 田中 and 田中太郎, are the same
+ * person. The task keeps the original text, for writing back.
+ */
+export interface Person {
+  id: string;
+  projectId: string;
+  name: string;
+  displayName: string;
+  side: 'customer' | 'ours';
+  spellings: string[];
+}
+
+/** Names compare without spaces, case or full-width differences. */
+export const personKey = (s: string): string =>
+  s
+    .normalize('NFKC')
+    .replace(/[\s・･.]+/g, '')
+    .toLowerCase();
+
+/** The person a name in a file stands for, if the people list has them. */
+export function personFor(
+  people: Person[],
+  projectId: string,
+  text: string,
+): Person | undefined {
+  const k = personKey(text);
+  if (!k) return undefined;
+  return people.find(
+    (p) =>
+      p.projectId === projectId &&
+      [p.name, p.displayName, ...p.spellings].some((n) => personKey(n) === k),
+  );
+}
+
+/**
+ * A name as the owner reads it: the display name for someone in the people
+ * list, and the text as written for anyone else. Several names, separated by
+ * commas or 、, are matched one by one.
+ */
+export function personName(
+  people: Person[],
+  projectId: string,
+  text: string,
+): string {
+  if (!text.trim()) return '';
+  return text
+    .split(/\s*[,、，/／]\s*/)
+    .map((part) => personFor(people, projectId, part)?.displayName || part)
+    .join(', ');
+}
+
+/**
+ * A task's assignee for a reader: in the working language, as written in the
+ * file, or both, such as "Tanaka (田中)".
+ */
+export function assigneeText(
+  people: Person[],
+  t: Pick<Task, 'projectId' | 'assignee'>,
+  mode: 'working' | 'original' | 'both' = 'working',
+): string {
+  if (mode === 'original') return t.assignee;
+  const shown = personName(people, t.projectId, t.assignee);
+  if (mode === 'working' || shown === t.assignee) return shown;
+  return `${shown} (${t.assignee})`;
+}
+
 /** A translation and summary from an AI batch, accepted by the owner. */
 export interface AiResult {
   taskId: string;

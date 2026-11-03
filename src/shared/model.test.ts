@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  assigneeText,
+  personFor,
+  personName,
   EMPTY_SITUATION,
   addDays,
   brief,
@@ -277,5 +280,32 @@ describe('search and brief', () => {
     expect(b.text.split('\n')[0]).toBe(
       'No. 012  Login screen times out (ログイン画面のタイムアウト)',
     );
+  });
+});
+
+describe('people', () => {
+  const people = [
+    {
+      id: 'a',
+      projectId: 'p',
+      name: '田中',
+      displayName: 'Tanaka',
+      side: 'customer' as const,
+      spellings: ['田中太郎', 'Ｔａｎａｋａ'],
+    },
+  ];
+  it('finds a person by any spelling, ignoring spaces and width', () => {
+    expect(personFor(people, 'p', '田中 太郎')?.id).toBe('a');
+    expect(personFor(people, 'p', 'tanaka')?.id).toBe('a');
+    expect(personFor(people, 'q', '田中')).toBeUndefined();
+  });
+  it('shows names in the working language, keeping unknown ones', () => {
+    expect(personName(people, 'p', '田中、佐藤')).toBe('Tanaka, 佐藤');
+    expect(
+      assigneeText(people, { projectId: 'p', assignee: '田中' }, 'both'),
+    ).toBe('Tanaka (田中)');
+    expect(
+      assigneeText(people, { projectId: 'p', assignee: '田中' }, 'original'),
+    ).toBe('田中');
   });
 });

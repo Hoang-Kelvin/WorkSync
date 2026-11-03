@@ -7,6 +7,7 @@ import {
   shownPriority,
   toIsoDate,
   type PublishStatus,
+  assigneeText,
 } from '../shared/model';
 import { buildIndexPage, buildPage, type SituationEntry } from './publishPage';
 import { writeTargetProblem } from './fileLinks';
@@ -92,6 +93,7 @@ export class Publisher {
       includeNotes: project.publishNotes,
     });
 
+    const people = this.store.listPeople(project.id);
     // The Excel export: the task list, for people who prefer Excel.
     const head = [
       'No.',
@@ -119,7 +121,7 @@ export class Publisher {
       t.titleTranslation ? t.titleOriginal : '',
       t.status,
       LEVEL_NAME[shownPriority(t)],
-      t.assignee,
+      assigneeText(people, t, 'both'),
       t.situation.handledBy,
       t.situation.doingNow,
       t.situation.waitingOn,

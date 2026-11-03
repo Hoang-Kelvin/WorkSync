@@ -264,3 +264,30 @@ describe('backups', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });
+
+describe('people', () => {
+  it('keeps people per project and refuses a spelling used twice', () => {
+    const p = project();
+    const a = store.savePerson({
+      projectId: p.id,
+      name: '田中',
+      displayName: 'Tanaka',
+      side: 'customer',
+      spellings: ['田中太郎', ' 田中 ', ''],
+    });
+    expect(a.spellings).toEqual(['田中太郎']);
+    expect(() =>
+      store.savePerson({
+        projectId: p.id,
+        name: '田中太郎',
+        displayName: 'T',
+        side: 'ours',
+        spellings: [],
+      }),
+    ).toThrow(/already/);
+    store.savePerson({ ...a, displayName: 'Tanaka-san' });
+    expect(store.listPeople(p.id)[0].displayName).toBe('Tanaka-san');
+    store.deletePerson(a.id);
+    expect(store.listPeople()).toHaveLength(0);
+  });
+});
