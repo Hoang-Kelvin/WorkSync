@@ -18,6 +18,7 @@ import type {
 } from './model';
 import type { FileFormat } from './importRules';
 import type { Batch, ReadAnswer } from './aiBatch';
+import type { PendingChange, WritePlan, WriteResult } from './writes';
 import type {
   AiResult,
   GlossaryTerm,
@@ -133,6 +134,21 @@ export interface WorkSyncApi {
   /** Opens the published page in the default browser. */
   openPublished(projectId: string): Promise<void>;
 
+  /** The changes waiting to be written, per linked file. */
+  writePlans(): Promise<WritePlan[]>;
+  pendingCount(): Promise<number>;
+  pendingForTask(taskId: string): Promise<PendingChange[]>;
+  /** Opens the folder dialog for where copies are saved. Returns null when cancelled. */
+  chooseCopyFolder(current: string): Promise<string | null>;
+  /** Writes the chosen changes (`taskId:field`) into a new copy in the folder, and checks it. */
+  writeCopy(
+    sourceId: string,
+    chosen: string[],
+    folder: string,
+  ): Promise<WriteResult>;
+  /** Opens a copy WorkSync wrote, or shows it in its folder. */
+  openCopy(file: string, inFolder: boolean): Promise<void>;
+
   /** Called whenever linked files change state. Returns a function that stops listening. */
   onSourcesChanged(listener: (sources: SourceFile[]) => void): () => void;
 }
@@ -182,6 +198,12 @@ export const API_METHODS = [
   'previewPublish',
   'publish',
   'openPublished',
+  'writePlans',
+  'pendingCount',
+  'pendingForTask',
+  'chooseCopyFolder',
+  'writeCopy',
+  'openCopy',
 ] as const satisfies readonly Exclude<keyof WorkSyncApi, 'onSourcesChanged'>[];
 
 export const channel = (method: (typeof API_METHODS)[number]): string =>

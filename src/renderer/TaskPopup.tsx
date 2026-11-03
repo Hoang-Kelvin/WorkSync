@@ -13,6 +13,7 @@ import {
   type Task,
   type WaitingOn,
 } from '../shared/model';
+import type { PendingChange } from '../shared/writes';
 import { useApp } from './appState';
 import { Icon } from './Icon';
 import {
@@ -376,6 +377,19 @@ export function TaskPopup({
   const { tasks, project, today, putTask, toast, attempt } = useApp();
   const task = tasks.find((t) => t.id === taskId);
   const [updating, setUpdating] = useState(false);
+  const [pending, setPending] = useState<PendingChange[]>([]);
+  // Customer-field changes not yet written to the owner's copy, marked on their fields.
+  useEffect(() => {
+    void window.worksync
+      .pendingForTask(taskId)
+      .then(setPending, () => setPending([]));
+  }, [taskId, task?.updatedAt]);
+  const pend = (...fields: string[]) => {
+    const list = pending.filter((c) => fields.includes(c.field));
+    return list.length
+      ? `${list.map((c) => `${list.length > 1 ? `${c.label} c` : 'C'}hanged from ${c.from || '(empty)'}`).join('; ')}, not yet written to your copy`
+      : undefined;
+  };
   const titleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -632,11 +646,13 @@ export function TaskPopup({
               <div className="fields">
                 <Field
                   k="Assignee"
+                  pend={pend('assignee')}
                   v={task.assignee || <span className="muted">Not set</span>}
                 />
-                <Field k="Status" v={task.status} />
+                <Field k="Status" v={task.status} pend={pend('status')} />
                 <Field
                   k="Planned"
+                  pend={pend('plannedStart', 'plannedEnd')}
                   v={
                     task.plannedStart || task.plannedEnd ? (
                       <span className="mono">
@@ -650,6 +666,7 @@ export function TaskPopup({
                 />
                 <Field
                   k="Actual"
+                  pend={pend('actualStart', 'actualEnd')}
                   v={
                     task.actualStart ? (
                       <span className="mono">
@@ -663,6 +680,7 @@ export function TaskPopup({
                 />
                 <Field
                   k="Priority"
+                  pend={pend('priority')}
                   v={
                     <>
                       {LEVEL_NAME[task.priority]}{' '}
@@ -677,10 +695,12 @@ export function TaskPopup({
                 />
                 <Field
                   k="Category"
+                  pend={pend('category')}
                   v={task.category || <span className="muted">Not set</span>}
                 />
                 <Field
                   k="Remarks"
+                  pend={pend('remarks')}
                   v={
                     task.remarks ? (
                       <span lang={task.language}>{task.remarks}</span>
@@ -740,10 +760,23 @@ export function TaskPopup({
   );
 }
 
-const Field = ({ k, v }: { k: React.ReactNode; v: React.ReactNode }) => (
-  <div className="field">
+const Field = ({
+  k,
+  v,
+  pend,
+}: {
+  k: React.ReactNode;
+  v: React.ReactNode;
+  pend?: string;
+}) => (
+  <div className={`field ${pend ? 'pending' : ''}`}>
     <div className="k">{k}</div>
     <div className="v">{v}</div>
+    {pend && (
+      <div className="pend">
+        <Icon name="save" /> {pend}
+      </div>
+    )}
   </div>
 );
 

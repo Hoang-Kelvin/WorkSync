@@ -10,7 +10,8 @@ XLSX.set_cptable(cptable);
 
 export interface Workbook {
   sheetNames: string[];
-  grid(sheet: string): Grid;
+  /** The sheet's cells. Merged cells give their value to every cell they cover unless `fillMerges` is false. */
+  grid(sheet: string, fillMerges?: boolean): Grid;
 }
 
 export class UnreadableFileError extends Error {}
@@ -77,12 +78,12 @@ export function readWorkbook(data: Buffer, fileName: string): Workbook {
     throw new UnreadableFileError('This file has no sheets.');
   return {
     sheetNames: wb.SheetNames,
-    grid: (sheet) => sheetGrid(wb.Sheets[sheet]),
+    grid: (sheet, fillMerges = true) => sheetGrid(wb.Sheets[sheet], fillMerges),
   };
 }
 
 /** Rows of cell values. Merged cells give their value to every cell they cover. */
-function sheetGrid(ws: XLSX.WorkSheet | undefined): Grid {
+function sheetGrid(ws: XLSX.WorkSheet | undefined, fillMerges = true): Grid {
   if (!ws || !ws['!ref']) return [];
   const range = XLSX.utils.decode_range(ws['!ref']);
   const rows = Math.min(range.e.r, 20000);
@@ -95,7 +96,7 @@ function sheetGrid(ws: XLSX.WorkSheet | undefined): Grid {
     while (line.length && line[line.length - 1] === null) line.pop();
     grid.push(line);
   }
-  for (const m of ws['!merges'] ?? []) {
+  for (const m of fillMerges ? (ws['!merges'] ?? []) : []) {
     const v = grid[m.s.r]?.[m.s.c] ?? null;
     if (v === null) continue;
     for (let r = m.s.r; r <= Math.min(m.e.r, rows); r++) {

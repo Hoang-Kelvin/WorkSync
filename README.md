@@ -15,7 +15,7 @@ macOS first, then Linux.
 > AI checks the answer before filling in translations and summaries. The
 > Timeline, Calendar and Dashboard views. Publishing a read-only page and an
 > Excel export to the shared folder. Writing changes into the owner's copy of
-> the customer's file comes next.
+> the customer's file, cell by cell. Excel and Word reports come next.
 
 ## Tech stack
 

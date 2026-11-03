@@ -496,3 +496,37 @@ button.bar {
   color: var(--fg-2);
   cursor: pointer;
 }
+
+/* ---------- write to copy ---------- */
+.write-plan {
+  display: grid;
+  gap: 10px;
+}
+.write-plan .panel-h h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+.write-done p {
+  margin: 0 0 10px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.write-done .ic {
+  color: var(--accent);
+  margin-top: 3px;
+}
+.warn-text {
+  color: #ffb0ae;
+}
+.field .pend {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.field .pend .ic {
+  width: 13px;
+  height: 13px;
+}

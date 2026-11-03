@@ -19,6 +19,7 @@ import { BoardView, FocusView, initials, type ViewProps } from './views';
 import { FilesView, ReviewDialog } from './files';
 import { CalendarView, DashboardView, TimelineView } from './views2';
 import { PublishDialog, PublishedView, usePublishStatus } from './publish';
+import { WriteDialog, usePendingCount } from './writeCopy';
 import { LinkWizard } from './LinkWizard';
 import { AiDialog, GlossaryDialog, type AiSession } from './ai';
 import type { SourceFile } from '../shared/sources';
@@ -47,7 +48,8 @@ type Dialog =
   | { kind: 'review'; source: SourceFile }
   | { kind: 'ai'; projectId: string; startAt: 'choose' | 'paste' }
   | { kind: 'glossary'; projectId: string }
-  | { kind: 'publish'; projectId: string };
+  | { kind: 'publish'; projectId: string }
+  | { kind: 'write' };
 
 export function App() {
   const [startup, setStartup] = useState<Startup | null>(null);
@@ -209,6 +211,7 @@ function Shell({ dataFolder }: { dataFolder: string }) {
 
   const changedSources = sources.filter((s) => s.state === 'changed');
   const [pubStatus] = usePublishStatus(currentProjectId);
+  const pendingWrites = usePendingCount();
   const baseName = (f: string) => f.split(/[\\/]/).pop() ?? f;
 
   const focusCount = (scope: string | 'all') =>
@@ -435,6 +438,23 @@ function Shell({ dataFolder }: { dataFolder: string }) {
                   </span>
                 )}
             </button>
+            {sources.length > 0 && (
+              <button
+                className="btn"
+                title={
+                  pendingWrites
+                    ? `${pendingWrites} changes not yet written to your copy`
+                    : 'Write changes to your copy of a customer file'
+                }
+                onClick={() => setDialog({ kind: 'write' })}
+              >
+                <Icon name="save" />
+                <span className="lbl">Write to copy</span>
+                {pendingWrites > 0 && (
+                  <span className="badge">{pendingWrites}</span>
+                )}
+              </button>
+            )}
             <button
               className="btn"
               disabled={!currentProjectId}
@@ -614,6 +634,9 @@ function Shell({ dataFolder }: { dataFolder: string }) {
           startAt={dialog.startAt}
           onClose={() => setDialog(null)}
         />
+      )}
+      {dialog?.kind === 'write' && (
+        <WriteDialog onClose={() => setDialog(null)} />
       )}
       {dialog?.kind === 'publish' && project(dialog.projectId) && (
         <PublishDialog

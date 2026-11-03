@@ -9,6 +9,7 @@ import {
   type PublishStatus,
 } from '../shared/model';
 import { buildIndexPage, buildPage, type SituationEntry } from './publishPage';
+import { writeTargetProblem } from './fileLinks';
 import type { Sources } from './sources';
 import type { Store } from './store';
 import { sha256 } from './workbook';
@@ -16,11 +17,6 @@ import { sha256 } from './workbook';
 export const PAGE_FILE = 'index.html';
 export const EXPORT_FILE = 'tasks.xlsx';
 export const FINGERPRINT_FILE = 'worksync-publish.json';
-
-const inside = (child: string, parent: string): boolean => {
-  const rel = path.relative(path.resolve(parent), path.resolve(child));
-  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
-};
 
 /** Writes a file next to its target first, then moves it into place, so readers never see half a file. */
 function writeAtomic(file: string, data: string | Buffer): void {
@@ -43,15 +39,11 @@ export class Publisher {
 
   /** A reason a folder must not be used for publishing, or null. */
   folderProblem(folder: string): string | null {
-    for (const s of this.sources.list()) {
-      const linked = s.pattern ? s.path : path.dirname(s.path);
-      if (inside(folder, linked))
-        return `This folder holds a linked customer file (${path.basename(s.currentFile)}). Choose a folder on the shared drive instead.`;
-    }
-    if (folder.split(/[\\/]/).some((part) => /^box( drive)?$/i.test(part))) {
-      return 'This folder is inside Box, where the customer could see it. Choose a folder on the company shared drive.';
-    }
-    return null;
+    return writeTargetProblem(
+      folder,
+      this.sources.list(),
+      'a folder on the company shared drive',
+    );
   }
 
   status(projectId: string): PublishStatus {

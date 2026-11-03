@@ -145,6 +145,10 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX publish_project ON publish_records(project_id, at);
   `,
+  // 6: what was last written to the owner's copy, per task and field (spec 04)
+  `
+  ALTER TABLE tasks ADD COLUMN written TEXT NOT NULL DEFAULT '{}';
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

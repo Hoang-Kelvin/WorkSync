@@ -27,6 +27,31 @@ import type { ReadVersion, Sources } from './sources';
 
 const today = () => toIsoDate(new Date());
 
+const inside = (child: string, parent: string): boolean => {
+  const rel = path.relative(path.resolve(parent), path.resolve(child));
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+};
+
+/**
+ * Why WorkSync must not write into a folder, or null (spec 06): never inside a
+ * linked customer file's folder or a Box Drive folder.
+ */
+export function writeTargetProblem(
+  folder: string,
+  sources: SourceFile[],
+  instead: string,
+): string | null {
+  for (const s of sources) {
+    const linked = s.pattern ? s.path : path.dirname(s.path);
+    if (inside(folder, linked))
+      return `This folder holds a linked customer file (${path.basename(s.currentFile)}). Choose ${instead} instead.`;
+  }
+  if (folder.split(/[\\/]/).some((part) => /^box( drive)?$/i.test(part))) {
+    return `This folder is inside Box, where the customer could see it. Choose ${instead}.`;
+  }
+  return null;
+}
+
 /** Turns a name pattern such as `WBS_*.xlsx` into a test. `*` is any text and `?` one character. */
 export function patternTest(pattern: string): (name: string) => boolean {
   const re = new RegExp(
