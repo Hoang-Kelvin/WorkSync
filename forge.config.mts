@@ -1,5 +1,4 @@
 import type { ForgeConfig } from '@electron-forge/shared-types';
-import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerRpm } from '@electron-forge/maker-rpm';
@@ -19,10 +18,9 @@ const config: ForgeConfig = {
   },
   rebuildConfig: {},
   makers: [
-    // Windows installer
-    new MakerSquirrel({}),
-    // macOS (zip)
-    new MakerZIP({}, ['darwin']),
+    // Windows and macOS: a zip that runs without installing. On Windows the
+    // owner unzips it and runs worksync.exe, with no administrator rights.
+    new MakerZIP({}, ['win32', 'darwin']),
     // Linux
     new MakerRpm({}),
     new MakerDeb({}),

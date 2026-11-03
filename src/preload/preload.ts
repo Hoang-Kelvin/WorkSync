@@ -5,6 +5,7 @@ import { IpcChannel, type WorkSyncApi } from '../shared/ipc';
 // can only call the channels listed here.
 const api: WorkSyncApi = {
   getAppInfo: () => ipcRenderer.invoke(IpcChannel.GetAppInfo),
+  runPcChecks: () => ipcRenderer.invoke(IpcChannel.RunPcChecks),
 };
 
 contextBridge.exposeInMainWorld('worksync', api);

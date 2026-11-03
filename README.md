@@ -1,10 +1,17 @@
 # WorkSync
 
-A cross-platform desktop app for managing tasks and assigning them within a
-team. Targets Windows and macOS first, then Linux.
+A personal desktop app for a project manager who tracks customer tasks kept in
+Excel files written in another language, such as Japanese. It keeps the
+manager's own understanding of each task next to the original text, shows the
+work visually, and publishes a read-only copy to a shared folder. It runs from
+an unzipped folder with no installation and no server. Targets Windows and
+macOS first, then Linux.
 
-> **Status:** base project. The app shell, build pipeline and IPC pattern are
-> in place; task features are not implemented yet.
+> **Status:** step 1 of the build plan, the work PC test build. The app opens a
+> check screen that confirms it can run from its folder and save data beside
+> it. Task features come next.
+
+The specifications and the design mockup are in [docs/](docs/README.md).
 
 ## Tech stack
 
@@ -35,9 +42,26 @@ npm start
 | `npm run lint`      | Run oxlint and check formatting                      |
 | `npm run lint:fix`  | Auto-fix lint issues and format the code             |
 
-Run `npm run make` on each target OS: Windows produces a Squirrel installer,
-macOS a zip, and Linux `.deb` and `.rpm` packages (which need `dpkg`,
-`fakeroot` and `rpm` installed).
+`npm run make` builds for the OS it runs on. Windows and macOS produce a zip
+that runs without installing, and Linux produces `.deb` and `.rpm` packages
+(which need `dpkg`, `fakeroot` and `rpm` installed). A Windows zip can also be
+built from Linux or macOS with `npx electron-forge make --platform=win32`.
+
+## Getting a Windows build
+
+Every push runs the **Build** workflow on GitHub Actions. It checks lint and
+types, then builds on Windows, macOS and Linux. To try the app on a Windows PC:
+
+1. Open the repository's **Actions** tab and the latest **Build** run.
+2. Download the **WorkSync-windows** artifact and unzip it.
+3. Unzip the `WorkSync-win32-x64-*.zip` inside it into a folder on a local
+   drive, such as `D:\Tools`.
+4. Run `worksync.exe` in the `WorkSync-win32-x64` folder.
+
+The app keeps its data in a `WorkSync-data` folder beside the app folder, so
+replacing the app folder with a new version keeps the data. Builds are not
+code signed yet, so Windows SmartScreen may warn the first time: choose
+**More info**, then **Run anyway**.
 
 ## Project structure
 
@@ -71,8 +95,9 @@ The renderer has no Node.js access. To expose a new capability:
 
 - Code signing and notarization (required to distribute on macOS and to avoid
   SmartScreen warnings on Windows). See the note in `forge.config.mts`.
-- Auto-update, an app icon, and CI.
-- Tasks, users and assignment, which also need a shared backend.
+- Auto-update and an app icon.
+- Task features. See the build plan in
+  [06 Technical architecture](docs/specs/06-technical-architecture.md).
 
 ## License
 

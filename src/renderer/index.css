@@ -1,22 +1,17 @@
+/* Dark theme tokens from the design mockup (docs/mockup). */
 :root {
-  color-scheme: light dark;
-  --bg: #f6f7f9;
-  --surface: #ffffff;
-  --text: #1c1f24;
-  --muted: #6b7280;
-  --border: #e2e5ea;
-  --accent: #3b6cf6;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14161a;
-    --surface: #1d2025;
-    --text: #e8eaed;
-    --muted: #9aa0a8;
-    --border: #2d3138;
-    --accent: #6f94ff;
-  }
+  color-scheme: dark;
+  --bg: #0a0d12;
+  --win: #10141b;
+  --surface: #151a22;
+  --line: rgba(214, 226, 255, 0.08);
+  --line-strong: rgba(214, 226, 255, 0.15);
+  --fg: #e7ebf2;
+  --fg-2: #b3bbc8;
+  --muted: #8c96a7;
+  --accent: #45c4d8;
+  --ok: #3fb67d;
+  --bad: #f0524f;
 }
 
 * {
@@ -31,9 +26,14 @@ body,
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--win);
+  color: var(--fg);
+  font:
+    14px/1.45 system-ui,
+    -apple-system,
+    'Segoe UI',
+    'Yu Gothic UI',
+    sans-serif;
 }
 
 .app {
@@ -44,8 +44,7 @@ body {
 
 .app-header {
   padding: 20px 28px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line);
 }
 
 .app-header h1 {
@@ -54,7 +53,8 @@ body {
   color: var(--accent);
 }
 
-.app-header p {
+.app-header p,
+.muted {
   margin: 4px 0 0;
   color: var(--muted);
 }
@@ -65,24 +65,74 @@ body {
   align-items: center;
   justify-content: center;
   padding: 28px;
+  overflow: auto;
 }
 
-.empty-state {
-  text-align: center;
+.panel {
+  width: min(640px, 100%);
+  padding: 22px 24px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
 }
 
-.empty-state h2 {
-  margin: 0 0 8px;
+.panel h2 {
+  margin: 0 0 14px;
+  font-size: 19px;
 }
 
-.empty-state p {
-  margin: 0;
-  color: var(--muted);
+.panel h2.ok {
+  color: var(--ok);
+}
+
+.panel h2.bad {
+  color: var(--bad);
+}
+
+.checks {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.checks li {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 10px;
+}
+
+.checks .mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.checks .ok .mark {
+  background: rgba(63, 182, 125, 0.18);
+  color: var(--ok);
+}
+
+.checks .bad .mark {
+  background: rgba(240, 82, 79, 0.2);
+  color: var(--bad);
+}
+
+.checks .detail {
+  display: block;
+  color: var(--fg-2);
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .app-footer {
   padding: 10px 28px;
   font-size: 12px;
   color: var(--muted);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line);
 }

@@ -9,6 +9,7 @@
 
 export const IpcChannel = {
   GetAppInfo: 'app:get-info',
+  RunPcChecks: 'app:run-pc-checks',
 } as const;
 
 export interface AppInfo {
@@ -16,10 +17,22 @@ export interface AppInfo {
   version: string;
   /** Value of `process.platform`, e.g. `win32`, `darwin` or `linux`. */
   platform: string;
+  /** Value of `process.arch`, e.g. `x64` or `arm64`. */
+  arch: string;
   electronVersion: string;
+  /** True for a built app, false when running with `npm start`. */
+  packaged: boolean;
+}
+
+/** One line of the work PC check. */
+export interface CheckResult {
+  name: string;
+  ok: boolean;
+  detail: string;
 }
 
 /** The API the preload script exposes to the renderer as `window.worksync`. */
 export interface WorkSyncApi {
   getAppInfo(): Promise<AppInfo>;
+  runPcChecks(): Promise<CheckResult[]>;
 }
