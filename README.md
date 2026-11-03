@@ -7,7 +7,7 @@ work visually, and publishes a read-only copy to a shared folder. It runs from
 an unzipped folder with no installation and no server. Targets Windows and
 macOS first, then Linux.
 
-> **Status:** step 3 of the build plan. Projects and tasks, the Focus card
+> **Status:** the first version, steps 1 to 8 of the build plan. Projects and tasks, the Focus card
 > grid, the Board, the task popup and the priority menu, and linked Excel
 > files: set up a file format once, link the file by its path, and review
 > each new version before it changes anything. Gemini batches: Copy for AI
@@ -15,7 +15,8 @@ macOS first, then Linux.
 > AI checks the answer before filling in translations and summaries. The
 > Timeline, Calendar and Dashboard views. Publishing a read-only page and an
 > Excel export to the shared folder. Writing changes into the owner's copy of
-> the customer's file, cell by cell. Excel and Word reports come next.
+> the customer's file, cell by cell. Excel and Word reports. All eight steps
+> of the build plan are in place.
 
 ## Tech stack
 

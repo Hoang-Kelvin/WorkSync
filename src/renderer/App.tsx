@@ -20,6 +20,7 @@ import { FilesView, ReviewDialog } from './files';
 import { CalendarView, DashboardView, TimelineView } from './views2';
 import { PublishDialog, PublishedView, usePublishStatus } from './publish';
 import { WriteDialog, usePendingCount } from './writeCopy';
+import { ReportDialog } from './reports';
 import { LinkWizard } from './LinkWizard';
 import { AiDialog, GlossaryDialog, type AiSession } from './ai';
 import type { SourceFile } from '../shared/sources';
@@ -49,7 +50,8 @@ type Dialog =
   | { kind: 'ai'; projectId: string; startAt: 'choose' | 'paste' }
   | { kind: 'glossary'; projectId: string }
   | { kind: 'publish'; projectId: string }
-  | { kind: 'write' };
+  | { kind: 'write' }
+  | { kind: 'report'; projectId: string };
 
 export function App() {
   const [startup, setStartup] = useState<Startup | null>(null);
@@ -330,6 +332,15 @@ function Shell({ dataFolder }: { dataFolder: string }) {
                         >
                           <Icon name="note" />
                           <span className="grow">Glossary</span>
+                        </button>
+                        <button
+                          className="nav-item custom"
+                          onClick={() =>
+                            setDialog({ kind: 'report', projectId: p.id })
+                          }
+                        >
+                          <Icon name="file" />
+                          <span className="grow">Make a report</span>
                         </button>
                         <button
                           className="nav-item custom"
@@ -637,6 +648,12 @@ function Shell({ dataFolder }: { dataFolder: string }) {
       )}
       {dialog?.kind === 'write' && (
         <WriteDialog onClose={() => setDialog(null)} />
+      )}
+      {dialog?.kind === 'report' && project(dialog.projectId) && (
+        <ReportDialog
+          project={project(dialog.projectId)!}
+          onClose={() => setDialog(null)}
+        />
       )}
       {dialog?.kind === 'publish' && project(dialog.projectId) && (
         <PublishDialog

@@ -19,6 +19,7 @@ import type {
 import type { FileFormat } from './importRules';
 import type { Batch, ReadAnswer } from './aiBatch';
 import type { PendingChange, WritePlan, WriteResult } from './writes';
+import type { ReportOptions } from './reports';
 import type {
   AiResult,
   GlossaryTerm,
@@ -149,6 +150,11 @@ export interface WorkSyncApi {
   /** Opens a copy WorkSync wrote, or shows it in its folder. */
   openCopy(file: string, inFolder: boolean): Promise<void>;
 
+  /** Makes a report and asks where to save it. Returns the saved file, or null when cancelled. */
+  makeReport(
+    options: ReportOptions,
+  ): Promise<{ file: string; tasks: number } | null>;
+
   /** Called whenever linked files change state. Returns a function that stops listening. */
   onSourcesChanged(listener: (sources: SourceFile[]) => void): () => void;
 }
@@ -204,6 +210,7 @@ export const API_METHODS = [
   'chooseCopyFolder',
   'writeCopy',
   'openCopy',
+  'makeReport',
 ] as const satisfies readonly Exclude<keyof WorkSyncApi, 'onSourcesChanged'>[];
 
 export const channel = (method: (typeof API_METHODS)[number]): string =>

@@ -25,6 +25,8 @@ import { SCHEMA_VERSION, backupDaily, migrate, openDatabase } from './db';
 import { addSampleProject } from './sample';
 import { FileLinks } from './fileLinks';
 import { CopyWriter } from './copyWriter';
+import { buildReport } from './reportFiles';
+import { reportFileName, reportTasks } from '../shared/reports';
 import { PAGE_FILE, Publisher } from './publisher';
 import { Sources } from './sources';
 import { Store } from './store';
@@ -368,10 +370,42 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
     writtenCopies.add(r.file);
     return r;
   },
+  makeReport: async (options) => {
+    const st = need();
+    const project = st.getProject(options.projectId);
+    const tasks = reportTasks(st.listTasks(), options);
+    const data = await buildReport(project, tasks, options, today());
+    const name = reportFileName(project, options, today());
+    const folder = path.join(app.getPath('documents'), 'WorkSync', 'Reports');
+    let file: string | null;
+    // Automated tests cannot click through the system dialog; they name the folder instead.
+    if (process.env.WORKSYNC_TEST_REPORT_FOLDER)
+      file = path.join(process.env.WORKSYNC_TEST_REPORT_FOLDER, name);
+    else {
+      fs.mkdirSync(folder, { recursive: true });
+      const win =
+        BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+      const r = await dialog.showSaveDialog(win, {
+        title: 'Save the report',
+        defaultPath: path.join(folder, name),
+        filters: [
+          options.format === 'xlsx'
+            ? { name: 'Excel workbook', extensions: ['xlsx'] }
+            : { name: 'Word document', extensions: ['docx'] },
+        ],
+      });
+      file = r.canceled ? null : (r.filePath ?? null);
+    }
+    if (!file) return null;
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, data);
+    writtenCopies.add(file);
+    return { file, tasks: tasks.length };
+  },
   openCopy: async (file, inFolder) => {
     if (!writtenCopies.has(file))
       throw new Error(
-        'Only copies written in this session can be opened from here.',
+        'Only files WorkSync saved in this session can be opened from here.',
       );
     if (inFolder) shell.showItemInFolder(file);
     else {

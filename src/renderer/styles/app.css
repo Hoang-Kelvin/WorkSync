@@ -530,3 +530,48 @@ button.bar {
   width: 13px;
   height: 13px;
 }
+
+/* ---------- reports ---------- */
+.report-kinds {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+}
+.report-kind {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  text-align: left;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+  font: inherit;
+}
+.report-kind:hover {
+  background: var(--raised);
+}
+.report-kind[aria-checked='true'] {
+  border-color: rgba(69, 196, 216, 0.6);
+  background: var(--accent-soft);
+}
+.report-kind .ic {
+  color: var(--accent);
+  width: 18px;
+  height: 18px;
+}
+.report-kind small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.report-kind .fmt {
+  font: 600 11px var(--mono);
+  color: var(--fg-2);
+  margin-top: 4px;
+}
+.form .seg-ctl {
+  width: max-content;
+}
