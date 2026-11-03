@@ -115,6 +115,19 @@ const MIGRATIONS: string[] = [
   ALTER TABLE tasks ADD COLUMN file_row TEXT;
   CREATE INDEX tasks_source ON tasks(source_file_id);
   `,
+  // 3: the project glossary (spec 02)
+  `
+  CREATE TABLE glossary_terms (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    term TEXT NOT NULL,
+    translation TEXT NOT NULL,
+    language TEXT NOT NULL,
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX glossary_project ON glossary_terms(project_id);
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

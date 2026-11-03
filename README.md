@@ -10,7 +10,10 @@ macOS first, then Linux.
 > **Status:** step 3 of the build plan. Projects and tasks, the Focus card
 > grid, the Board, the task popup and the priority menu, and linked Excel
 > files: set up a file format once, link the file by its path, and review
-> each new version before it changes anything. Gemini batches come next.
+> each new version before it changes anything. Gemini batches: Copy for AI
+> builds one request for many tasks with the project glossary, and Paste from
+> AI checks the answer before filling in translations and summaries.
+> Timeline, calendar and dashboard come next.
 
 ## Tech stack
 

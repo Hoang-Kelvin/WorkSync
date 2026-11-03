@@ -1,4 +1,12 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  clipboard,
+  dialog,
+  ipcMain,
+  shell,
+} from 'electron';
+import { buildBatches, readAnswer } from '../shared/aiBatch';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -232,6 +240,33 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
     needLinks().sources.remove(id);
     notifySources();
   },
+  listGlossary: async (projectId) => need().listGlossary(projectId),
+  saveGlossaryTerm: async (input) => need().saveGlossaryTerm(input),
+  deleteGlossaryTerm: async (id) => need().deleteGlossaryTerm(id),
+  // All AI work goes through these calls (spec 06). The only provider is the
+  // clipboard: the owner pastes the request into the Gemini web app.
+  prepareAiBatches: async (projectId, taskIds) => {
+    const st = need();
+    const project = st.getProject(projectId);
+    const tasks = taskIds
+      .map((id) => st.getTask(id))
+      .filter((t) => t.projectId === projectId);
+    return buildBatches(
+      tasks.map((t) => ({
+        taskId: t.id,
+        customerId: t.customerId,
+        language: t.language,
+        title: t.titleOriginal,
+        description: t.descriptionOriginal,
+        summary: t.summary,
+      })),
+      project.workingLanguage,
+      st.listGlossary(projectId),
+    );
+  },
+  readAiAnswer: async (batch, answer) => readAnswer(batch, answer),
+  applyAiResults: async (results) => need().applyAiResults(results),
+  copyText: async (text) => clipboard.writeText(text),
   openSourceFile: async (id) => {
     const src = needLinks().sources.get(id);
     const err = await shell.openPath(src.currentFile);

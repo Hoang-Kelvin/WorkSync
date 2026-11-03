@@ -458,3 +458,21 @@ export const EMPTY_SITUATION: Situation = {
   nextDate: null,
   asOf: null,
 };
+
+/** A technical term with its preferred translation in the working language (spec 02, Glossary). */
+export interface GlossaryTerm {
+  id: string;
+  projectId: string;
+  term: string;
+  translation: string;
+  language: LanguageCode;
+  note: string;
+}
+
+/** A translation and summary from an AI batch, accepted by the owner. */
+export interface AiResult {
+  taskId: string;
+  title?: string;
+  description?: string;
+  summary?: string;
+}

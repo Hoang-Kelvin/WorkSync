@@ -18,6 +18,7 @@ import { TaskPopup } from './TaskPopup';
 import { BoardView, FocusView, initials, type ViewProps } from './views';
 import { FilesView, ReviewDialog } from './files';
 import { LinkWizard } from './LinkWizard';
+import { AiDialog, GlossaryDialog, type AiSession } from './ai';
 import type { SourceFile } from '../shared/sources';
 
 type Route =
@@ -32,7 +33,9 @@ type Dialog =
   | { kind: 'editTask'; task: Task }
   | { kind: 'deleteTask'; task: Task }
   | { kind: 'link'; projectId: string }
-  | { kind: 'review'; source: SourceFile };
+  | { kind: 'review'; source: SourceFile }
+  | { kind: 'ai'; projectId: string; startAt: 'choose' | 'paste' }
+  | { kind: 'glossary'; projectId: string };
 
 export function App() {
   const [startup, setStartup] = useState<Startup | null>(null);
@@ -82,6 +85,7 @@ function Shell({ dataFolder }: { dataFolder: string }) {
   const search = useRef<HTMLInputElement>(null);
   const viewRef = useRef<HTMLElement>(null);
   const [headEl, setHeadEl] = useState<HTMLDivElement | null>(null);
+  const [aiSession, setAiSession] = useState<AiSession | null>(null);
 
   // Keep the route valid when a view is turned off or a project changes.
   useEffect(() => {
@@ -288,6 +292,15 @@ function Shell({ dataFolder }: { dataFolder: string }) {
                         <button
                           className="nav-item custom"
                           onClick={() =>
+                            setDialog({ kind: 'glossary', projectId: p.id })
+                          }
+                        >
+                          <Icon name="note" />
+                          <span className="grow">Glossary</span>
+                        </button>
+                        <button
+                          className="nav-item custom"
+                          onClick={() =>
                             setDialog({ kind: 'editProject', project: p })
                           }
                         >
@@ -348,6 +361,49 @@ function Shell({ dataFolder }: { dataFolder: string }) {
             >
               <Icon name="swap" />
               <span className="lbl">Original first</span>
+            </button>
+            <button
+              className="btn"
+              disabled={!currentProjectId}
+              title="Build a request for the Gemini web app"
+              onClick={() =>
+                currentProjectId &&
+                setDialog({
+                  kind: 'ai',
+                  projectId:
+                    aiSession?.projectId === currentProjectId
+                      ? aiSession.projectId
+                      : currentProjectId,
+                  startAt: 'choose',
+                })
+              }
+            >
+              <Icon name="spark" />
+              <span className="lbl">Copy for AI</span>
+            </button>
+            <button
+              className="btn"
+              disabled={!aiSession}
+              title={
+                aiSession ? 'Paste Gemini’s answer' : 'Use Copy for AI first'
+              }
+              onClick={() =>
+                aiSession &&
+                setDialog({
+                  kind: 'ai',
+                  projectId: aiSession.projectId,
+                  startAt: 'paste',
+                })
+              }
+            >
+              <Icon name="copy" />
+              <span className="lbl">Paste from AI</span>
+              {aiSession &&
+                aiSession.batches.length - aiSession.done.length > 0 && (
+                  <span className="badge">
+                    {aiSession.batches.length - aiSession.done.length}
+                  </span>
+                )}
             </button>
             <button
               className="btn primary"
@@ -479,6 +535,21 @@ function Shell({ dataFolder }: { dataFolder: string }) {
             setDialog(null);
             go({ view: 'focus', scope: dialog.projectId });
           }}
+        />
+      )}
+      {dialog?.kind === 'ai' && project(dialog.projectId) && (
+        <AiDialog
+          project={project(dialog.projectId)!}
+          session={aiSession?.projectId === dialog.projectId ? aiSession : null}
+          setSession={setAiSession}
+          startAt={dialog.startAt}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === 'glossary' && project(dialog.projectId) && (
+        <GlossaryDialog
+          project={project(dialog.projectId)!}
+          onClose={() => setDialog(null)}
         />
       )}
       {dialog?.kind === 'review' && (

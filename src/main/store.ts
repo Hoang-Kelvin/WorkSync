@@ -7,6 +7,8 @@ import {
   detectLanguage,
   translationStateFor,
   type ActivityEntry,
+  type AiResult,
+  type GlossaryTerm,
   type Level,
   type Project,
   type ProjectInput,
@@ -557,5 +559,108 @@ export class Store {
       kind: str(r.kind),
       text: str(r.text),
     }));
+  }
+
+  // ------------------------------------------------------------ glossary
+
+  listGlossary(projectId?: string): GlossaryTerm[] {
+    const rows = (
+      projectId
+        ? this.db
+            .prepare(
+              'SELECT * FROM glossary_terms WHERE project_id = ? ORDER BY term',
+            )
+            .all(projectId)
+        : this.db.prepare('SELECT * FROM glossary_terms ORDER BY term').all()
+    ) as Row[];
+    return rows.map((r) => ({
+      id: str(r.id),
+      projectId: str(r.project_id),
+      term: str(r.term),
+      translation: str(r.translation),
+      language: str(r.language) as GlossaryTerm['language'],
+      note: str(r.note),
+    }));
+  }
+
+  saveGlossaryTerm(
+    input: Omit<GlossaryTerm, 'id'> & { id?: string },
+  ): GlossaryTerm {
+    const term = input.term.trim();
+    const translation = input.translation.trim();
+    if (!term || !translation)
+      throw new Error('A glossary entry needs the term and its translation.');
+    const project = this.getProject(input.projectId);
+    const language =
+      input.language ?? detectLanguage(term, project.originalLanguages);
+    const id = input.id ?? randomUUID();
+    if (input.id) {
+      this.db
+        .prepare(
+          'UPDATE glossary_terms SET term = ?, translation = ?, language = ?, note = ? WHERE id = ?',
+        )
+        .run(term, translation, language, input.note.trim(), id);
+    } else {
+      this.db
+        .prepare(
+          'INSERT INTO glossary_terms (id, project_id, term, translation, language, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        )
+        .run(
+          id,
+          input.projectId,
+          term,
+          translation,
+          language,
+          input.note.trim(),
+          this.now(),
+        );
+    }
+    return this.listGlossary(input.projectId).find((g) => g.id === id)!;
+  }
+
+  deleteGlossaryTerm(id: string): void {
+    this.db.prepare('DELETE FROM glossary_terms WHERE id = ?').run(id);
+  }
+
+  // ------------------------------------------------------------ AI batches
+
+  /** Fills in what the owner accepted from an AI batch, and records it in each task's history. */
+  applyAiResults(results: AiResult[]): Task[] {
+    return this.tx(() =>
+      results.map((r) => {
+        const t = this.getTask(r.taskId);
+        const parts: string[] = [];
+        const title = r.title?.trim() ? r.title.trim() : t.titleTranslation;
+        const description = r.description?.trim()
+          ? r.description.trim()
+          : t.descriptionTranslation;
+        const summary = r.summary?.trim() ? r.summary.trim() : t.summary;
+        if (
+          title !== t.titleTranslation ||
+          description !== t.descriptionTranslation
+        )
+          parts.push('translation');
+        if (summary !== t.summary) parts.push('summary');
+        if (!parts.length) return t;
+        const project = this.getProject(t.projectId);
+        const state =
+          t.language === project.workingLanguage
+            ? 'Not needed'
+            : title
+              ? 'Translated'
+              : t.translationState;
+        this.db
+          .prepare(
+            'UPDATE tasks SET title_translation = ?, description_translation = ?, summary = ?, translation_state = ?, updated_at = ? WHERE id = ?',
+          )
+          .run(title, description, summary, state, this.now(), t.id);
+        this.log(
+          t.id,
+          'AI batch',
+          `Filled in the ${parts.join(' and ')} from a Gemini batch.`,
+        );
+        return this.getTask(t.id);
+      }),
+    );
   }
 }

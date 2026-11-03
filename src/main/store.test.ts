@@ -141,6 +141,60 @@ describe('Store', () => {
   });
 });
 
+describe('glossary and AI batches', () => {
+  it('keeps glossary terms per project with their language', () => {
+    const p = project();
+    const g = store.saveGlossaryTerm({
+      projectId: p.id,
+      term: '受入テスト',
+      translation: 'acceptance test',
+      note: '',
+      language: 'ja',
+    });
+    store.saveGlossaryTerm({ ...g, translation: 'user acceptance test' });
+    expect(
+      store.listGlossary(p.id).map((x) => [x.term, x.translation, x.language]),
+    ).toEqual([['受入テスト', 'user acceptance test', 'ja']]);
+    expect(() =>
+      store.saveGlossaryTerm({
+        projectId: p.id,
+        term: 'x',
+        translation: ' ',
+        note: '',
+        language: 'ja',
+      }),
+    ).toThrow('needs the term');
+    store.deleteGlossaryTerm(g.id);
+    expect(store.listGlossary(p.id)).toHaveLength(0);
+  });
+
+  it('fills in accepted translations and summaries, and records it', () => {
+    const p = project();
+    const t = store.createTask(p.id, input());
+    const kept = store.createTask(p.id, input({ summary: 'Mine' }));
+    const [a, b] = store.applyAiResults([
+      {
+        taskId: t.id,
+        title: 'Login screen times out',
+        description: 'Para 1\n\nPara 2',
+        summary: 'Sessions expire too early.',
+      },
+      { taskId: kept.id, title: 'Second', summary: '' },
+    ]);
+    expect(a).toMatchObject({
+      titleTranslation: 'Login screen times out',
+      descriptionTranslation: 'Para 1\n\nPara 2',
+      summary: 'Sessions expire too early.',
+      translationState: 'Translated',
+    });
+    expect(b.summary).toBe('Mine');
+    expect(store.listActivity(t.id)[0]).toMatchObject({
+      kind: 'AI batch',
+      text: 'Filled in the translation and summary from a Gemini batch.',
+    });
+  });
+});
+
 describe('backups', () => {
   it('writes one backup a day and keeps the last 14', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'worksync-backup-'));
