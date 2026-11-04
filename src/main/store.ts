@@ -6,6 +6,7 @@ import {
   EMPTY_SITUATION,
   LEVEL_NAME,
   detectLanguage,
+  linkKind,
   personKey,
   translationStateFor,
   type ActivityEntry,
@@ -23,6 +24,7 @@ import {
   type Status,
   type Task,
   type TaskInput,
+  type TaskLink,
   type ViewKey,
 } from '../shared/model';
 import { DEFAULT_SETTINGS, type AppSettings } from '../shared/settings';
@@ -278,6 +280,7 @@ export class Store {
     return {
       id: str(r.id),
       projectId: str(r.project_id),
+      links: JSON.parse(str(r.links) || '[]'),
       customerId: str(r.customer_id),
       source: str(r.source) as Task['source'],
       sourceFileId: opt(r.source_file_id),
@@ -489,6 +492,44 @@ export class Store {
           `Changed ${changed.map((k) => FIELD_LABELS[k]).join(', ')}.`,
         );
       }
+    });
+    return this.getTask(id);
+  }
+
+  /** Replaces the task's links; each must be a web address or a file path. */
+  setLinks(id: string, links: TaskLink[]): Task {
+    const clean = links
+      .map((l) => ({ name: l.name.trim(), target: l.target.trim() }))
+      .filter((l) => l.target);
+    for (const l of clean)
+      if (!linkKind(l.target))
+        throw new Error(
+          `${l.target} is not a web address or a file path. Use one such as https://… or \\\\server\\share\\spec.xlsx.`,
+        );
+    const before = this.getTask(id);
+    this.tx(() => {
+      this.db
+        .prepare('UPDATE tasks SET links = ?, updated_at = ? WHERE id = ?')
+        .run(JSON.stringify(clean), this.now(), id);
+      const added = clean.filter(
+        (l) => !before.links.some((b) => b.target === l.target),
+      );
+      const gone = before.links.filter(
+        (b) => !clean.some((l) => l.target === b.target),
+      );
+      if (added.length || gone.length)
+        this.log(
+          id,
+          'Edit',
+          [
+            added.length &&
+              `Added link ${added.map((l) => l.name || l.target).join(', ')}.`,
+            gone.length &&
+              `Removed link ${gone.map((l) => l.name || l.target).join(', ')}.`,
+          ]
+            .filter(Boolean)
+            .join(' '),
+        );
     });
     return this.getTask(id);
   }

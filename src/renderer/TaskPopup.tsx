@@ -9,7 +9,9 @@ import {
   flags,
   shortDate,
   shownPriority,
+  linkKind,
   type ActivityEntry,
+  type TaskLink,
   type Task,
   type WaitingOn,
   assigneeText,
@@ -295,9 +297,120 @@ function SituationForm({ task, onDone }: { task: Task; onDone: () => void }) {
   );
 }
 
+/** Web addresses and file paths kept with the task (spec 02, Links). */
+function Links({ task }: { task: Task }) {
+  const { attempt, putTask, toast } = useApp();
+  const [adding, setAdding] = useState(false);
+  const [target, setTarget] = useState('');
+  const [name, setName] = useState('');
+  const save = async (links: TaskLink[]) => {
+    const t = await attempt(() => window.worksync.setTaskLinks(task.id, links));
+    if (t) putTask(t);
+    return !!t;
+  };
+  const add = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!target.trim()) return;
+    if (!linkKind(target)) {
+      toast(
+        'Use a web address such as https://… or a file path such as \\\\server\\share\\spec.xlsx or D:\\Docs\\spec.pdf.',
+      );
+      return;
+    }
+    if (await save([...task.links, { name, target }])) {
+      setTarget('');
+      setName('');
+      setAdding(false);
+    }
+  };
+  return (
+    <div className="field links-field">
+      <div className="k">
+        <Icon name="link" />
+        Links
+        <button
+          className="linkbtn"
+          style={{ marginLeft: 'auto' }}
+          onClick={() => setAdding(!adding)}
+        >
+          {adding ? 'Cancel' : 'Add a link'}
+        </button>
+      </div>
+      <div className="v">
+        {task.links.length ? (
+          <ul className="links">
+            {task.links.map((l, i) => (
+              <li key={`${l.target}-${i}`}>
+                <button
+                  className="linkbtn"
+                  title={l.target}
+                  onClick={() =>
+                    void attempt(() => window.worksync.openLink(l.target))
+                  }
+                >
+                  <Icon
+                    name={linkKind(l.target) === 'web' ? 'globe' : 'folder'}
+                  />
+                  {l.name || l.target}
+                </button>
+                <button
+                  className="icon-btn"
+                  aria-label={`Remove the link ${l.name || l.target}`}
+                  onClick={() =>
+                    void save(task.links.filter((_, j) => j !== i))
+                  }
+                >
+                  <Icon name="x" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          !adding && <span className="muted">None</span>
+        )}
+        {adding && (
+          <form className="link-add" onSubmit={add}>
+            <input
+              className="inp"
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              placeholder="https://… or \\server\share\spec.xlsx"
+              aria-label="Web address or file path"
+              autoFocus
+            />
+            <input
+              className="inp"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Name (optional), such as Spec v2"
+              aria-label="Link name"
+            />
+            <button className="btn sm primary" type="submit">
+              Add
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** History entry kinds, grouped into the types the owner filters by (spec 03). */
+const HISTORY_GROUPS: { name: string; kinds: string[] }[] = [
+  { name: 'Situation', kinds: ['Situation update', 'Difficulty'] },
+  { name: 'From the file', kinds: ['Import'] },
+  { name: 'Edits', kinds: ['Edit', 'Priority override', 'Created'] },
+  { name: 'Written to copy', kinds: ['Write-back'] },
+  { name: 'AI', kinds: ['AI', 'AI batch'] },
+  { name: 'Your entries', kinds: ['Note'] },
+];
+const groupOf = (kind: string) =>
+  HISTORY_GROUPS.find((g) => g.kinds.includes(kind))?.name ?? 'Edits';
+
 function History({ task }: { task: Task }) {
   const { attempt } = useApp();
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
+  const [show, setShow] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [adding, setAdding] = useState(false);
   useEffect(() => {
@@ -354,20 +467,48 @@ function History({ task }: { task: Task }) {
           </div>
         </form>
       )}
-      <ul className="hist">
-        {entries.map((h) => (
-          <li
-            key={h.id}
-            className={h.kind === 'Situation update' ? 'situation' : ''}
+      {entries.length > 3 && (
+        <div className="hist-filter" role="group" aria-label="Show in history">
+          <button
+            className="fb-opt"
+            aria-pressed={show === null}
+            onClick={() => setShow(null)}
           >
-            <span className="when">
-              {fileDate(h.at.slice(0, 10))}{' '}
-              {new Date(h.at).toTimeString().slice(0, 5)}
-            </span>
-            <span className="kind">{h.kind}</span>
-            <div>{h.text}</div>
-          </li>
-        ))}
+            All {entries.length}
+          </button>
+          {HISTORY_GROUPS.map((g) => {
+            const n = entries.filter((h) => groupOf(h.kind) === g.name).length;
+            return (
+              n > 0 && (
+                <button
+                  key={g.name}
+                  className="fb-opt"
+                  aria-pressed={show === g.name}
+                  onClick={() => setShow(show === g.name ? null : g.name)}
+                >
+                  {g.name} {n}
+                </button>
+              )
+            );
+          })}
+        </div>
+      )}
+      <ul className="hist">
+        {entries
+          .filter((h) => !show || groupOf(h.kind) === show)
+          .map((h) => (
+            <li
+              key={h.id}
+              className={h.kind === 'Situation update' ? 'situation' : ''}
+            >
+              <span className="when">
+                {fileDate(h.at.slice(0, 10))}{' '}
+                {new Date(h.at).toTimeString().slice(0, 5)}
+              </span>
+              <span className="kind">{h.kind}</span>
+              <div>{h.text}</div>
+            </li>
+          ))}
       </ul>
     </section>
   );
@@ -814,6 +955,7 @@ export function TaskPopup({
                     )
                   }
                 />
+                <Links task={task} />
               </div>
             </section>
             <History task={task} />

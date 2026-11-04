@@ -345,3 +345,24 @@ describe('deleting a project', () => {
     expect(() => store.deleteProject(p.id)).toThrow();
   });
 });
+
+describe('links on a task', () => {
+  it('keeps web addresses and paths, refuses anything else, and records it', () => {
+    const t = store.createTask(project().id, input());
+    const u = store.setLinks(t.id, [
+      { name: 'Spec', target: ' https://example.com/spec ' },
+      { name: '', target: '\\\\fs01\\share\\WBS.xlsx' },
+      { name: '', target: 'D:\\Docs\\a.pdf' },
+      { name: 'blank', target: ' ' },
+    ]);
+    expect(u.links.map((l) => l.target)).toEqual([
+      'https://example.com/spec',
+      '\\\\fs01\\share\\WBS.xlsx',
+      'D:\\Docs\\a.pdf',
+    ]);
+    expect(() =>
+      store.setLinks(t.id, [{ name: '', target: 'javascript:alert(1)' }]),
+    ).toThrow(/not a web address/);
+    expect(store.listActivity(t.id)[0].text).toMatch(/Added link Spec/);
+  });
+});

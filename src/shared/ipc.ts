@@ -17,6 +17,7 @@ import type {
   Task,
   TableSettings,
   TaskInput,
+  TaskLink,
   ViewKey,
 } from './model';
 import type { FileFormat } from './importRules';
@@ -106,6 +107,9 @@ export interface WorkSyncApi {
   updateTask(id: string, patch: Partial<TaskInput>): Promise<Task>;
   setPriorityOverride(id: string, level: Level | null): Promise<Task>;
   setPinned(id: string, pinned: boolean): Promise<Task>;
+  setTaskLinks(id: string, links: TaskLink[]): Promise<Task>;
+  /** Opens a task's link: a web address in the browser, a path in its program, a program file in its folder. */
+  openLink(target: string): Promise<void>;
   /** One change to several tasks, from the Tasks table. */
   bulkUpdate(ids: string[], change: BulkChange): Promise<Task[]>;
   setTableSettings(
@@ -231,6 +235,8 @@ export const API_METHODS = [
   'updateTask',
   'setPriorityOverride',
   'setPinned',
+  'setTaskLinks',
+  'openLink',
   'bulkUpdate',
   'setTableSettings',
   'addSituationUpdate',

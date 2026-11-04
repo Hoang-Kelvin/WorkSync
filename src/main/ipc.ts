@@ -24,7 +24,7 @@ import {
   type Startup,
   type WorkSyncApi,
 } from '../shared/ipc';
-import { assigneeText, toIsoDate } from '../shared/model';
+import { assigneeText, linkKind, toIsoDate } from '../shared/model';
 import { SOURCES_EVENT } from '../shared/ipc';
 import { dataFolderPath, isNetworkPath } from './dataFolder';
 import { writeTargetProblem } from './fileLinks';
@@ -363,6 +363,33 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
   setPriorityOverride: async (id, level) =>
     need().setPriorityOverride(id, level),
   setPinned: async (id, pinned) => need().setPinned(id, pinned),
+  setTaskLinks: async (id, links) => need().setLinks(id, links),
+  openLink: async (target) => {
+    const t = target.trim();
+    const kind = linkKind(t);
+    // Only links saved on a task are opened, never text from elsewhere.
+    if (
+      !kind ||
+      !need()
+        .listTasks()
+        .some((x) => x.links.some((l) => l.target === t))
+    )
+      throw new Error('This link is not saved on a task.');
+    if (kind === 'web') return shell.openExternal(t);
+    // A program is never started from a link; its folder is shown instead.
+    if (
+      /\.(exe|bat|cmd|com|ps1|vbs|vbe|js|jse|wsf|msi|scr|lnk|hta|jar|reg)$/i.test(
+        t,
+      )
+    )
+      return shell.showItemInFolder(t);
+    if (!fs.existsSync(t))
+      throw new Error(
+        `${t} was not found. The shared folder may not be connected.`,
+      );
+    const err = await shell.openPath(t);
+    if (err) throw new Error(err);
+  },
   bulkUpdate: async (ids, change) => need().bulkUpdate(ids, change),
   setTableSettings: async (id, settings) =>
     need().setTableSettings(id, settings),

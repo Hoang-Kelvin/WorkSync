@@ -166,11 +166,28 @@ export interface Situation {
   asOf: string | null;
 }
 
+/** A web address or a file path kept with a task, such as a specification on the shared folder. */
+export interface TaskLink {
+  /** What the owner calls it; the address is shown when empty. */
+  name: string;
+  target: string;
+}
+
+/** Web addresses and file or folder paths a link may point to. */
+export function linkKind(target: string): 'web' | 'path' | null {
+  const t = target.trim();
+  if (/^(https?:\/\/|mailto:)\S+$/i.test(t)) return 'web';
+  if (/^([A-Za-z]:[\\/]|\\\\[^\\]|\/)/.test(t)) return 'path';
+  return null;
+}
+
 export interface Task {
   id: string;
   projectId: string;
   /** The file's ID column, such as No. or 管理番号. For tasks added by hand, the owner's own number. */
   customerId: string;
+  /** Web addresses and file paths kept with the task (an owner field). */
+  links: TaskLink[];
   /** Tasks in this build are all added by hand. */
   source: 'hand' | 'file';
   /** For tasks from a file: the linked source file, the row and what the file says. */

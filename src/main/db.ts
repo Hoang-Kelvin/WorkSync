@@ -184,6 +184,10 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (task_id, field, language)
   );
   `,
+  // 11: links kept with a task (spec 02, owner fields)
+  `
+  ALTER TABLE tasks ADD COLUMN links TEXT NOT NULL DEFAULT '[]';
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

@@ -1166,3 +1166,48 @@ abbr.gloss {
   gap: 10px;
   font-size: 12px;
 }
+.hist-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+/* links on a task */
+.links-field .k {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.links li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.links .linkbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.links .icon-btn {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+}
+.link-add {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}

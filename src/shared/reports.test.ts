@@ -34,6 +34,7 @@ const task = (o: Partial<Task>): Task => ({
   customerId: '1',
   source: 'hand',
   sourceFileId: null,
+  links: [],
   sheetRow: null,
   fileState: 'hand',
   statusWord: '',
