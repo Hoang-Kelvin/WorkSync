@@ -198,6 +198,35 @@ describe('Sources', () => {
     expect(store.getTask(t3.id).fileState).toBe('in_file');
   });
 
+  it('switches the title to the ID column, keeping the work and the old title as a field', () => {
+    const { source } = link();
+    const t1 = store.listTasks().find((x) => x.customerId === '1')!;
+    store.updateTask(t1.id, { titleTranslation: 'Login', summary: 'Mine' });
+    sources.updateFormat(source.id, {
+      ...FORMAT,
+      columns: { ...FORMAT.columns, title: 0 },
+    });
+    const r = sources.review(source.id, version(v1, 'b'));
+    expect(r.changed.find((c) => c.taskId === t1.id)!.changes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'title', from: 'ログイン', to: '1' }),
+      ]),
+    );
+    sources.apply(source.id, version(v1, 'b'), {
+      byTitle: false,
+      addRows: [],
+      change: r.changed.map((c) => ({ taskId: c.taskId, keepMine: [] })),
+      removeTaskIds: [],
+    });
+    expect(store.getTask(t1.id)).toMatchObject({
+      titleOriginal: '1',
+      language: 'en',
+      translationState: 'Not needed',
+      summary: 'Mine',
+      extra: { 件名: 'ログイン' },
+    });
+  });
+
   it('keeps the last ten snapshots', () => {
     const { source } = link();
     for (let i = 0; i < 12; i++)

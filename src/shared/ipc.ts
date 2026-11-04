@@ -33,6 +33,7 @@ import type {
   PublishStatus,
 } from './model';
 import type {
+  SheetPreview,
   ApplySelection,
   FileInspection,
   FormatPreview,
@@ -137,6 +138,8 @@ export interface WorkSyncApi {
     id: string,
     selection: ApplySelection,
   ): Promise<{ added: number; changed: number; removed: number }>;
+  /** The first rows of a linked file's sheet, for changing which column holds what. */
+  sourceSheet(sourceId: string): Promise<SheetPreview>;
   updateSourceFormat(id: string, format: FileFormat): Promise<SourceFile>;
   unlinkSource(id: string): Promise<void>;
   /** Opens the linked file in Excel, or whatever opens it on this PC. */
@@ -243,6 +246,7 @@ export const API_METHODS = [
   'checkSources',
   'reviewSource',
   'applySource',
+  'sourceSheet',
   'updateSourceFormat',
   'unlinkSource',
   'openSourceFile',

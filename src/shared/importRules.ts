@@ -473,6 +473,30 @@ export function distinctValues(
 // ---------------------------------------------------------------- rows
 
 /** A saved way to read one kind of file (spec 04, Setting up a file format). */
+/**
+ * Fields that may read the same column. The title may be the ID, for files
+ * where a task is known by its number or code (the ID column then gives both).
+ */
+export const MAY_SHARE: [ImportField, ImportField][] = [
+  ['title', 'customerId'],
+];
+
+/** Whether a field may use a column another field already uses. */
+export function columnFree(
+  columns: ColumnMapping,
+  field: ImportField,
+  col: number,
+): boolean {
+  return (Object.entries(columns) as [ImportField, number | undefined][]).every(
+    ([f, c]) =>
+      c !== col ||
+      f === field ||
+      MAY_SHARE.some(
+        ([a, b]) => (a === f && b === field) || (b === f && a === field),
+      ),
+  );
+}
+
 export interface FileFormat {
   name: string;
   sheet: string;

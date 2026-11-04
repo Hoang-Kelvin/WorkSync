@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import { columnLetter, type FileFormat } from '../shared/importRules';
+import {
+  columnLetter,
+  headerNames,
+  type ColumnMapping,
+  type FileFormat,
+} from '../shared/importRules';
+import { ColumnMap } from './LinkWizard';
 import {
   LANGUAGES,
   LEVELS,
@@ -48,6 +54,7 @@ export function FilesView({
 }) {
   const { sources, project, attempt, toast, setSources, reloadTasks } =
     useApp();
+  const [columnsOf, setColumnsOf] = useState<SourceFile | null>(null);
   const p = project(projectId)!;
   const list = sources.filter((s) => s.projectId === projectId);
   const [confirm, setConfirm] = useState<SourceFile | null>(null);
@@ -147,6 +154,13 @@ export function FilesView({
                         </button>
                         <button
                           className="btn sm"
+                          title="Change which column holds the ID, the title and the other fields"
+                          onClick={() => setColumnsOf(s)}
+                        >
+                          Columns
+                        </button>
+                        <button
+                          className="btn sm"
                           title="Stop following this file"
                           onClick={() => setConfirm(s)}
                         >
@@ -179,6 +193,16 @@ export function FilesView({
           copy, so the customer’s file is never changed or kept open.
         </span>
       </div>
+      {columnsOf && (
+        <ColumnsDialog
+          source={columnsOf}
+          onClose={() => setColumnsOf(null)}
+          onSaved={(updated) => {
+            setColumnsOf(null);
+            onReview(updated);
+          }}
+        />
+      )}
       {confirm && (
         <Modal
           title={`Unlink ${name(confirm.currentFile)}?`}
@@ -605,6 +629,94 @@ export function ReviewDialog({
           )
           .join(' · ')}
       </p>
+    </Modal>
+  );
+}
+
+/**
+ * Changes which column holds each field of a linked file, such as using the
+ * ID as the title. Saving opens the review, where the new titles and fields
+ * are applied like any other change from the file.
+ */
+function ColumnsDialog({
+  source,
+  onClose,
+  onSaved,
+}: {
+  source: SourceFile;
+  onClose: () => void;
+  onSaved: (s: SourceFile) => void;
+}) {
+  const { attempt, setSources } = useApp();
+  const [rows, setRows] = useState<string[][] | null>(null);
+  const [columns, setColumns] = useState<ColumnMapping>(source.format.columns);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    void attempt(() => window.worksync.sourceSheet(source.id)).then((r) =>
+      r ? setRows(r.rows) : onClose(),
+    );
+    // Once, when the dialog opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const headers = rows ? headerNames(rows, source.format.headerRows) : [];
+  const sample = (col: number) =>
+    (rows ?? [])
+      .slice(Math.max(...source.format.headerRows) + 1)
+      .map((r) => r[col])
+      .find(Boolean) ?? '';
+  const changed =
+    JSON.stringify(columns) !== JSON.stringify(source.format.columns);
+  const save = async () => {
+    setBusy(true);
+    const s = await attempt(() =>
+      window.worksync.updateSourceFormat(source.id, {
+        ...source.format,
+        columns,
+      }),
+    );
+    setBusy(false);
+    if (!s) return;
+    setSources(await window.worksync.listSources());
+    onSaved(s);
+  };
+  return (
+    <Modal
+      title="Columns"
+      subtitle={`${source.format.name} · sheet ${source.format.sheet}`}
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="btn primary"
+            disabled={!changed || columns.title === undefined || busy}
+            onClick={() => void save()}
+          >
+            <Icon name="check" />
+            Save and review the changes
+          </button>
+        </>
+      }
+    >
+      {rows ? (
+        <>
+          <p className="muted step-help">
+            After saving, the review shows what changes in your tasks, such as
+            new titles. Nothing changes until you apply it. Your summaries,
+            situations and notes stay.
+          </p>
+          <ColumnMap
+            columns={columns}
+            setColumns={setColumns}
+            headers={headers}
+            sample={sample}
+          />
+        </>
+      ) : (
+        <p className="muted">Reading the file…</p>
+      )}
     </Modal>
   );
 }

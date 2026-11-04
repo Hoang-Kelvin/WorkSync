@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  columnFree,
   columnLetter,
   compareVersions,
   distinctValues,
@@ -377,5 +378,41 @@ describe('compareVersions', () => {
     expect(t.added).toHaveLength(0);
     expect(t.changed).toHaveLength(0);
     expect(t.unchanged).toBe(4);
+  });
+});
+
+describe('the ID as the title', () => {
+  it('lets the title share the ID column, and no other pair', () => {
+    expect(columnFree({ customerId: 0 }, 'title', 0)).toBe(true);
+    expect(columnFree({ title: 0 }, 'customerId', 0)).toBe(true);
+    expect(columnFree({ customerId: 0 }, 'assignee', 0)).toBe(false);
+    expect(columnFree({ customerId: 0, title: 0 }, 'status', 0)).toBe(false);
+    expect(columnFree({ customerId: 0 }, 'title', 1)).toBe(true);
+  });
+
+  it('imports the ID as both the number and the title', () => {
+    const grid = [
+      ['ID', '件名', '状態'],
+      ['LOGIN-01', 'ログイン画面のタイムアウト', '対応中'],
+      ['CSV-02', '', '未着手'],
+    ];
+    const r = readRows(
+      grid,
+      {
+        name: 'x',
+        sheet: 'x',
+        headerRows: [0],
+        columns: { customerId: 0, title: 0, status: 2 },
+        statusWords: { 対応中: 'In progress' },
+        priorityWords: {},
+      },
+      '2026-11-04',
+    );
+    expect(r.rows.map((x) => [x.customerId, x.title])).toEqual([
+      ['LOGIN-01', 'LOGIN-01'],
+      ['CSV-02', 'CSV-02'],
+    ]);
+    // The old title column is kept as a field from the file.
+    expect(r.rows[0].extra).toEqual({ 件名: 'ログイン画面のタイムアウト' });
   });
 });

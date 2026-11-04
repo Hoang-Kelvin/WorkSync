@@ -533,12 +533,20 @@ export class Sources {
       f.has(field) ? fileValue : appVal;
     const titleChanged = f.has('title') || f.has('description');
     const project = this.store.getProject(t.projectId);
+    // A new title may be in another language, such as an ID that needs no translation.
+    const language = f.has('title')
+      ? detectLanguage(
+          row.title,
+          project.originalLanguages,
+          t.sourceFileId ? this.get(t.sourceFileId).mainLanguage : undefined,
+        )
+      : t.language;
     const translationState =
-      titleChanged && t.translationState === 'Translated'
-        ? 'Needs review'
-        : translationStateFor(t, project.workingLanguage) === 'Not needed'
-          ? 'Not needed'
-          : t.translationState;
+      language === project.workingLanguage
+        ? 'Not needed'
+        : titleChanged && t.translationState === 'Translated'
+          ? 'Needs review'
+          : translationStateFor({ ...t, language }, project.workingLanguage);
     const extra = Object.fromEntries(
       Object.keys({ ...t.extra, ...row.extra })
         .filter((k) =>
@@ -550,12 +558,13 @@ export class Sources {
     );
     this.db
       .prepare(
-        `UPDATE tasks SET title_original = ?, description_original = ?, assignee = ?, planned_start = ?, planned_end = ?,
+        `UPDATE tasks SET language = ?, title_original = ?, description_original = ?, assignee = ?, planned_start = ?, planned_end = ?,
            actual_start = ?, actual_end = ?, status = ?, status_word = ?, priority = ?, priority_word = ?, category = ?,
            remarks = ?, extra = ?, translation_state = ?, sheet_row = ?, file_state = 'in_file', file_row = ?, updated_at = ?
          WHERE id = ?`,
       )
       .run(
+        language,
         pick('title', row.title, t.titleOriginal),
         pick('description', row.description, t.descriptionOriginal),
         pick('assignee', row.assignee, t.assignee),

@@ -431,6 +431,20 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
     notifySources();
     return r;
   },
+  sourceSheet: async (id) => {
+    const { sources: s, links: l } = needLinks();
+    const src = s.get(id);
+    const sheet = readOrMark(id, () =>
+      l
+        .inspect(src.currentFile)
+        .sheets.find((x) => x.name === src.format.sheet),
+    );
+    if (!sheet)
+      throw new Error(
+        `The sheet “${src.format.sheet}” is no longer in the file.`,
+      );
+    return sheet;
+  },
   updateSourceFormat: async (id, format) =>
     needLinks().sources.updateFormat(id, format),
   unlinkSource: async (id) => {

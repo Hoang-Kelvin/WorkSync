@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   FIELD_NAMES,
   IMPORT_FIELDS,
+  columnFree,
   columnLetter,
   headerNames,
   proposeLevel,
@@ -211,7 +212,6 @@ export function LinkWizard({
     onLinked();
   };
 
-  const used = new Set(Object.values(columns));
   const sample = (col: number) => {
     const from = Math.max(...headerRows) + 1;
     return (
@@ -378,39 +378,12 @@ export function LinkWizard({
             These matches come from the header text. Change any that are wrong.
             Columns left unmatched are kept as extra fields.
           </p>
-          <div className="map-grid">
-            {IMPORT_FIELDS.map((f: ImportField) => (
-              <label key={f}>
-                {FIELD_NAMES[f]}
-                {f === 'title' && <span className="hint"> · required</span>}
-                <select
-                  className="inp"
-                  value={columns[f] ?? ''}
-                  onChange={(e) =>
-                    setColumns({
-                      ...columns,
-                      [f]:
-                        e.target.value === ''
-                          ? undefined
-                          : Number(e.target.value),
-                    })
-                  }
-                >
-                  <option value="">Not in this file</option>
-                  {headers.map((h, i) => (
-                    <option
-                      key={i}
-                      value={i}
-                      disabled={used.has(i) && columns[f] !== i}
-                    >
-                      {columnLetter(i)} · {h || '(no header)'}
-                      {sample(i) ? ` — ${String(sample(i)).slice(0, 24)}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ))}
-          </div>
+          <ColumnMap
+            columns={columns}
+            setColumns={setColumns}
+            headers={headers}
+            sample={sample}
+          />
           {columns.customerId === undefined && (
             <div className="keepnote">
               <Icon name="alert" />
@@ -606,5 +579,74 @@ export function LinkWizard({
         </>
       )}
     </Modal>
+  );
+}
+
+/**
+ * Which column holds each field. A column serves one field, except that the
+ * title may be the ID column, for files where tasks are called by their ID.
+ */
+export function ColumnMap({
+  columns,
+  setColumns,
+  headers,
+  sample,
+}: {
+  columns: ColumnMapping;
+  setColumns: (c: ColumnMapping) => void;
+  headers: string[];
+  sample: (col: number) => string;
+}) {
+  return (
+    <>
+      <div className="map-grid">
+        {IMPORT_FIELDS.map((f: ImportField) => (
+          <label key={f}>
+            {FIELD_NAMES[f]}
+            {f === 'title' && <span className="hint"> · required</span>}
+            <select
+              className="inp"
+              value={columns[f] ?? ''}
+              onChange={(e) =>
+                setColumns({
+                  ...columns,
+                  [f]:
+                    e.target.value === '' ? undefined : Number(e.target.value),
+                })
+              }
+            >
+              <option value="">Not in this file</option>
+              {headers.map((h, i) => (
+                <option key={i} value={i} disabled={!columnFree(columns, f, i)}>
+                  {columnLetter(i)} · {h || '(no header)'}
+                  {f === 'title' && columns.customerId === i ? ' (the ID)' : ''}
+                  {sample(i) ? ` — ${String(sample(i)).slice(0, 24)}` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+      </div>
+      {columns.customerId !== undefined &&
+        columns.title !== columns.customerId && (
+          <button
+            type="button"
+            className="btn sm"
+            onClick={() =>
+              setColumns({ ...columns, title: columns.customerId })
+            }
+            title="Tasks are shown and found by their ID, as you call them in meetings"
+          >
+            Use the ID as the title
+          </button>
+        )}
+      {columns.customerId !== undefined &&
+        columns.title === columns.customerId && (
+          <p className="muted step-help">
+            The title is the ID. Tasks show and are found by their ID; the other
+            columns are kept as fields from the file.
+          </p>
+        )}
+    </>
   );
 }

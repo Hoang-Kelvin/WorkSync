@@ -54,7 +54,7 @@ describe('writing fields into CSV files', () => {
       ]),
       [{ row: 1, col: 1, value: { kind: 'text', text: '3' } }],
     );
-    expect([...bom.data.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    expect(Array.from(bom.data.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
     expect(text(bom.data.slice(3))).toBe('a\tb\n1\t3\n');
     expect(
       editCsvCells(new TextEncoder().encode('a\n'), [
