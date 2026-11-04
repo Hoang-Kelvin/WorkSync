@@ -188,6 +188,8 @@ export interface Task {
   customerId: string;
   /** Web addresses and file paths kept with the task (an owner field). */
   links: TaskLink[];
+  /** True when the owner chose the language; it is then never detected again. */
+  languageSet: boolean;
   /** Tasks in this build are all added by hand. */
   source: 'hand' | 'file';
   /** For tasks from a file: the linked source file, the row and what the file says. */
@@ -260,7 +262,11 @@ export type TaskInput = Pick<
   | 'actualEnd'
   | 'nextAction'
   | 'nextActionDate'
-> & { language?: LanguageCode };
+> & {
+  language?: LanguageCode;
+  /** True to keep `language` as the owner's choice, false to detect it again. */
+  languageSet?: boolean;
+};
 
 export type ProjectInput = Pick<
   Project,

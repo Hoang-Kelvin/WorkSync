@@ -346,9 +346,17 @@ export function TaskDialog({
             ? null
             : e.target.value,
       });
-  const lang = v.titleOriginal.trim()
+  // The language is detected from the title unless the owner chooses it.
+  const [langChoice, setLangChoice] = useState<LanguageCode | null>(
+    task?.languageSet ? task.language : null,
+  );
+  const detected = v.titleOriginal.trim()
     ? detectLanguage(v.titleOriginal, p.originalLanguages)
     : null;
+  const lang = langChoice ?? detected;
+  const langOptions = [
+    ...new Set([...p.originalLanguages, p.workingLanguage]),
+  ] as LanguageCode[];
   const needsTranslation = lang !== null && lang !== p.workingLanguage;
   // The customer's own text is never edited in the app; it changes when the file does.
   const fromFile = task?.source === 'file';
@@ -357,6 +365,11 @@ export function TaskDialog({
     e.preventDefault();
     const input = {
       ...v,
+      ...(langChoice
+        ? { language: langChoice, languageSet: true }
+        : task?.languageSet
+          ? { languageSet: false }
+          : {}),
       labels: labels
         .split(/[,、]/)
         .map((l) => l.trim())
@@ -409,7 +422,24 @@ export function TaskDialog({
           <label>
             <span>
               Original title
-              {lang && <span className="hint"> · {LANGUAGES[lang]}</span>}
+              <select
+                className="lang-pick"
+                aria-label="Language of the title and description"
+                title="Detected from the characters. Choose it when the guess is wrong."
+                value={langChoice ?? ''}
+                onChange={(e) =>
+                  setLangChoice((e.target.value || null) as LanguageCode | null)
+                }
+              >
+                <option value="">
+                  {detected ? `${LANGUAGES[detected]}, detected` : 'Detect'}
+                </option>
+                {langOptions.map((l) => (
+                  <option key={l} value={l}>
+                    {LANGUAGES[l]}
+                  </option>
+                ))}
+              </select>
             </span>
             <input
               className="inp"

@@ -16,6 +16,7 @@ const task = (o: Partial<Task>): Task => ({
   source: 'hand',
   sourceFileId: null,
   links: [],
+  languageSet: false,
   sheetRow: null,
   fileState: 'hand',
   statusWord: '',

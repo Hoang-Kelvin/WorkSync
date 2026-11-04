@@ -572,13 +572,14 @@ export class Sources {
     const titleChanged = f.has('title') || f.has('description');
     const project = this.store.getProject(t.projectId);
     // A new title may be in another language, such as an ID that needs no translation.
-    const language = f.has('title')
-      ? detectLanguage(
-          row.title,
-          project.originalLanguages,
-          t.sourceFileId ? this.get(t.sourceFileId).mainLanguage : undefined,
-        )
-      : t.language;
+    const language =
+      f.has('title') && !t.languageSet
+        ? detectLanguage(
+            row.title,
+            project.originalLanguages,
+            t.sourceFileId ? this.get(t.sourceFileId).mainLanguage : undefined,
+          )
+        : t.language;
     const translationState =
       language === project.workingLanguage
         ? 'Not needed'

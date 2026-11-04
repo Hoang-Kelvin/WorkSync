@@ -26,6 +26,7 @@ const base: Task = {
   source: 'hand',
   sourceFileId: null,
   links: [],
+  languageSet: false,
   sheetRow: null,
   fileState: 'hand',
   statusWord: '対応中',

@@ -4,6 +4,7 @@ import {
   DATE_FORMATS,
   DEFAULT_VIEWS,
   EMPTY_SITUATION,
+  LANGUAGES,
   LEVEL_NAME,
   detectLanguage,
   linkKind,
@@ -281,6 +282,7 @@ export class Store {
       id: str(r.id),
       projectId: str(r.project_id),
       links: JSON.parse(str(r.links) || '[]'),
+      languageSet: Number(r.language_set) === 1,
       customerId: str(r.customer_id),
       source: str(r.source) as Task['source'],
       sourceFileId: opt(r.source_file_id),
@@ -423,10 +425,14 @@ export class Store {
     const before = this.getTask(id);
     const project = this.getProject(before.projectId);
     const merged = this.clean({ ...before, ...patch });
+    // The owner's choice wins; otherwise a new title, or going back to Detect, detects again.
+    const languageSet = patch.languageSet ?? before.languageSet;
     const language =
-      patch.language ??
-      (patch.titleOriginal !== undefined &&
-      patch.titleOriginal !== before.titleOriginal
+      (languageSet ? patch.language : undefined) ??
+      (patch.languageSet === false ||
+      (!languageSet &&
+        patch.titleOriginal !== undefined &&
+        patch.titleOriginal !== before.titleOriginal)
         ? detectLanguage(merged.titleOriginal, project.originalLanguages)
         : before.language);
     const changed = (Object.keys(FIELD_LABELS) as (keyof TaskInput)[]).filter(
@@ -434,7 +440,12 @@ export class Store {
         k in patch &&
         JSON.stringify(before[k as keyof Task]) !== JSON.stringify(merged[k]),
     );
-    if (!changed.length && language === before.language) return before;
+    if (
+      !changed.length &&
+      language === before.language &&
+      languageSet === before.languageSet
+    )
+      return before;
     const translationState = translationStateFor(
       {
         language,
@@ -446,7 +457,7 @@ export class Store {
     this.tx(() => {
       this.db
         .prepare(
-          `UPDATE tasks SET customer_id = ?, language = ?, title_original = ?, title_translation = ?,
+          `UPDATE tasks SET customer_id = ?, language = ?, language_set = ?, title_original = ?, title_translation = ?,
              description_original = ?, description_translation = ?, translation_state = ?, summary = ?, notes = ?,
              status = ?, priority = ?, labels = ?, assignee = ?, category = ?, remarks = ?, planned_start = ?,
              planned_end = ?, actual_start = ?, actual_end = ?, next_action = ?, next_action_date = ?, updated_at = ?
@@ -455,6 +466,7 @@ export class Store {
         .run(
           merged.customerId.trim() || before.customerId,
           language,
+          languageSet ? 1 : 0,
           merged.titleOriginal,
           merged.titleTranslation.trim(),
           merged.descriptionOriginal,
@@ -476,6 +488,12 @@ export class Store {
           merged.nextActionDate,
           this.now(),
           id,
+        );
+      if (language !== before.language)
+        this.log(
+          id,
+          'Edit',
+          `Language ${LANGUAGES[before.language]} → ${LANGUAGES[language]}${languageSet ? ', chosen by you' : ''}.`,
         );
       if (changed.includes('status') && changed.length === 1) {
         this.log(id, 'Edit', `Status ${before.status} → ${merged.status}.`);

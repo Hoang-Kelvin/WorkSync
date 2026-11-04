@@ -366,3 +366,32 @@ describe('links on a task', () => {
     expect(store.listActivity(t.id)[0].text).toMatch(/Added link Spec/);
   });
 });
+
+describe('the language of a task', () => {
+  it('keeps the language the owner chose until they go back to detecting it', () => {
+    const t = store.createTask(
+      project().id,
+      input({ titleOriginal: 'Login API' }),
+    );
+    expect(t.language).toBe('en');
+    const j = store.updateTask(t.id, { language: 'ja', languageSet: true });
+    expect(j).toMatchObject({
+      language: 'ja',
+      languageSet: true,
+      translationState: 'Not translated',
+    });
+    // A new title no longer changes it.
+    expect(
+      store.updateTask(t.id, { titleOriginal: 'Login API v2' }).language,
+    ).toBe('ja');
+    const back = store.updateTask(t.id, { languageSet: false });
+    expect(back).toMatchObject({
+      language: 'en',
+      languageSet: false,
+      translationState: 'Not needed',
+    });
+    expect(store.listActivity(t.id)[0].text).toMatch(
+      /Language Japanese → English/,
+    );
+  });
+});

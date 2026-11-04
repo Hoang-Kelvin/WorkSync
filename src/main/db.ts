@@ -188,6 +188,10 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE tasks ADD COLUMN links TEXT NOT NULL DEFAULT '[]';
   `,
+  // 12: a language the owner chose for a task (spec 02, Languages)
+  `
+  ALTER TABLE tasks ADD COLUMN language_set INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
