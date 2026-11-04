@@ -10,6 +10,7 @@ const KIND_NAME: Record<BackupKind, string> = {
   start: 'At start',
   upgrade: 'Before an upgrade',
   restore: 'Before a restore',
+  delete: 'Before deleting a project',
   manual: 'Made by you',
 };
 

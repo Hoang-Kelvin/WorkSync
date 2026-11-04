@@ -672,6 +672,13 @@ function Shell({
           project={dialog.project}
           onClose={() => setDialog(null)}
           onSaved={() => setDialog(null)}
+          onDeleted={() => {
+            const gone = dialog.project.id;
+            setDialog(null);
+            setOpenId(null);
+            setActive(projects.find((p) => p.id !== gone)?.id ?? null);
+            go({ view: 'focus', scope: 'all' });
+          }}
         />
       )}
       {dialog?.kind === 'views' && project(dialog.projectId) && (

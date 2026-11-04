@@ -343,6 +343,19 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
   },
   createProject: async (input) => need().createProject(input),
   updateProject: async (id, patch) => need().updateProject(id, patch),
+  deleteProject: async (id) => {
+    const st = need();
+    st.getProject(id);
+    // A backup first, so a project deleted by mistake can be restored from Settings.
+    const safety = backupBefore(db!, backupFolder(), 'delete');
+    const r = st.deleteProject(id);
+    log(
+      'info',
+      `Deleted a project with ${r.tasks} tasks; the data before it is in ${safety}`,
+    );
+    notifySources();
+    return r;
+  },
   addSampleProject: async () => addSampleProject(need(), today()),
   listTasks: async () => need().listTasks(),
   createTask: async (projectId, input) => need().createTask(projectId, input),

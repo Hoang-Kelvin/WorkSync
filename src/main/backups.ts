@@ -16,6 +16,7 @@ const KIND: [RegExp, BackupKind][] = [
   [/^worksync-start\.db$/, 'start'],
   [/^before-upgrade-.*\.db$/, 'upgrade'],
   [/^before-restore-.*\.db$/, 'restore'],
+  [/^before-delete-.*\.db$/, 'delete'],
   [/^worksync-manual-.*\.db$/, 'manual'],
 ];
 const kindOf = (name: string): BackupKind | null =>
@@ -70,7 +71,7 @@ export function backupDaily(
 export const backupBefore = (
   db: DatabaseSync,
   folder: string,
-  what: 'upgrade' | 'restore' | 'manual',
+  what: 'upgrade' | 'restore' | 'delete' | 'manual',
   detail = '',
 ) => {
   const file = writeBackup(
@@ -91,7 +92,7 @@ function prune(folder: string): void {
       .filter((f) => kindOf(f) === 'daily')
       .sort()
       .slice(0, -DAILY_KEPT),
-    ...(['upgrade', 'restore', 'manual'] as const).flatMap((k) =>
+    ...(['upgrade', 'restore', 'delete', 'manual'] as const).flatMap((k) =>
       all
         .filter((f) => kindOf(f) === k)
         .sort()

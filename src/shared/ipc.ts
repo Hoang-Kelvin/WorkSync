@@ -95,6 +95,8 @@ export interface WorkSyncApi {
 
   createProject(input: ProjectInput): Promise<Project>;
   updateProject(id: string, patch: ProjectPatch): Promise<Project>;
+  /** Backs up the data, then deletes the project and everything WorkSync keeps for it. */
+  deleteProject(id: string): Promise<{ tasks: number }>;
   /** Adds the sample project and returns its id. */
   addSampleProject(): Promise<string>;
   listTasks(): Promise<Task[]>;
@@ -219,6 +221,7 @@ export const API_METHODS = [
   'openFolder',
   'createProject',
   'updateProject',
+  'deleteProject',
   'addSampleProject',
   'listTasks',
   'createTask',

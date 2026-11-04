@@ -1081,3 +1081,24 @@ abbr.gloss {
   margin-top: 6px;
   font: 12.5px var(--mono);
 }
+
+/* deleting a project */
+.danger-zone {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--line-strong);
+  font-size: 13px;
+}
+.danger-zone > span {
+  display: grid;
+  gap: 2px;
+}
+.danger-zone small {
+  color: var(--muted);
+  font-size: 12px;
+}

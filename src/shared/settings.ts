@@ -16,7 +16,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
   backupFolder: null,
 };
 
-export type BackupKind = 'daily' | 'start' | 'upgrade' | 'restore' | 'manual';
+export type BackupKind =
+  | 'daily'
+  | 'start'
+  | 'upgrade'
+  | 'restore'
+  | 'delete'
+  | 'manual';
 
 export interface BackupInfo {
   file: string;

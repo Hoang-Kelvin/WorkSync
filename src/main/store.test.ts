@@ -291,3 +291,57 @@ describe('people', () => {
     expect(store.listPeople()).toHaveLength(0);
   });
 });
+
+describe('deleting a project', () => {
+  it('removes everything WorkSync keeps for it, and nothing of other projects', () => {
+    const p = project();
+    const other = store.createProject({
+      name: 'Other',
+      customer: '',
+      originalLanguages: ['ja'],
+      workingLanguage: 'en',
+    });
+    const t = store.createTask(p.id, input());
+    store.addSituationUpdate(t.id, { doingNow: 'Testing' });
+    store.saveGlossaryTerm({
+      projectId: p.id,
+      term: '受入',
+      translation: 'acceptance',
+      language: 'ja',
+      note: '',
+    });
+    store.savePerson({
+      projectId: p.id,
+      name: '田中',
+      displayName: 'Tanaka',
+      side: 'customer',
+      spellings: [],
+    });
+    store.saveOwnerTranslations([
+      {
+        taskId: t.id,
+        field: 'doingNow',
+        language: 'ja',
+        source: 'Testing',
+        text: '確認中',
+      },
+    ]);
+    const kept = store.createTask(other.id, input());
+    expect(store.deleteProject(p.id)).toEqual({ tasks: 1 });
+    expect(store.listProjects().map((x) => x.id)).toEqual([other.id]);
+    expect(store.listTasks().map((x) => x.id)).toEqual([kept.id]);
+    const count = (sql: string, ...args: string[]) =>
+      (db.prepare(sql).get(...args) as { n: number }).n;
+    for (const table of [
+      'situation_updates',
+      'glossary_terms',
+      'people',
+      'owner_translations',
+    ])
+      expect(count(`SELECT COUNT(*) AS n FROM ${table}`), table).toBe(0);
+    expect(
+      count('SELECT COUNT(*) AS n FROM activity WHERE task_id = ?', t.id),
+    ).toBe(0);
+    expect(() => store.deleteProject(p.id)).toThrow();
+  });
+});

@@ -240,6 +240,25 @@ export class Store {
     return this.getProject(id);
   }
 
+  /**
+   * Deletes a project with everything WorkSync keeps for it: tasks and their
+   * history, linked-file records, glossary, people and publish records.
+   * Files on disk, such as the customer's file, copies, reports and the
+   * published page, are not touched.
+   */
+  deleteProject(id: string): { tasks: number } {
+    const p = this.getProject(id);
+    const tasks = Number(
+      (
+        this.db
+          .prepare('SELECT COUNT(*) AS n FROM tasks WHERE project_id = ?')
+          .get(p.id) as { n: number }
+      ).n,
+    );
+    this.db.prepare('DELETE FROM projects WHERE id = ?').run(p.id);
+    return { tasks };
+  }
+
   // ------------------------------------------------------------ tasks
 
   private toTask(r: Row): Task {

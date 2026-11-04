@@ -25,12 +25,15 @@ export function ProjectDialog({
   project,
   onClose,
   onSaved,
+  onDeleted,
 }: {
   project?: Project;
   onClose: () => void;
   onSaved: (p: Project) => void;
+  onDeleted?: () => void;
 }) {
-  const { putProject, attempt, toast, settings } = useApp();
+  const { putProject, attempt, toast, settings, tasks } = useApp();
+  const [deleting, setDeleting] = useState(false);
   const [name, setName] = useState(project?.name ?? '');
   const [customer, setCustomer] = useState(project?.customer ?? '');
   const [orig, setOrig] = useState<LanguageCode[]>(
@@ -68,6 +71,15 @@ export function ProjectDialog({
       onSaved(p);
     }
   };
+  if (project && deleting)
+    return (
+      <DeleteProject
+        project={project}
+        tasks={tasks.filter((t) => t.projectId === project.id).length}
+        onCancel={() => setDeleting(false)}
+        onDeleted={() => onDeleted?.()}
+      />
+    );
   return (
     <Modal
       title={project ? 'Project settings' : 'New project'}
@@ -171,6 +183,113 @@ export function ProjectDialog({
             </select>
           </label>
         )}
+        {project && onDeleted && (
+          <div className="danger-zone">
+            <span>
+              <b>Delete this project</b>
+              <small>
+                Removes its tasks, history, glossary and people from WorkSync.
+                Files on your PC and the shared drive stay.
+              </small>
+            </span>
+            <button
+              type="button"
+              className="btn sm danger"
+              onClick={() => setDeleting(true)}
+            >
+              <Icon name="trash" />
+              Delete project…
+            </button>
+          </div>
+        )}
+      </form>
+    </Modal>
+  );
+}
+
+/**
+ * Confirms deleting a project: the owner types its name. WorkSync backs up
+ * the data first, so it can be restored from Settings.
+ */
+function DeleteProject({
+  project,
+  tasks,
+  onCancel,
+  onDeleted,
+}: {
+  project: Project;
+  tasks: number;
+  onCancel: () => void;
+  onDeleted: () => void;
+}) {
+  const { attempt, toast, reloadAll } = useApp();
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  const ok = typed.trim() === project.name.trim();
+  const del = async () => {
+    setBusy(true);
+    const r = await attempt(() => window.worksync.deleteProject(project.id));
+    setBusy(false);
+    if (!r) return;
+    await reloadAll();
+    toast(
+      `Deleted ${project.name} and its ${r.tasks} task${r.tasks === 1 ? '' : 's'}. A backup was made first; restore it from Settings if you need it back.`,
+    );
+    onDeleted();
+  };
+  return (
+    <Modal
+      title="Delete this project?"
+      subtitle={project.name}
+      onClose={onCancel}
+      narrow
+      footer={
+        <>
+          <button className="btn" onClick={onCancel}>
+            Cancel
+          </button>
+          <button
+            className="btn danger"
+            disabled={!ok || busy}
+            onClick={() => void del()}
+          >
+            <Icon name="trash" />
+            {busy ? 'Deleting…' : 'Delete project'}
+          </button>
+        </>
+      }
+    >
+      <form
+        className="form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (ok) void del();
+        }}
+      >
+        <p>
+          This deletes{' '}
+          <b>
+            {tasks} task{tasks === 1 ? '' : 's'}
+          </b>{' '}
+          with their summaries, situations, history and notes, and the project’s
+          glossary, people, linked files and Tasks table settings.
+        </p>
+        <p className="muted">
+          The customer’s files, your written copies, reports and the published
+          page stay where they are. WorkSync backs up your data first, so you
+          can restore it from Settings.
+        </p>
+        <label>
+          Type the project name to confirm
+          <input
+            className="inp"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            placeholder={project.name}
+            autoFocus
+            aria-label="Project name"
+          />
+        </label>
       </form>
     </Modal>
   );
