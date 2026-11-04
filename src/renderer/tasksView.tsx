@@ -98,7 +98,9 @@ export function TasksView({
     () => rows.filter((t) => selected.has(t.id)),
     [rows, selected],
   );
+  // The project may hide task numbers; the No. column goes with them.
   const columns = settings.columns
+    .filter((k) => k !== 'id' || p.showNumbers)
     .map(columnByKey)
     .filter((c): c is TableColumn => !!c);
   const template = [

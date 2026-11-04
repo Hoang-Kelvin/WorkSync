@@ -35,6 +35,12 @@ const DAY_WIDTH: Record<Zoom, number> = { days: 34, weeks: 20, months: 6 };
  * thin actual bar under it, a line for today, and a striped end on bars that
  * run past today while the task is open.
  */
+/** Whether a task's No. shows, per its project's setting. */
+function useShowNo() {
+  const { project } = useApp();
+  return (t: Task) => project(t.projectId)?.showNumbers !== false;
+}
+
 export function TimelineView({
   projectId,
   props,
@@ -44,6 +50,7 @@ export function TimelineView({
 }) {
   const { tasks, today, project, originalFirst } = useApp();
   const p = project(projectId)!;
+  const showNo = useShowNo();
   const [zoom, setZoom] = useState<Zoom>('weeks');
   const list = tasks.filter(
     (t) =>
@@ -192,7 +199,7 @@ export function TimelineView({
                       title={tip}
                     >
                       <span className="stripe" />
-                      <span className="tid">{t.customerId}</span>
+                      {showNo(t) && <span className="tid">{t.customerId}</span>}
                       {t.priorityOverride && (
                         <span className="ovr-i" title="Your priority override">
                           <Icon name="user" />
@@ -295,9 +302,9 @@ export function TimelineView({
                   className="linkbtn"
                   onClick={() => props.openTask(t.id)}
                 >
-                  No. {t.customerId}
+                  {showNo(t) ? `No. ${t.customerId}` : title(t, originalFirst)}
                 </button>{' '}
-                {title(t, originalFirst)}
+                {showNo(t) && title(t, originalFirst)}
               </li>
             ))}
           </ul>
@@ -539,6 +546,7 @@ export function DashboardView({
 }) {
   const { tasks, today, project, attempt, toast, sources } = useApp();
   const p = project(projectId)!;
+  const showNo = useShowNo();
   const [asTable, setAsTable] = useState(false);
   const [lastImport, setLastImport] = useState<ImportSummary | null>(null);
   useEffect(() => {
@@ -619,7 +627,7 @@ export function DashboardView({
             }
           >
             <div className="tc-top">
-              <span className="tid">No. {t.customerId}</span>
+              {showNo(t) && <span className="tid">No. {t.customerId}</span>}
               <span className="sp" />
               <PriorityTag task={t} />
             </div>

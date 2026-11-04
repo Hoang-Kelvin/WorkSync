@@ -8,6 +8,7 @@ import {
   shownPriority,
   type Status,
   type Task,
+  type Project,
 } from '../shared/model';
 import { useApp } from './appState';
 import { Icon } from './Icon';
@@ -48,12 +49,30 @@ export function PriorityTag({ task }: { task: Task }) {
   return <span className={`ptag ${level}`}>{LEVEL_NAME[level]}</span>;
 }
 
-export const TaskNumber = ({ task }: { task: Task }) => (
-  <span className="tc-id">
-    <small>No.</small>
-    {task.customerId}
-  </span>
-);
+/** The task's No., unless the project hides numbers in its views. */
+export function TaskNumber({ task }: { task: Task }) {
+  const { project } = useApp();
+  if (project(task.projectId)?.showNumbers === false) return null;
+  return (
+    <span className="tc-id">
+      <small>No.</small>
+      {task.customerId}
+    </span>
+  );
+}
+
+/** How messages name a task: by its No., or by its title when the project hides numbers. */
+export function taskLabel(task: Task, p: Project | undefined): string {
+  if (p?.showNumbers !== false) return `No. ${task.customerId}`;
+  const title = task.titleTranslation || task.titleOriginal;
+  return `“${title.length > 40 ? `${title.slice(0, 39)}…` : title}”`;
+}
+
+/** taskLabel with the task's own project. */
+export function useTaskLabel() {
+  const { project } = useApp();
+  return (task: Task) => taskLabel(task, project(task.projectId));
+}
 
 export function Labels({ labels }: { labels: string[] }) {
   if (!labels.length) return null;

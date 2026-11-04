@@ -147,6 +147,7 @@ export class Store {
       publishNotes: Number(r.publish_notes) === 1,
       publishOnClose: Number(r.publish_on_close) === 1,
       board: cleanBoard(r.board ? JSON.parse(str(r.board)) : null),
+      showNumbers: Number(r.show_numbers ?? 1) === 1,
       dateFormat: (DATE_FORMATS as readonly string[]).includes(
         str(r.date_format),
       )
@@ -205,6 +206,7 @@ export class Store {
       views?: Partial<Record<ViewKey, boolean>>;
       dueSoonDays?: number;
       dateFormat?: DateFormat;
+      showNumbers?: boolean;
     },
   ): Project {
     const p = this.getProject(id);
@@ -230,6 +232,10 @@ export class Store {
         next.dueSoonDays,
         id,
       );
+    if (patch.showNumbers !== undefined)
+      this.db
+        .prepare('UPDATE projects SET show_numbers = ? WHERE id = ?')
+        .run(patch.showNumbers ? 1 : 0, id);
     if (patch.dateFormat && DATE_FORMATS.includes(patch.dateFormat))
       this.db
         .prepare('UPDATE projects SET date_format = ? WHERE id = ?')
@@ -481,14 +487,11 @@ export class Store {
     const project = this.getProject(before.projectId);
     // The ID and the customer's own text of a task from a file change only with the file.
     if (before.source === 'file') {
-      for (const k of [
-        'customerId',
-        'titleOriginal',
-        'descriptionOriginal',
-      ] as const)
+      // The title may be edited; a later change from the file is then shown as a conflict to choose.
+      for (const k of ['customerId', 'descriptionOriginal'] as const)
         if (patch[k] !== undefined && patch[k] !== before[k])
           throw new Error(
-            'The No., title and description come from the customer’s file. They change when the file does.',
+            'The No. and description come from the customer’s file. They change when the file does.',
           );
     }
     const merged = this.clean({ ...before, ...patch });

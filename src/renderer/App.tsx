@@ -504,14 +504,17 @@ function Shell({
               setOpen={setFilterOpen}
             />
             <button
-              className="btn"
+              className="btn compact"
               aria-pressed={originalFirst}
+              aria-label="Original first"
+              title="Show the customer’s original text first, for meetings"
               onClick={() => setOriginalFirst(!originalFirst)}
             >
               <Icon name="swap" />
               <span className="lbl">Original first</span>
             </button>
             <button
+              aria-label="Copy for AI"
               className="btn"
               disabled={!currentProjectId}
               title="Build a request for the Gemini web app"
@@ -531,7 +534,8 @@ function Shell({
               <span className="lbl">Copy for AI</span>
             </button>
             <button
-              className="btn"
+              className="btn compact"
+              aria-label="Paste from AI"
               disabled={!aiSession}
               title={
                 aiSession ? 'Paste Gemini’s answer' : 'Use Copy for AI first'
@@ -556,6 +560,7 @@ function Shell({
             </button>
             {sources.length > 0 && (
               <button
+                aria-label="Write to copy"
                 className="btn"
                 title={
                   pendingWrites
@@ -572,6 +577,7 @@ function Shell({
               </button>
             )}
             <button
+              aria-label="Publish"
               className="btn"
               disabled={!currentProjectId}
               title={

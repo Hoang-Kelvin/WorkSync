@@ -397,13 +397,21 @@ describe('the language of a task', () => {
 });
 
 describe('tasks from a file', () => {
-  it('keep the file’s No., title and description', () => {
+  it('keep the file’s No. and description; the title can be edited', () => {
     const t = store.createTask(project().id, input({ customerId: '12' }));
     db.prepare("UPDATE tasks SET source = 'file' WHERE id = ?").run(t.id);
     expect(() => store.updateTask(t.id, { customerId: '13' })).toThrow(
       /come from the customer/,
     );
-    expect(() => store.updateTask(t.id, { titleOriginal: 'x' })).toThrow();
+    expect(() =>
+      store.updateTask(t.id, { descriptionOriginal: 'x' }),
+    ).toThrow();
+    expect(
+      store.updateTask(t.id, { titleOriginal: 'My title' }).titleOriginal,
+    ).toBe('My title');
+    expect(
+      store.updateProject(t.projectId, { showNumbers: false }).showNumbers,
+    ).toBe(false);
     // The same values, as the form sends them, are fine.
     expect(
       store.updateTask(t.id, { customerId: '12', summary: 'Mine' }).summary,

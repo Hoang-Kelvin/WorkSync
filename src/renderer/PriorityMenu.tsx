@@ -8,6 +8,7 @@ import {
 } from '../shared/model';
 import { useApp } from './appState';
 import { Icon } from './Icon';
+import { useTaskLabel } from './parts';
 
 export interface MenuAnchor {
   task: Task;
@@ -30,6 +31,7 @@ export function PriorityMenu({
   onClose: () => void;
 }) {
   const { putTask, toast, attempt } = useApp();
+  const label = useTaskLabel();
   const t = anchor.task;
   const fromFile = t.source === 'file';
   const [mode, setMode] = useState<'me' | 'file'>('me');
@@ -103,18 +105,14 @@ export function PriorityMenu({
             window.worksync.setPriorityOverride(t.id, null),
           )) ?? u;
       }
-      done(
-        after,
-        `No. ${t.customerId} is now ${LEVEL_NAME[level]}.`,
-        async () => {
-          const r = await window.worksync.updateTask(t.id, {
-            priority: before,
-          });
-          return beforeOverride
-            ? window.worksync.setPriorityOverride(t.id, beforeOverride)
-            : r;
-        },
-      );
+      done(after, `${label(t)} is now ${LEVEL_NAME[level]}.`, async () => {
+        const r = await window.worksync.updateTask(t.id, {
+          priority: before,
+        });
+        return beforeOverride
+          ? window.worksync.setPriorityOverride(t.id, beforeOverride)
+          : r;
+      });
     } else {
       const before = t.priorityOverride;
       const u = await attempt(() =>
@@ -124,8 +122,8 @@ export function PriorityMenu({
         done(
           u,
           u.priorityOverride
-            ? `No. ${t.customerId} is ${LEVEL_NAME[level]} for you. The file still says ${LEVEL_NAME[t.priority]}.`
-            : `Override removed. No. ${t.customerId} is ${LEVEL_NAME[t.priority]}, as in the file.`,
+            ? `${label(t)} is ${LEVEL_NAME[level]} for you. The file still says ${LEVEL_NAME[t.priority]}.`
+            : `Override removed. ${label(t)} is ${LEVEL_NAME[t.priority]}, as in the file.`,
           () => window.worksync.setPriorityOverride(t.id, before),
         );
     }
@@ -139,7 +137,7 @@ export function PriorityMenu({
     if (u)
       done(
         u,
-        `Override removed. No. ${t.customerId} is ${LEVEL_NAME[t.priority]} again.`,
+        `Override removed. ${label(t)} is ${LEVEL_NAME[t.priority]} again.`,
         () => window.worksync.setPriorityOverride(t.id, before),
       );
   };
@@ -180,7 +178,7 @@ export function PriorityMenu({
     >
       <div className="pm-head">
         <b id="pmTitle">Priority</b>
-        <span className="tid">No. {t.customerId}</span>
+        <span className="tid">{label(t)}</span>
       </div>
       {fromFile ? (
         <>

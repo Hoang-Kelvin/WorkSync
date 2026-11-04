@@ -201,6 +201,10 @@ const MIGRATIONS: string[] = [
   ALTER TABLE projects ADD COLUMN board TEXT;
   ALTER TABLE tasks ADD COLUMN board_column TEXT;
   `,
+  // 15: whether the views show task numbers, per project
+  `
+  ALTER TABLE projects ADD COLUMN show_numbers INTEGER NOT NULL DEFAULT 1;
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

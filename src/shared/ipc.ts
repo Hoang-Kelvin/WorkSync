@@ -77,6 +77,7 @@ export type ProjectPatch = Partial<ProjectInput> & {
   views?: Partial<Record<ViewKey, boolean>>;
   dueSoonDays?: number;
   dateFormat?: DateFormat;
+  showNumbers?: boolean;
 };
 
 /** The API the preload script exposes to the renderer as `window.worksync`. */

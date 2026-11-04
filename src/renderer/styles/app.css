@@ -1282,3 +1282,15 @@ select.lang-pick option {
 .bc-add input.inp.sm {
   width: 200px;
 }
+
+/* The top bar keeps one row: the less used buttons drop their words first. */
+@media (max-width: 1500px) {
+  .topbar .btn.compact .lbl {
+    display: none;
+  }
+}
+@media (max-width: 1200px) {
+  .topbar .btn:not(.primary) .lbl {
+    display: none;
+  }
+}

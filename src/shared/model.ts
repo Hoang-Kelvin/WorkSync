@@ -93,6 +93,8 @@ export interface Project {
   publishOnClose: boolean;
   /** The Board's hidden status columns and own columns. */
   board: BoardSettings;
+  /** Whether views show each task's No.; it stays the task's identity either way. */
+  showNumbers: boolean;
   /** The Tasks table's columns, sort and filters, or null for the defaults. */
   tableSettings: TableSettings | null;
   /** How reports write dates (spec 05). */

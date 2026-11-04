@@ -35,6 +35,7 @@ import {
   StatusChip,
   TaskNumber,
   Titles,
+  useTaskLabel,
   DeadlineChip,
   priorityClass,
 } from './parts';
@@ -292,6 +293,7 @@ export function BoardView({
 }) {
   const { tasks, project, putTask, toast, attempt } = useApp();
   const p = project(projectId)!;
+  const label = useTaskLabel();
   const [showHidden, setShowHidden] = useState(false);
   const [managing, setManaging] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -321,7 +323,7 @@ export function BoardView({
     const u = await attempt(() => place(id, slot.status, column));
     if (!u) return putTask(t);
     putTask(u);
-    toast(`No. ${t.customerId} moved to ${slot.name}.`, {
+    toast(`${label(t)} moved to ${slot.name}.`, {
       label: 'Undo',
       run: () =>
         void attempt(async () =>

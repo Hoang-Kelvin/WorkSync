@@ -18,6 +18,7 @@ const project: Project = {
   publishNotes: false,
   publishOnClose: false,
   board: { hidden: [], columns: [] },
+  showNumbers: true,
   tableSettings: null,
   dateFormat: 'YYYY/MM/DD',
 };

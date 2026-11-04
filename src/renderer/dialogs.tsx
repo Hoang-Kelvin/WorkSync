@@ -17,7 +17,7 @@ import {
 } from '../shared/model';
 import { useApp } from './appState';
 import { Icon, type IconName } from './Icon';
-import { Modal } from './parts';
+import { Modal, useTaskLabel } from './parts';
 
 const CODES = Object.keys(LANGUAGES) as LanguageCode[];
 
@@ -48,6 +48,7 @@ export function ProjectDialog({
   const [dateFormat, setDateFormat] = useState<DateFormat>(
     project?.dateFormat ?? 'YYYY/MM/DD',
   );
+  const [showNumbers, setShowNumbers] = useState(project?.showNumbers ?? true);
   const save = async (e: FormEvent) => {
     e.preventDefault();
     const input = {
@@ -62,6 +63,7 @@ export function ProjectDialog({
             ...input,
             dueSoonDays: days,
             dateFormat,
+            showNumbers,
           })
         : window.worksync.createProject(input),
     );
@@ -181,6 +183,20 @@ export function ProjectDialog({
                 </option>
               ))}
             </select>
+          </label>
+        )}
+        {project && (
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={showNumbers}
+              onChange={(e) => setShowNumbers(e.target.checked)}
+            />{' '}
+            Show task numbers (No.) in the views
+            <span className="hint-text" style={{ display: 'block' }}>
+              Each task keeps its number as its identity, and search still finds
+              it. Reviews, copies and reports always show it.
+            </span>
           </label>
         )}
         {project && onDeleted && (
@@ -330,6 +346,7 @@ export function TaskDialog({
   onSaved: (t: Task) => void;
 }) {
   const { project, putTask, attempt, toast } = useApp();
+  const label = useTaskLabel();
   const p = project(projectId)!;
   const [v, setV] = useState<TaskInput>(() =>
     task ? { ...blank(), ...pickInput(task) } : blank(),
@@ -382,14 +399,14 @@ export function TaskDialog({
     );
     if (t) {
       putTask(t);
-      toast(task ? `Saved No. ${t.customerId}.` : `Added No. ${t.customerId}.`);
+      toast(task ? `Saved ${label(t)}.` : `Added ${label(t)}.`);
       onSaved(t);
     }
   };
 
   return (
     <Modal
-      title={task ? `Edit No. ${task.customerId}` : 'New task'}
+      title={task ? `Edit ${label(task)}` : 'New task'}
       subtitle={
         task
           ? p.name
@@ -451,10 +468,9 @@ export function TaskDialog({
               className="inp"
               value={v.titleOriginal}
               onChange={set('titleOriginal')}
-              readOnly={fromFile}
               title={
                 fromFile
-                  ? 'From the customer’s file. It changes when the file does.'
+                  ? 'From the customer’s file. You can change it here; if the file changes it too, the review asks which to keep.'
                   : undefined
               }
               required
@@ -782,6 +798,7 @@ export function ConfirmDelete({
   onDeleted: () => void;
 }) {
   const { removeTask, attempt, toast } = useApp();
+  const label = useTaskLabel();
   const del = async () => {
     const ok = await attempt(async () => {
       await window.worksync.deleteTask(task.id);
@@ -789,13 +806,13 @@ export function ConfirmDelete({
     });
     if (ok) {
       removeTask(task.id);
-      toast(`Deleted No. ${task.customerId}.`);
+      toast(`Deleted ${label(task)}.`);
       onDeleted();
     }
   };
   return (
     <Modal
-      title={`Delete No. ${task.customerId}?`}
+      title={`Delete ${label(task)}?`}
       subtitle="The task, its situation updates and its history are deleted. This cannot be undone."
       onClose={onClose}
       narrow

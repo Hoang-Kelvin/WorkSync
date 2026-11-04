@@ -27,6 +27,7 @@ import {
   StatusChip,
   TaskNumber,
   Titles,
+  useTaskLabel,
   priorityClass,
 } from './parts';
 
@@ -528,6 +529,7 @@ export function TaskPopup({
   openMenu: (task: Task, opener: HTMLElement) => void;
 }) {
   const { tasks, project, today, putTask, toast, attempt, people } = useApp();
+  const label = useTaskLabel();
   const task = tasks.find((t) => t.id === taskId);
   const [updating, setUpdating] = useState(false);
   const [pending, setPending] = useState<PendingChange[]>([]);
@@ -618,8 +620,8 @@ export function TaskPopup({
       putTask(u);
       toast(
         u.pinned
-          ? `Pinned No. ${u.customerId} to the focus list.`
-          : `Unpinned No. ${u.customerId}.`,
+          ? `Pinned ${label(u)} to the focus list.`
+          : `Unpinned ${label(u)}.`,
       );
     }
   };
