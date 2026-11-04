@@ -1294,3 +1294,12 @@ select.lang-pick option {
     display: none;
   }
 }
+/* At the narrowest window, New task shows only its icon too. */
+@media (max-width: 1000px) {
+  .topbar .btn.primary .lbl {
+    display: none;
+  }
+  .search .kbd {
+    display: none;
+  }
+}

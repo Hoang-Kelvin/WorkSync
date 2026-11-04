@@ -195,8 +195,8 @@ function Shell({
     [filter, people],
   );
   const match = useCallback(
-    (t: Task) => passes(t) && matchesSearch(t, query),
-    [passes, query],
+    (t: Task) => passes(t) && matchesSearch(t, query, people),
+    [passes, query, people],
   );
   const props: ViewProps = {
     query,
@@ -485,7 +485,7 @@ function Shell({
                 id="q"
                 ref={search}
                 type="search"
-                placeholder="Search by number, label or title"
+                placeholder="Search by number, label, title or person"
                 autoComplete="off"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -597,6 +597,7 @@ function Shell({
               )}
             </button>
             <button
+              aria-label="New task"
               className="btn primary"
               disabled={!currentProjectId}
               title={

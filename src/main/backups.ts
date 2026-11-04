@@ -22,8 +22,11 @@ const KIND: [RegExp, BackupKind][] = [
 const kindOf = (name: string): BackupKind | null =>
   KIND.find(([re]) => re.test(name))?.[1] ?? null;
 
-const stamp = (d = new Date()) =>
-  d.toISOString().slice(0, 19).replaceAll(':', '').replace('T', '-');
+/** The local date and time, such as 2026-11-04-192639, like the daily backups' local date. */
+const stamp = (d = new Date()) => {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+};
 
 /** Writes a copy of the database. A file of the same name is replaced only once the copy is complete. */
 export function writeBackup(

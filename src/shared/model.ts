@@ -481,7 +481,12 @@ export function translationStateFor(
 }
 
 /** Text search over everything the owner may remember about a task. */
-export function matchesSearch(t: Task, query: string): boolean {
+export function matchesSearch(
+  t: Task,
+  query: string,
+  /** The people list, so a name finds tasks by the name shown, such as Tanaka for 田中. */
+  people: Person[] = [],
+): boolean {
   const q = query
     .trim()
     .toLowerCase()
@@ -500,6 +505,7 @@ export function matchesSearch(t: Task, query: string): boolean {
     s.doingNow,
     s.nextStep,
     t.assignee,
+    personName(people, t.projectId, t.assignee),
     ...t.labels,
   ]
     .join('\n')

@@ -352,6 +352,24 @@ export class Sources {
   }
 
   /** The tasks of a source with the rows they were last read as. */
+  /** Whether the owner deleted the task of this row: same ID, or same title for rows without one. */
+  private wasDeleted(sourceId: string, r: ImportedRow): boolean {
+    const row = (
+      r.customerId
+        ? this.db
+            .prepare(
+              'SELECT 1 FROM deleted_rows WHERE source_id = ? AND customer_id = ?',
+            )
+            .get(sourceId, r.customerId)
+        : this.db
+            .prepare(
+              "SELECT 1 FROM deleted_rows WHERE source_id = ? AND customer_id = '' AND title = ?",
+            )
+            .get(sourceId, r.title)
+    ) as Row | undefined;
+    return !!row;
+  }
+
   private baseline(sourceId: string): {
     rows: ImportedRow[];
     taskOf: Map<ImportedRow, Task>;
@@ -391,6 +409,9 @@ export class Sources {
       fileName: path.basename(v.file),
       modifiedAt: new Date(v.mtimeMs).toISOString(),
       added: c.added,
+      deletedRows: c.added
+        .filter((r) => this.wasDeleted(sourceId, r))
+        .map((r) => r.row),
       changed: c.changed
         .map(({ before, after, changes }) => {
           const t = taskOf.get(before)!;
@@ -508,6 +529,12 @@ export class Sources {
           continue;
         }
         if (!sel.addRows.includes(r.row)) continue;
+        // Brought back by the owner: no longer a deleted row.
+        this.db
+          .prepare(
+            "DELETE FROM deleted_rows WHERE source_id = ? AND customer_id = ? AND (customer_id <> '' OR title = ?)",
+          )
+          .run(sourceId, r.customerId, r.title);
         this.addTask(
           source.projectId,
           sourceId,

@@ -297,7 +297,7 @@ export function tableRows(
   const sortBy = columnByKey(settings.sort.key) ?? columnByKey('priority')!;
   const dir = settings.sort.dir === 'desc' ? -1 : 1;
   return tasks
-    .filter((t) => matchesSearch(t, query))
+    .filter((t) => matchesSearch(t, query, ctx.people))
     .filter((t) => filters.every(([c, v]) => passes(c!, t, v, ctx)))
     .map((t) => ({ t, v: sortBy.sortValue(t, ctx) }))
     .sort((a, b) => {

@@ -280,6 +280,24 @@ describe('Sources', () => {
     ).toThrow(/no longer in it/);
   });
 
+  it('does not offer back a row whose task the owner deleted (Q4)', () => {
+    const { source } = link();
+    const t2 = store.listTasks().find((x) => x.customerId === '2')!;
+    store.deleteTask(t2.id);
+    const r = sources.review(source.id, version(v1, 'b'));
+    expect(r.added.map((x) => x.customerId)).toEqual(['2']);
+    expect(r.deletedRows).toEqual([r.added[0].row]);
+    // Ticking it brings it back, and it is then an ordinary row again.
+    sources.apply(source.id, version(v1, 'b'), {
+      byTitle: false,
+      addRows: [r.added[0].row],
+      change: [],
+      removeTaskIds: [],
+    });
+    expect(store.listTasks().some((x) => x.customerId === '2')).toBe(true);
+    expect(sources.review(source.id, version(v1, 'c')).deletedRows).toEqual([]);
+  });
+
   it('keeps the last ten snapshots', () => {
     const { source } = link();
     for (let i = 0; i < 12; i++)

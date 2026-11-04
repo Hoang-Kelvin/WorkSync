@@ -205,6 +205,16 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE projects ADD COLUMN show_numbers INTEGER NOT NULL DEFAULT 1;
   `,
+  // 16: rows of a linked file whose task the owner deleted, so a review does not offer them back unasked
+  `
+  CREATE TABLE deleted_rows (
+    source_id TEXT NOT NULL REFERENCES source_files(id) ON DELETE CASCADE,
+    customer_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    at TEXT NOT NULL,
+    PRIMARY KEY (source_id, customer_id, title)
+  );
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

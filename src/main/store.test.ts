@@ -435,3 +435,85 @@ describe('Board columns', () => {
     expect(store.getTask(t.id).boardColumn).toBeNull();
   });
 });
+
+describe('checks from the test report', () => {
+  it('refuses a number another task of the project has (B2)', () => {
+    const p = project();
+    const a = store.createTask(p.id, input({ customerId: '012' }));
+    store.createTask(p.id, input({ customerId: '018' }));
+    expect(() => store.createTask(p.id, input({ customerId: '012' }))).toThrow(
+      /already used/,
+    );
+    expect(() => store.updateTask(a.id, { customerId: '018' })).toThrow(
+      /already used/,
+    );
+    expect(
+      store.updateTask(a.id, { customerId: '012', summary: 'x' }).summary,
+    ).toBe('x');
+  });
+
+  it('refuses a project without a name or an original language (B3, B8)', () => {
+    const p = project();
+    expect(() => store.updateProject(p.id, { originalLanguages: [] })).toThrow(
+      /at least one/,
+    );
+    expect(() => store.updateProject(p.id, { name: '   ' })).toThrow(
+      /needs a name/,
+    );
+    expect(() => store.updateProject(p.id, { dueSoonDays: 0 })).toThrow();
+  });
+
+  it('refuses an end before its start, only when the owner sets it (B4)', () => {
+    const p = project();
+    expect(() =>
+      store.createTask(
+        p.id,
+        input({ plannedStart: '2026-11-10', plannedEnd: '2026-11-01' }),
+      ),
+    ).toThrow(/planned end is before/);
+    const t = store.createTask(p.id, input({ actualStart: '2026-11-10' }));
+    expect(() => store.updateTask(t.id, { actualEnd: '2026-11-01' })).toThrow(
+      /actual end is before/,
+    );
+  });
+
+  it('refuses a second translation for a glossary term (B5)', () => {
+    const p = project();
+    store.saveGlossaryTerm({
+      projectId: p.id,
+      term: '在庫照会',
+      translation: 'stock lookup',
+      language: 'ja',
+      note: '',
+    });
+    expect(() =>
+      store.saveGlossaryTerm({
+        projectId: p.id,
+        term: ' 在庫照会 ',
+        translation: 'stock inquiry',
+        language: 'ja',
+        note: '',
+      }),
+    ).toThrow(/already in the glossary/);
+  });
+
+  it('numbers new tasks like the project already does (B17)', () => {
+    const p = project();
+    expect(store.createTask(p.id, input()).customerId).toBe('001');
+    const q = store.createProject({
+      name: 'Q',
+      customer: '',
+      originalLanguages: ['ja'],
+      workingLanguage: 'en',
+    });
+    store.createTask(q.id, input({ customerId: '9' }));
+    expect(store.createTask(q.id, input()).customerId).toBe('10');
+  });
+
+  it('gives a hand task that becomes Done today as its actual end (B9)', () => {
+    const t = store.createTask(project().id, input({ status: 'In progress' }));
+    expect(store.updateTask(t.id, { status: 'Done' }).actualEnd).toBe(
+      clock.slice(0, 10),
+    );
+  });
+});

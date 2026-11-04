@@ -731,9 +731,11 @@ export function registerIpcHandlers(): void {
       try {
         return await fn(...args);
       } catch (error) {
+        // A plain Error is the app refusing something, such as a duplicate name; anything else is a fault.
+        const refused = error instanceof Error && error.constructor === Error;
         log(
-          'error',
-          `${method}: ${error instanceof Error ? error.message : String(error)}`,
+          refused ? 'info' : 'error',
+          `${refused ? 'Refused ' : ''}${method}: ${error instanceof Error ? error.message : String(error)}`,
         );
         throw error;
       }

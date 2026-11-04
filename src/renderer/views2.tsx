@@ -144,7 +144,7 @@ export function TimelineView({
     <>
       {props.header(
         'Timeline',
-        `${p.name} · planned and actual dates (予実) · ${shortDate(first)} to ${shortDate(addDays(first, days - 1))}`,
+        `${p.name} · planned and actual dates · ${shortDate(first)} to ${shortDate(addDays(first, days - 1))}`,
         zoomCtl,
       )}
       {dated.length ? (
@@ -560,12 +560,9 @@ export function DashboardView({
   const open = all.filter((t) => !isClosed(t));
   const f = (t: Task) => flags(t, today, p.dueSoonDays);
   const overdue = open.filter((t) => f(t).overdue);
-  const thisWeek = open.filter(
-    (t) =>
-      t.plannedEnd &&
-      daysBetween(today, t.plannedEnd) >= 0 &&
-      daysBetween(today, t.plannedEnd) < 7,
-  );
+  // The same rule and number of days as Focus's Due soon (the project setting).
+  const thisWeek = open.filter((t) => f(t).dueSoon);
+  const days = p.dueSoonDays;
   const withDiff = open.filter((t) => f(t).openDifficulties > 0);
   const diffCount = open.reduce((n, t) => n + f(t).openDifficulties, 0);
   const waiting = open
@@ -663,7 +660,12 @@ export function DashboardView({
           'focus',
         )}
         {tile('Overdue', overdue.length, 'past the planned end', 'clock')}
-        {tile('Due this week', thisWeek.length, 'within 7 days', 'clock')}
+        {tile(
+          'Due soon',
+          thisWeek.length,
+          `within ${days} day${days === 1 ? '' : 's'}`,
+          'clock',
+        )}
         {tile(
           'Open difficulties',
           diffCount,
@@ -810,11 +812,11 @@ export function DashboardView({
           </div>
           {miniList(overdue.sort(byPriority), 'Nothing is overdue.')}
           <div className="panel-h" style={{ marginTop: 22 }}>
-            <h2>Due this week</h2>
+            <h2>Due soon</h2>
           </div>
           {miniList(
             thisWeek.sort(byPriority),
-            'Nothing is due in the next 7 days.',
+            `Nothing is due in the next ${days} day${days === 1 ? '' : 's'}.`,
           )}
           <div className="panel-h" style={{ marginTop: 22 }}>
             <h2>Open difficulties</h2>

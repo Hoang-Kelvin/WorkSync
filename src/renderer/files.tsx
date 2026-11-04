@@ -287,7 +287,11 @@ export function ReviewDialog({
     const r = await attempt(() => window.worksync.reviewSource(source.id, bt));
     if (!r) return onClose();
     setReview(r);
-    setAdd(new Set(r.added.map((x) => x.row)));
+    setAdd(
+      new Set(
+        r.added.filter((x) => !r.deletedRows.includes(x.row)).map((x) => x.row),
+      ),
+    );
     setChange(new Set(r.changed.map((x) => x.taskId)));
     setRemove(new Set(r.removed.map((x) => x.taskId)));
     // Where the owner also changed a field, keep the owner's value until they choose otherwise.
@@ -545,7 +549,9 @@ export function ReviewDialog({
                   <div className="chg">
                     {joins[r.row]
                       ? 'Joined to the task chosen below; it keeps its summary, situation and history'
-                      : `New row · added as Not translated · ${r.status}`}
+                      : review.deletedRows.includes(r.row)
+                        ? 'You deleted this task, but it is still in the file. Tick it to bring it back.'
+                        : `New row · added as Not translated · ${r.status}`}
                   </div>
                   {joinable.length > 0 && (
                     <label className="join-row">

@@ -42,8 +42,9 @@ export function ProjectDialog({
   const [work, setWork] = useState<LanguageCode>(
     project?.workingLanguage ?? settings.workingLanguage,
   );
+  // Kept as typed, so the field can be cleared and retyped; checked on saving.
   const [days, setDays] = useState(
-    project?.dueSoonDays ?? settings.dueSoonDays,
+    String(project?.dueSoonDays ?? settings.dueSoonDays),
   );
   const [dateFormat, setDateFormat] = useState<DateFormat>(
     project?.dateFormat ?? 'YYYY/MM/DD',
@@ -61,7 +62,7 @@ export function ProjectDialog({
       project
         ? window.worksync.updateProject(project.id, {
             ...input,
-            dueSoonDays: days,
+            dueSoonDays: Number(days),
             dateFormat,
             showNumbers,
           })
@@ -93,7 +94,19 @@ export function ProjectDialog({
           <button className="btn" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn primary" form="projectForm" type="submit">
+          <button
+            className="btn primary"
+            form="projectForm"
+            type="submit"
+            disabled={!name.trim() || !orig.length}
+            title={
+              !orig.length
+                ? 'Choose at least one original language.'
+                : !name.trim()
+                  ? 'A project needs a name.'
+                  : undefined
+            }
+          >
             <Icon name="check" />
             {project ? 'Save' : 'Create project'}
           </button>
@@ -108,7 +121,7 @@ export function ProjectDialog({
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            placeholder="Logistics Portal Renewal"
+            placeholder="Such as Logistics Portal Renewal"
           />
         </label>
         <label>
@@ -142,7 +155,7 @@ export function ProjectDialog({
         </fieldset>
         <div className="two">
           <label>
-            Working language, the one you read and write in
+            Your working language
             <select
               className="inp"
               value={work}
@@ -164,7 +177,7 @@ export function ProjectDialog({
                 min={1}
                 max={60}
                 value={days}
-                onChange={(e) => setDays(Number(e.target.value) || 7)}
+                onChange={(e) => setDays(e.target.value)}
               />
             </label>
           )}
@@ -831,6 +844,13 @@ export function ConfirmDelete({
       <div className="field">
         <div className="v">{task.titleTranslation || task.titleOriginal}</div>
       </div>
+      {task.source === 'file' && task.fileState === 'in_file' && (
+        <p className="muted step-help">
+          The row stays in the customer’s file. WorkSync remembers that you
+          deleted it, so the next review lists it unticked and it stays deleted
+          unless you tick it.
+        </p>
+      )}
     </Modal>
   );
 }

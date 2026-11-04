@@ -9,6 +9,7 @@ import {
   flags,
   shortDate,
   shownPriority,
+  isClosed,
   linkKind,
   type ActivityEntry,
   type TaskLink,
@@ -876,13 +877,21 @@ export function TaskPopup({
                   k="Actual"
                   pend={pend('actualStart', 'actualEnd')}
                   v={
-                    task.actualStart ? (
+                    task.actualStart || task.actualEnd ? (
                       <span className="mono">
-                        {fileDate(task.actualStart)} →{' '}
-                        {task.actualEnd ? fileDate(task.actualEnd) : 'ongoing'}
+                        {task.actualStart ? fileDate(task.actualStart) : '…'} →{' '}
+                        {task.actualEnd
+                          ? fileDate(task.actualEnd)
+                          : isClosed(task)
+                            ? 'no end date'
+                            : 'ongoing'}
                       </span>
                     ) : (
-                      <span className="muted">Not started</span>
+                      <span className="muted">
+                        {task.status === 'Not started'
+                          ? 'Not started'
+                          : 'No dates recorded'}
+                      </span>
                     )
                   }
                 />

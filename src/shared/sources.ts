@@ -89,6 +89,8 @@ export interface Review {
   fileName: string;
   modifiedAt: string;
   added: ImportedRow[];
+  /** Rows among the new ones whose task the owner deleted; not ticked unless the owner wants them back. */
+  deletedRows: number[];
   changed: {
     taskId: string;
     customerId: string;

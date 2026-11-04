@@ -210,6 +210,19 @@ export class Store {
     },
   ): Project {
     const p = this.getProject(id);
+    if (patch.name !== undefined && !patch.name.trim())
+      throw new Error('A project needs a name.');
+    if (patch.originalLanguages && !patch.originalLanguages.length)
+      throw new Error('Choose at least one original language.');
+    if (
+      patch.dueSoonDays !== undefined &&
+      !(
+        Number.isInteger(patch.dueSoonDays) &&
+        patch.dueSoonDays >= 1 &&
+        patch.dueSoonDays <= 60
+      )
+    )
+      throw new Error('Due soon must be between 1 and 60 days.');
     const next = {
       name: patch.name?.trim() || p.name,
       customer: patch.customer?.trim() ?? p.customer,
@@ -408,11 +421,16 @@ export class Store {
         .prepare('SELECT customer_id FROM tasks WHERE project_id = ?')
         .all(projectId) as Row[]
     ).map((r) => str(r.customer_id));
-    const max = Math.max(
-      0,
-      ...ids.map((x) => (/^\d+$/.test(x) ? Number(x) : 0)),
-    );
-    return String(max + 1).padStart(3, '0');
+    const numeric = ids.filter((x) => /^\d+$/.test(x));
+    const max = Math.max(0, ...numeric.map(Number));
+    // New numbers look like the project's: zero-padded only if its numbers are.
+    const padded = numeric.filter((x) => x.length > 1 && x.startsWith('0'));
+    const width = numeric.length
+      ? padded.length
+        ? Math.max(...padded.map((x) => x.length))
+        : 1
+      : 3;
+    return String(max + 1).padStart(width, '0');
   }
 
   private clean(input: TaskInput): TaskInput {
@@ -424,9 +442,39 @@ export class Store {
     return { ...input, titleOriginal: title, labels };
   }
 
+  /** Dates the owner sets must be in order: an end is never before its start. */
+  private checkDates(
+    t: Pick<
+      TaskInput,
+      'plannedStart' | 'plannedEnd' | 'actualStart' | 'actualEnd'
+    >,
+  ) {
+    if (t.plannedStart && t.plannedEnd && t.plannedEnd < t.plannedStart)
+      throw new Error('The planned end is before the planned start.');
+    if (t.actualStart && t.actualEnd && t.actualEnd < t.actualStart)
+      throw new Error('The actual end is before the actual start.');
+  }
+
+  /** A number may belong to one task of the project only. */
+  private checkNumber(projectId: string, customerId: string, self?: string) {
+    const n = customerId.trim();
+    if (!n) return;
+    const other = this.db
+      .prepare(
+        'SELECT customer_id FROM tasks WHERE project_id = ? AND customer_id = ? AND id IS NOT ?',
+      )
+      .get(projectId, n, self ?? null) as Row | undefined;
+    if (other)
+      throw new Error(
+        `No. ${n} is already used by another task in this project. Choose another number, or leave it empty for the next one.`,
+      );
+  }
+
   createTask(projectId: string, raw: TaskInput): Task {
     const project = this.getProject(projectId);
     const input = this.clean(raw);
+    this.checkDates(input);
+    this.checkNumber(projectId, input.customerId);
     const id = randomUUID();
     const now = this.now();
     const language =
@@ -495,6 +543,31 @@ export class Store {
           );
     }
     const merged = this.clean({ ...before, ...patch });
+    // A task added by hand that becomes Done gets today as its actual end, unless one is set.
+    // Tasks from a file are left alone, since their dates go to the customer's file.
+    if (
+      before.source !== 'file' &&
+      patch.status === 'Done' &&
+      before.status !== 'Done' &&
+      !merged.actualEnd &&
+      patch.actualEnd === undefined
+    ) {
+      merged.actualEnd = this.today();
+      if (merged.actualStart && merged.actualStart > merged.actualEnd)
+        merged.actualStart = merged.actualEnd;
+    }
+    // Only what the owner changes is checked, so a file with odd dates still imports.
+    if (
+      (
+        ['plannedStart', 'plannedEnd', 'actualStart', 'actualEnd'] as const
+      ).some((k) => k in patch && patch[k] !== before[k])
+    )
+      this.checkDates(merged);
+    if (
+      patch.customerId !== undefined &&
+      patch.customerId.trim() !== before.customerId
+    )
+      this.checkNumber(before.projectId, patch.customerId, id);
     // The owner's choice wins; otherwise a new title, or going back to Detect, detects again.
     const languageSet = patch.languageSet ?? before.languageSet;
     const language =
@@ -783,7 +856,17 @@ export class Store {
   }
 
   deleteTask(id: string): void {
-    this.db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
+    const t = this.getTask(id);
+    this.tx(() => {
+      // A task from a file is still in the file; remember it so a review leaves it out unless asked.
+      if (t.sourceFileId && t.fileState === 'in_file')
+        this.db
+          .prepare(
+            'INSERT OR REPLACE INTO deleted_rows (source_id, customer_id, title, at) VALUES (?, ?, ?, ?)',
+          )
+          .run(t.sourceFileId, t.customerId, t.titleOriginal, this.now());
+      this.db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
+    });
   }
 
   // ------------------------------------------------------------ history
@@ -848,6 +931,13 @@ export class Store {
     if (!term || !translation)
       throw new Error('A glossary entry needs the term and its translation.');
     const project = this.getProject(input.projectId);
+    const same = this.listGlossary(input.projectId).find(
+      (g) => g.id !== input.id && personKey(g.term) === personKey(term),
+    );
+    if (same)
+      throw new Error(
+        `${same.term} is already in the glossary as “${same.translation}”. Change that entry instead, so the term has one translation.`,
+      );
     const language =
       input.language ?? detectLanguage(term, project.originalLanguages);
     const id = input.id ?? randomUUID();

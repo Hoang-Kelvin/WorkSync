@@ -98,6 +98,7 @@ function FocusCard({
   showProject: boolean;
   props: ViewProps;
 }) {
+  const label = useTaskLabel();
   const { today } = useApp();
   const why = focusReasons(task, today, project.dueSoonDays);
   const s = task.situation;
@@ -106,7 +107,7 @@ function FocusCard({
       className={`tcard ${priorityClass(task)}`}
       tabIndex={0}
       role="button"
-      aria-label={`Open No. ${task.customerId}, ${task.titleTranslation || task.titleOriginal}`}
+      aria-label={`Open ${label(task)}, ${task.titleTranslation || task.titleOriginal}`}
       onClick={() => props.openTask(task.id)}
       onKeyDown={keyOpen(task.id, props.openTask)}
       onContextMenu={contextMenu(task, props.openMenu)}
@@ -305,15 +306,11 @@ export function BoardView({
   ).length;
 
   // Puts a task in a column: the column's status, and its own column if it is one.
+  // Always asks the main process, never a copy kept by the screen, so an Undo
+  // made later restores the saved task too (an unchanged status is a no-op there).
   const place = async (id: string, status: Status, column: string | null) => {
-    let u = tasks.find((x) => x.id === id)!;
-    if (u.status !== status) {
-      const r = await window.worksync.updateTask(id, { status });
-      u = r;
-    }
-    if ((u.boardColumn ?? null) !== column || column)
-      u = await window.worksync.setBoardColumn(id, column);
-    return u;
+    await window.worksync.updateTask(id, { status });
+    return window.worksync.setBoardColumn(id, column);
   };
   const move = async (id: string, slot: BoardSlot) => {
     const t = tasks.find((x) => x.id === id);
@@ -408,7 +405,7 @@ export function BoardView({
                     draggable
                     tabIndex={0}
                     role="button"
-                    aria-label={`Open No. ${t.customerId}`}
+                    aria-label={`Open ${label(t)}, ${t.titleTranslation || t.titleOriginal}`}
                     onDragStart={(e) => {
                       e.dataTransfer.setData('text/plain', t.id);
                       setDragging(t.id);
@@ -481,6 +478,10 @@ function BoardColumnsDialog({
   const [b, setB] = useState<BoardSettings>(p.board);
   const [name, setName] = useState('');
   const [under, setUnder] = useState<Status>('In progress');
+  // Two columns with one name could not be told apart.
+  const clash = [...STATUSES, ...b.columns.map((c) => c.name)].find(
+    (x) => x.toLowerCase() === name.trim().toLowerCase(),
+  );
   const count = (c: BoardColumn) =>
     tasks.filter(
       (t) =>
@@ -614,11 +615,20 @@ function BoardColumnsDialog({
                 </option>
               ))}
             </select>
-            <button className="btn sm" type="submit" disabled={!name.trim()}>
+            <button
+              className="btn sm"
+              type="submit"
+              disabled={!name.trim() || !!clash}
+            >
               <Icon name="plus" />
               Add
             </button>
           </form>
+          {clash && (
+            <span className="warn-text" role="alert">
+              There is already a column called {clash}. Choose another name.
+            </span>
+          )}
           <span className="hint-text">
             A card moved to your column takes its status, so the file and
             reports see that status. If the status changes elsewhere, the card
