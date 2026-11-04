@@ -2694,17 +2694,47 @@ pre.prompt {
   .panels {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+/* A short window gives the task popup nearly all of its height. */
+@media (max-height: 760px) {
+  .tm {
+    height: 100%;
+  }
+}
+/*
+ * One column on a narrow window: the whole popup scrolls as one, header
+ * included, and the task fields come before the description, so a long
+ * description never hides the status.
+ */
+@media (max-width: 900px) {
+  .tm {
+    grid-template-rows: auto auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
   .tm-body {
-    grid-template-columns: minmax(0, 1fr);
-    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding: 20px 20px 32px;
+    overflow: visible;
   }
   .tm-main,
   .tm-side {
-    overflow: visible;
+    display: contents;
   }
-  .tm-side {
-    border-left: 0;
-    border-top: 1px solid var(--line);
+  .tm-body .sec {
+    order: 4;
+    min-width: 0;
+  }
+  .tm-main > .sec {
+    order: 1;
+  }
+  .tm-body .sec-fields {
+    order: 2;
+  }
+  .tm-body .sec-desc {
+    order: 3;
   }
 }
 @media (max-width: 820px) {

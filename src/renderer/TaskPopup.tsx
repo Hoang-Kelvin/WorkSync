@@ -46,7 +46,7 @@ function Description({ task }: { task: Task }) {
   const tr = paragraphs(task.descriptionTranslation);
   if (!orig.length && !tr.length) {
     return (
-      <section className="sec">
+      <section className="sec sec-desc">
         <h3>Description</h3>
         <div className="muted">No description.</div>
       </section>
@@ -112,7 +112,7 @@ function Description({ task }: { task: Task }) {
     );
   }
   return (
-    <section className="sec">
+    <section className="sec sec-desc">
       <div className="desc-h">
         <h3>
           Description
@@ -403,6 +403,7 @@ export function TaskPopup({
       : undefined;
   };
   const titleRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -499,7 +500,15 @@ export function TaskPopup({
         aria-modal="true"
         aria-labelledby="tmTitle"
       >
-        <header className="tm-head">
+        <header
+          className="tm-head"
+          onWheel={(e) => {
+            // The header does not scroll; the wheel over it scrolls the main column.
+            const main = mainRef.current;
+            if (main && getComputedStyle(main).overflowY === 'auto')
+              main.scrollBy({ top: e.deltaY });
+          }}
+        >
           <div className="tm-top">
             <TaskNumber task={task} />
             <button
@@ -588,7 +597,7 @@ export function TaskPopup({
           </div>
         </header>
         <div className="tm-body">
-          <div className="tm-main">
+          <div className="tm-main" ref={mainRef}>
             <section className="sec">
               <h3>Summary</h3>
               {task.summary ? (
@@ -691,7 +700,7 @@ export function TaskPopup({
             <Description task={task} />
           </div>
           <aside className="tm-side">
-            <section className="sec">
+            <section className="sec sec-fields">
               <h3>Task fields</h3>
               <div className="fields">
                 <Field
