@@ -416,3 +416,15 @@ describe('the ID as the title', () => {
     expect(r.rows[0].extra).toEqual({ 件名: 'ログイン画面のタイムアウト' });
   });
 });
+
+describe('day-first dates', () => {
+  it('reads 3/11 and 3/11/2026 month first by default, day first when the format says', () => {
+    expect(parseDate('3/11', '2026-03-01')).toBe('2026-03-11');
+    expect(parseDate('3/11', '2026-11-01', true)).toBe('2026-11-03');
+    expect(parseDate('03/11/2026', '2026-11-01')).toBe('2026-03-11');
+    expect(parseDate('03/11/2026', '2026-11-01', true)).toBe('2026-11-03');
+    // 11月3日 says which is the month.
+    expect(parseDate('11月3日', '2026-11-01', true)).toBe('2026-11-03');
+    expect(parseDate('2026/11/03', '2026-11-01', true)).toBe('2026-11-03');
+  });
+});

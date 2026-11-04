@@ -261,6 +261,42 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
   },
   readOwnerAnswer: async (batch, answer) => readOwnerAnswer(batch, answer),
   saveOwnerTranslations: async (list) => need().saveOwnerTranslations(list),
+  prepareRemarksBatches: async (taskIds) => {
+    const st = need();
+    const { sources: s } = needLinks();
+    const tasks = taskIds
+      .map((id) => st.getTask(id))
+      .filter((t) => t.remarks.trim());
+    if (!tasks.length) return [];
+    const project = st.getProject(tasks[0].projectId);
+    // Remarks go into the file, so they are translated into the file's main language.
+    const src = tasks[0].sourceFileId ? s.get(tasks[0].sourceFileId) : null;
+    const to = src?.mainLanguage ?? project.originalLanguages[0] ?? 'ja';
+    return buildOwnerBatches(
+      tasks
+        .filter((t) => t.projectId === project.id)
+        .map((task) => ({
+          task,
+          parts: [{ field: 'remarks', label: 'REMARKS', source: task.remarks }],
+        })),
+      project.workingLanguage,
+      to,
+      st.listGlossary(project.id),
+    );
+  },
+  applyRemarks: async (list) => {
+    const st = need();
+    let n = 0;
+    for (const x of list) {
+      if (x.field !== 'remarks') continue;
+      const t = st.getTask(x.taskId);
+      // Only if the remarks are still the text that was translated.
+      if (t.remarks !== x.source || !x.text.trim()) continue;
+      st.updateTask(t.id, { remarks: x.text.trim() });
+      n++;
+    }
+    return n;
+  },
   listPeople: async () => need().listPeople(),
   savePerson: async (input) => need().savePerson(input),
   deletePerson: async (id) => need().deletePerson(id),
@@ -528,6 +564,8 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
   },
   setPublishNotes: async (projectId, include) =>
     need().setPublishOptions(projectId, { notes: include }),
+  setPublishOnClose: async (projectId, on) =>
+    need().setPublishOptions(projectId, { onClose: on }),
   publishStatus: async (projectId) => needPublisher().status(projectId),
   previewPublish: async (projectId) => {
     const file = needPublisher().preview(projectId);
@@ -698,6 +736,28 @@ export function registerIpcHandlers(): void {
       }
     });
   }
+}
+
+/**
+ * Publishes the projects that publish when the app closes and have changes
+ * not published yet. A project that cannot publish now, for example because
+ * the shared drive is not connected, is logged and skipped.
+ */
+export function publishOnClose(): number {
+  if (!store || !publisher) return 0;
+  let n = 0;
+  for (const p of store.listProjects()) {
+    if (!p.publishOnClose || !p.publishFolder) continue;
+    try {
+      if (!publisher.status(p.id).unpublished) continue;
+      publisher.publish(p.id);
+      n++;
+      log('info', 'Published a project as WorkSync closed');
+    } catch (error) {
+      log('warn', `Publish on close failed: ${String(error)}`);
+    }
+  }
+  return n;
 }
 
 /** Closes the database cleanly when the app quits. */

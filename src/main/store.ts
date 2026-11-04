@@ -144,6 +144,7 @@ export class Store {
       dueSoonDays: Number(r.due_soon_days),
       publishFolder: r.publish_folder == null ? null : str(r.publish_folder),
       publishNotes: Number(r.publish_notes) === 1,
+      publishOnClose: Number(r.publish_on_close) === 1,
       dateFormat: (DATE_FORMATS as readonly string[]).includes(
         str(r.date_format),
       )
@@ -976,16 +977,17 @@ export class Store {
 
   setPublishOptions(
     projectId: string,
-    o: { folder?: string | null; notes?: boolean },
+    o: { folder?: string | null; notes?: boolean; onClose?: boolean },
   ): Project {
     const p = this.getProject(projectId);
     this.db
       .prepare(
-        'UPDATE projects SET publish_folder = ?, publish_notes = ? WHERE id = ?',
+        'UPDATE projects SET publish_folder = ?, publish_notes = ?, publish_on_close = ? WHERE id = ?',
       )
       .run(
         o.folder === undefined ? p.publishFolder : o.folder,
         (o.notes ?? p.publishNotes) ? 1 : 0,
+        (o.onClose ?? p.publishOnClose) ? 1 : 0,
         projectId,
       );
     return this.getProject(projectId);

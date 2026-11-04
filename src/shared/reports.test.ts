@@ -24,6 +24,7 @@ const project: Project = {
   createdAt: '',
   publishFolder: null,
   publishNotes: false,
+  publishOnClose: false,
   tableSettings: null,
   dateFormat: 'YYYY/MM/DD',
 };

@@ -721,9 +721,10 @@ function Shell({
         <ProjectDialog
           onClose={() => setDialog(null)}
           onSaved={(p) => {
-            setDialog(null);
             setActive(p.id);
             go({ view: 'focus', scope: p.id });
+            // Next comes the first source file; closing the wizard leaves tasks to be added by hand.
+            setDialog({ kind: 'link', projectId: p.id });
           }}
         />
       )}

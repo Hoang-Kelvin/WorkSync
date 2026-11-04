@@ -179,7 +179,7 @@ export class FileLinks {
         .slice(0, 4)
         .map((c) => ({
           text: typeof c === 'object' ? c.date : String(c),
-          date: parseDate(c, today()),
+          date: parseDate(c, today(), format.dayFirst),
         }));
       return { field: f, samples };
     });

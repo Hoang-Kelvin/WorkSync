@@ -715,6 +715,7 @@ function ColumnsDialog({
   const { attempt, setSources } = useApp();
   const [rows, setRows] = useState<string[][] | null>(null);
   const [columns, setColumns] = useState<ColumnMapping>(source.format.columns);
+  const [dayFirst, setDayFirst] = useState(!!source.format.dayFirst);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     void attempt(() => window.worksync.sourceSheet(source.id)).then((r) =>
@@ -730,13 +731,15 @@ function ColumnsDialog({
       .map((r) => r[col])
       .find(Boolean) ?? '';
   const changed =
-    JSON.stringify(columns) !== JSON.stringify(source.format.columns);
+    JSON.stringify(columns) !== JSON.stringify(source.format.columns) ||
+    dayFirst !== !!source.format.dayFirst;
   const save = async () => {
     setBusy(true);
     const s = await attempt(() =>
       window.worksync.updateSourceFormat(source.id, {
         ...source.format,
         columns,
+        dayFirst,
       }),
     );
     setBusy(false);
@@ -778,6 +781,19 @@ function ColumnsDialog({
             headers={headers}
             sample={sample}
           />
+          <label className="check" style={{ marginTop: 12 }}>
+            Dates such as 3/11 mean
+            <select
+              className="inp sm"
+              style={{ marginLeft: 8 }}
+              value={dayFirst ? 'day' : 'month'}
+              onChange={(e) => setDayFirst(e.target.value === 'day')}
+              aria-label="Order of month and day"
+            >
+              <option value="month">11 March, month first (Japan, US)</option>
+              <option value="day">3 November, day first (Vietnam, UK)</option>
+            </select>
+          </label>
         </>
       ) : (
         <p className="muted">Reading the file…</p>

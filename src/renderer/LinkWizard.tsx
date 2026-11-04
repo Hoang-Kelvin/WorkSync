@@ -63,6 +63,7 @@ export function LinkWizard({
   const [columns, setColumns] = useState<ColumnMapping>({});
   const [statusWords, setStatusWords] = useState<Record<string, Status>>({});
   const [priorityWords, setPriorityWords] = useState<Record<string, Level>>({});
+  const [dayFirst, setDayFirst] = useState(false);
   const [mainLanguage, setMainLanguage] = useState<LanguageCode>(
     project.originalLanguages[0] ?? 'ja',
   );
@@ -85,6 +86,7 @@ export function LinkWizard({
     columns,
     statusWords,
     priorityWords,
+    dayFirst,
   };
 
   const choose = async () => {
@@ -171,6 +173,7 @@ export function LinkWizard({
     JSON.stringify(columns),
     JSON.stringify(statusWords),
     JSON.stringify(priorityWords),
+    dayFirst,
   ]);
 
   const unmapped = preview
@@ -283,6 +286,15 @@ export function LinkWizard({
                 'An .xlsx, .xlsm, .xls or .csv file, for example in your Box Drive folder.'}
             </span>
           </div>
+          {!file && (
+            <p className="muted step-help">
+              No customer file yet?{' '}
+              <button type="button" className="linkbtn" onClick={onClose}>
+                Skip this and add tasks by hand
+              </button>
+              . You can link a file later under Files.
+            </p>
+          )}
           {info && (
             <>
               <label>
@@ -463,6 +475,23 @@ export function LinkWizard({
           {preview && preview.dates.length > 0 && (
             <fieldset>
               <legend>How the dates were read</legend>
+              <label className="check" style={{ marginBottom: 8 }}>
+                Dates such as 3/11 mean
+                <select
+                  className="inp sm"
+                  style={{ marginLeft: 8 }}
+                  value={dayFirst ? 'day' : 'month'}
+                  onChange={(e) => setDayFirst(e.target.value === 'day')}
+                  aria-label="Order of month and day"
+                >
+                  <option value="month">
+                    11 March, month first (Japan, US)
+                  </option>
+                  <option value="day">
+                    3 November, day first (Vietnam, UK)
+                  </option>
+                </select>
+              </label>
               <table className="mini">
                 <tbody>
                   {preview.dates.map((d) => (

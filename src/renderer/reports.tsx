@@ -415,14 +415,21 @@ export function ReportDialog({
  * Translates the owner's notes into the file's language with Gemini (spec 05):
  * copy each request, paste each answer, and save what came back.
  */
-function OwnerTranslate({
+export function OwnerTranslate({
   project,
   taskIds,
   onDone,
+  what = 'your notes',
+  prepare = () => window.worksync.prepareOwnerBatches(project.id, taskIds),
+  saveAll = (list) => window.worksync.saveOwnerTranslations(list),
 }: {
   project: Project;
   taskIds: string[];
   onDone: () => Promise<void>;
+  /** What is translated, in the heading and messages. */
+  what?: string;
+  prepare?: () => Promise<OwnerBatch[]>;
+  saveAll?: (list: OwnerAnswer['translations']) => Promise<number>;
 }) {
   const { attempt, toast } = useApp();
   const [batches, setBatches] = useState<OwnerBatch[] | null>(null);
@@ -431,9 +438,7 @@ function OwnerTranslate({
   const [read, setRead] = useState<OwnerAnswer | null>(null);
   const [saved, setSaved] = useState(0);
   useEffect(() => {
-    void attempt(() =>
-      window.worksync.prepareOwnerBatches(project.id, taskIds),
-    ).then((b) => {
+    void attempt(prepare).then((b) => {
       if (b && !b.length) void onDone();
       else if (b) setBatches(b);
     });
@@ -461,15 +466,13 @@ function OwnerTranslate({
   };
   const save = async () => {
     if (!read) return;
-    const n = await attempt(() =>
-      window.worksync.saveOwnerTranslations(read.translations),
-    );
+    const n = await attempt(() => saveAll(read.translations));
     if (n === undefined) return;
     setSaved(saved + n);
     setAnswer('');
     setRead(null);
     if (at + 1 >= batches.length) {
-      toast(`Saved ${saved + n} translations of your notes.`);
+      toast(`Saved ${saved + n} translations of ${what}.`);
       await onDone();
     } else setAt(at + 1);
   };
@@ -477,7 +480,7 @@ function OwnerTranslate({
     <div className="owner-tr">
       <div className="owner-tr-head">
         <b>
-          Translate your notes · request {batch.number} of {batch.of}
+          Translate {what} · request {batch.number} of {batch.of}
         </b>
         <button className="btn sm" onClick={() => void onDone()}>
           Cancel

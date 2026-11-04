@@ -162,6 +162,10 @@ export interface WorkSyncApi {
   ): Promise<OwnerBatch[]>;
   readOwnerAnswer(batch: OwnerBatch, answer: string): Promise<OwnerAnswer>;
   saveOwnerTranslations(list: OwnerTranslation[]): Promise<number>;
+  /** Requests to translate these tasks' remarks into their file's language, before writing a copy. */
+  prepareRemarksBatches(taskIds: string[]): Promise<OwnerBatch[]>;
+  /** Puts the translated remarks in place of the ones that were translated. */
+  applyRemarks(list: OwnerTranslation[]): Promise<number>;
   listPeople(): Promise<Person[]>;
   savePerson(input: Omit<Person, 'id'> & { id?: string }): Promise<Person>;
   deletePerson(id: string): Promise<void>;
@@ -180,6 +184,7 @@ export interface WorkSyncApi {
   /** Opens the folder dialog and saves the project's publish folder. Returns null when cancelled. */
   choosePublishFolder(projectId: string): Promise<Project | null>;
   setPublishNotes(projectId: string, include: boolean): Promise<Project>;
+  setPublishOnClose(projectId: string, on: boolean): Promise<Project>;
   publishStatus(projectId: string): Promise<PublishStatus>;
   /** Opens the page as it would be published, in its own window. */
   previewPublish(projectId: string): Promise<void>;
@@ -263,6 +268,8 @@ export const API_METHODS = [
   'prepareOwnerBatches',
   'readOwnerAnswer',
   'saveOwnerTranslations',
+  'prepareRemarksBatches',
+  'applyRemarks',
   'listPeople',
   'savePerson',
   'deletePerson',
@@ -274,6 +281,7 @@ export const API_METHODS = [
   'lastImport',
   'choosePublishFolder',
   'setPublishNotes',
+  'setPublishOnClose',
   'publishStatus',
   'previewPublish',
   'publish',

@@ -3,6 +3,7 @@ import type { WritePlan, WriteResult } from '../shared/writes';
 import { useApp } from './appState';
 import { Icon } from './Icon';
 import { Modal } from './parts';
+import { OwnerTranslate } from './reports';
 
 const dirOf = (file: string) => file.replace(/[\\/][^\\/]*$/, '');
 const nameOf = (file: string) => file.split(/[\\/]/).pop() ?? file;
@@ -12,7 +13,9 @@ const nameOf = (file: string) => file.split(/[\\/]/).pop() ?? file;
  * file, with each cell that will change. The customer's file is never touched.
  */
 export function WriteDialog({ onClose }: { onClose: () => void }) {
-  const { attempt, toast, reloadTasks } = useApp();
+  const { attempt, toast, reloadTasks, tasks, project } = useApp();
+  // The source whose remarks are being translated before writing.
+  const [translating, setTranslating] = useState<string | null>(null);
   const [plans, setPlans] = useState<WritePlan[] | null>(null);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const [folder, setFolder] = useState<string | null>(null);
@@ -180,6 +183,45 @@ export function WriteDialog({ onClose }: { onClose: () => void }) {
                     <span>{plan.blocked}</span>
                   </div>
                 )}
+                {(() => {
+                  const ids = plan.changes
+                    .filter((c) => c.languageWarning)
+                    .map((c) => c.taskId);
+                  const p = project(
+                    tasks.find((t) => t.id === ids[0])?.projectId ?? '',
+                  );
+                  if (!ids.length || !p) return null;
+                  return translating === plan.sourceId ? (
+                    <OwnerTranslate
+                      project={p}
+                      taskIds={ids}
+                      what="the remarks"
+                      prepare={() => window.worksync.prepareRemarksBatches(ids)}
+                      saveAll={(list) => window.worksync.applyRemarks(list)}
+                      onDone={async () => {
+                        setTranslating(null);
+                        await reloadTasks();
+                        await load();
+                      }}
+                    />
+                  ) : (
+                    <p className="report-note">
+                      <Icon name="globe" />
+                      <span>
+                        {ids.length} remark{ids.length === 1 ? ' is' : 's are'}{' '}
+                        not in the file’s language. The customer reads them, so
+                        translate them first.
+                      </span>
+                      <button
+                        className="btn sm accent-outline"
+                        onClick={() => setTranslating(plan.sourceId)}
+                      >
+                        <Icon name="spark" />
+                        Translate with Gemini
+                      </button>
+                    </p>
+                  );
+                })()}
                 <div className="review-list">
                   {plan.changes.map((c) => {
                     const k = `${c.taskId}:${c.field}`;

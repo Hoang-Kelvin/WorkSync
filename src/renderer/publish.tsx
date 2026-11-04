@@ -168,6 +168,19 @@ export function PublishDialog({
           />{' '}
           Include my notes
         </label>
+        <label className="check pub-notes">
+          <input
+            type="checkbox"
+            checked={project.publishOnClose}
+            onChange={async (e) => {
+              const p = await attempt(() =>
+                window.worksync.setPublishOnClose(project.id, e.target.checked),
+              );
+              if (p) putProject(p);
+            }}
+          />{' '}
+          Publish when WorkSync closes
+        </label>
       </div>
       <p className="muted" style={{ margin: 0, fontSize: 12.5 }}>
         WorkSync writes index.html, tasks.xlsx and a fingerprint file to the

@@ -4,6 +4,7 @@ import {
   backupTick,
   checkLinkedFiles,
   closeStore,
+  publishOnClose,
   registerIpcHandlers,
 } from './ipc';
 
@@ -68,4 +69,11 @@ app.on('window-all-closed', () => {
   }
 });
 
+// Publish first, while the database is still open (spec 05, publish when it closes).
+let published = false;
+app.on('before-quit', () => {
+  if (published) return;
+  published = true;
+  publishOnClose();
+});
 app.on('will-quit', closeStore);

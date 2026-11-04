@@ -128,9 +128,15 @@ export class CopyWriter {
         }
         let languageWarning: string | null = null;
         if (field === 'remarks' && t.remarks.trim()) {
+          // The working language counts too: remarks are often typed in it.
           const lang = detectLanguage(
             t.remarks,
-            project.originalLanguages,
+            [
+              ...new Set([
+                ...project.originalLanguages,
+                project.workingLanguage,
+              ]),
+            ],
             source.mainLanguage,
           );
           if (lang !== source.mainLanguage)

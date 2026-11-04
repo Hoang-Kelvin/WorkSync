@@ -192,6 +192,10 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE tasks ADD COLUMN language_set INTEGER NOT NULL DEFAULT 0;
   `,
+  // 13: publish when the app closes, per project (spec 05)
+  `
+  ALTER TABLE projects ADD COLUMN publish_on_close INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

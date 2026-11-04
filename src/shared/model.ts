@@ -89,6 +89,8 @@ export interface Project {
   publishFolder: string | null;
   /** Whether the published page includes the owner's notes. */
   publishNotes: boolean;
+  /** Whether WorkSync publishes the project's unpublished changes when it closes. */
+  publishOnClose: boolean;
   /** The Tasks table's columns, sort and filters, or null for the defaults. */
   tableSettings: TableSettings | null;
   /** How reports write dates (spec 05). */

@@ -210,7 +210,12 @@ export function excelSerialToDate(serial: number): string | null {
  * dates, 2026/11/03, 11/3, 2026年11月3日, 11月3日, 令和8年11月3日 and R8.11.3.
  * A date without a year takes the year that puts it closest to `readDay`.
  */
-export function parseDate(c: Cell, readDay: string): string | null {
+export function parseDate(
+  c: Cell,
+  readDay: string,
+  /** True for files that write 3/11 as 3 November; Japanese files write month first. */
+  dayFirst = false,
+): string | null {
   if (c === null) return null;
   if (typeof c === 'object') return c.date;
   if (typeof c === 'number') return excelSerialToDate(c);
@@ -234,9 +239,19 @@ export function parseDate(c: Cell, readDay: string): string | null {
   }
   let m = s.match(/^(\d{4})[年./-](\d{1,2})[月./-](\d{1,2})日?$/);
   if (m) return valid(Number(m[1]), Number(m[2]), Number(m[3]));
-  m = s.match(/^(\d{1,2})[月./-](\d{1,2})日?$/);
+  // 3/11/2026, month or day first as the format says.
+  m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
   if (m) {
-    const [mo, d] = [Number(m[1]), Number(m[2])];
+    const [a, b] = [Number(m[1]), Number(m[2])];
+    return dayFirst ? valid(Number(m[3]), b, a) : valid(Number(m[3]), a, b);
+  }
+  m = s.match(/^(\d{1,2})([月./-])(\d{1,2})日?$/);
+  if (m) {
+    // 11月3日 is always month first; 3/11 follows the format.
+    const swap = dayFirst && m[2] !== '月';
+    const [mo, d] = swap
+      ? [Number(m[3]), Number(m[1])]
+      : [Number(m[1]), Number(m[3])];
     const y = Number(readDay.slice(0, 4));
     const candidates = [y - 1, y, y + 1]
       .map((yy) => valid(yy, mo, d))
@@ -506,6 +521,8 @@ export interface FileFormat {
   statusWords: Record<string, Status>;
   /** The file's own value → priority level. */
   priorityWords: Record<string, Level>;
+  /** True when the file writes 3/11 as 3 November (day first). */
+  dayFirst?: boolean;
 }
 
 export interface ImportedRow {
@@ -599,7 +616,10 @@ export function readRows(
       continue;
     }
     const dates = Object.fromEntries(
-      DATE_FIELDS.map((f) => [f, parseDate(at(r, f), readDay)]),
+      DATE_FIELDS.map((f) => [
+        f,
+        parseDate(at(r, f), readDay, format.dayFirst),
+      ]),
     ) as Record<(typeof DATE_FIELDS)[number], string | null>;
     const statusWord = cellText(at(r, 'status'));
     let status: Status;
