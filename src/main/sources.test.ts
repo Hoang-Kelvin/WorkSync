@@ -227,6 +227,59 @@ describe('Sources', () => {
     });
   });
 
+  it('joins a new row to the task it really is, keeping the work', () => {
+    const { source } = link();
+    const t1 = store.listTasks().find((x) => x.customerId === '1')!;
+    store.updateTask(t1.id, { summary: 'Mine' });
+    // The customer renumbered task 1 as 101 and reworded it.
+    const v2: Grid = [
+      HEAD,
+      ['101', 'ログイン画面', '完了', '高', '2026/11/10', ''],
+      ['2', '出荷CSV', '未着手', '中', '2026/11/20', ''],
+      ['3', '帳票', '完了', '中', '2026/10/30', ''],
+    ];
+    const r = sources.review(source.id, version(v2, 'b'));
+    expect(r.added.map((x) => x.customerId)).toEqual(['101']);
+    expect(r.removed.map((x) => x.taskId)).toEqual([t1.id]);
+    const before = store.listTasks().length;
+    sources.apply(source.id, version(v2, 'b'), {
+      byTitle: false,
+      addRows: [],
+      change: [],
+      removeTaskIds: [t1.id],
+      join: [{ row: r.added[0].row, taskId: t1.id }],
+    });
+    expect(store.listTasks()).toHaveLength(before);
+    expect(store.getTask(t1.id)).toMatchObject({
+      customerId: '101',
+      titleOriginal: 'ログイン画面',
+      status: 'Done',
+      fileState: 'in_file',
+      summary: 'Mine',
+    });
+    expect(store.listActivity(t1.id)[0].text).toMatch(
+      /Joined by hand.*No. 1 → 101/,
+    );
+    // The next version matches it by its new number.
+    expect(sources.review(source.id, version(v2, 'c')).added).toEqual([]);
+  });
+
+  it('refuses to join a row to a task still in the file', () => {
+    const { source } = link();
+    const t2 = store.listTasks().find((x) => x.customerId === '2')!;
+    const v2: Grid = [...v1, ['9', '新規', '未着手', '中', '', '']];
+    const r = sources.review(source.id, version(v2, 'b'));
+    expect(() =>
+      sources.apply(source.id, version(v2, 'b'), {
+        byTitle: false,
+        addRows: [],
+        change: [],
+        removeTaskIds: [],
+        join: [{ row: r.added[0].row, taskId: t2.id }],
+      }),
+    ).toThrow(/no longer in it/);
+  });
+
   it('keeps the last ten snapshots', () => {
     const { source } = link();
     for (let i = 0; i < 12; i++)

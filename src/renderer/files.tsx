@@ -272,6 +272,9 @@ export function ReviewDialog({
   const [remove, setRemove] = useState<Set<string>>(new Set());
   const [keepMine, setKeepMine] = useState<Record<string, Set<string>>>({});
   const [format, setFormat] = useState<FileFormat>(source.format);
+  // New rows joined by hand to a task that is no longer in the file: row → task.
+  const [joins, setJoins] = useState<Record<number, string>>({});
+  const { tasks } = useApp();
   const [busy, setBusy] = useState(false);
 
   const load = async (bt: boolean, f?: FileFormat) => {
@@ -325,7 +328,39 @@ export function ReviewDialog({
     else n.add(v);
     put(n);
   };
-  const count = add.size + change.size + remove.size;
+  const joinCount = Object.keys(joins).length;
+  const count = add.size + change.size + remove.size + joinCount;
+  // Tasks a new row can be joined to: those leaving the file now, and those already removed.
+  const joinable = review
+    ? [
+        ...review.removed.map((x) => ({ ...x, already: false })),
+        ...tasks
+          .filter(
+            (t) => t.sourceFileId === source.id && t.fileState === 'removed',
+          )
+          .map((t) => ({
+            taskId: t.id,
+            customerId: t.customerId,
+            title: t.titleTranslation || t.titleOriginal,
+            already: true,
+          })),
+      ]
+    : [];
+  const join = (row: number, taskId: string) => {
+    const next = { ...joins };
+    for (const [r, id] of Object.entries(next))
+      if (id === taskId) delete next[Number(r)];
+    if (taskId) next[row] = taskId;
+    else delete next[row];
+    setJoins(next);
+    const a = new Set(add);
+    if (taskId) a.delete(row);
+    else a.add(row);
+    setAdd(a);
+    const rm = new Set(remove);
+    for (const id of Object.values(next)) rm.delete(id);
+    setRemove(rm);
+  };
 
   const apply = async () => {
     setBusy(true);
@@ -337,7 +372,13 @@ export function ReviewDialog({
           taskId,
           keepMine: [...(keepMine[taskId] ?? [])],
         })),
-        removeTaskIds: [...remove],
+        removeTaskIds: [...remove].filter(
+          (id) => !Object.values(joins).includes(id),
+        ),
+        join: Object.entries(joins).map(([row, taskId]) => ({
+          row: Number(row),
+          taskId,
+        })),
       }),
     );
     setBusy(false);
@@ -482,11 +523,13 @@ export function ReviewDialog({
         {tab === 'added' &&
           (review.added.length ? (
             review.added.map((r) => (
-              <label className="diff-row" key={r.row}>
+              <div className="diff-row" key={r.row}>
                 <input
                   type="checkbox"
                   checked={add.has(r.row)}
+                  disabled={!!joins[r.row]}
                   onChange={() => toggle(add, r.row, setAdd)}
+                  aria-label={`Add row ${r.row} as a new task`}
                 />
                 <div>
                   <span className="tid">
@@ -500,10 +543,32 @@ export function ReviewDialog({
                     {r.title}
                   </div>
                   <div className="chg">
-                    New row · added as Not translated · {r.status}
+                    {joins[r.row]
+                      ? 'Joined to the task chosen below; it keeps its summary, situation and history'
+                      : `New row · added as Not translated · ${r.status}`}
                   </div>
+                  {joinable.length > 0 && (
+                    <label className="join-row">
+                      Same task as
+                      <select
+                        className="inp sm"
+                        value={joins[r.row] ?? ''}
+                        onChange={(e) => join(r.row, e.target.value)}
+                      >
+                        <option value="">None, it is a new task</option>
+                        {joinable.map((x) => (
+                          <option key={x.taskId} value={x.taskId}>
+                            No. {x.customerId || '–'} · {x.title.slice(0, 40)}
+                            {x.already
+                              ? ' (removed earlier)'
+                              : ' (leaving the file)'}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                 </div>
-              </label>
+              </div>
             ))
           ) : (
             <p className="muted">No new rows.</p>

@@ -701,6 +701,11 @@ export interface Comparison {
 
 const show = (v: string | null) => v ?? '';
 
+/** The fields that differ between two readings of a row. */
+export function rowChanges(a: ImportedRow, b: ImportedRow): FieldChange[] {
+  return diff(a, b);
+}
+
 function diff(a: ImportedRow, b: ImportedRow): FieldChange[] {
   const out: FieldChange[] = [];
   for (const f of COMPARED)

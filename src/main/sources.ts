@@ -2,6 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import {
+  rowChanges,
   FIELD_NAMES,
   compareVersions,
   readRows,
@@ -471,8 +472,41 @@ export class Sources {
     let added = 0;
     let changed = 0;
     let removed = 0;
+    const joins = new Map((sel.join ?? []).map((j) => [j.row, j.taskId]));
+    const joined = new Set(joins.values());
+    if (joined.size !== joins.size)
+      throw new Error('Join each task to one row only.');
     this.tx(() => {
       for (const r of c.added) {
+        const joinTo = joins.get(r.row);
+        if (joinTo) {
+          const before = rows.find((x) => taskOf.get(x)!.id === joinTo);
+          const t = before && taskOf.get(before);
+          const free =
+            t &&
+            (t.fileState === 'removed' ||
+              c.removed.some((x) => taskOf.get(x)!.id === t.id));
+          if (!before || !t || !free)
+            throw new Error(
+              'A row can only be joined to a task of this file that is no longer in it.',
+            );
+          // The file's values, except fields the owner changed and has not written yet.
+          const changes = rowChanges(before, r).filter(
+            (ch) => !appValue(t, ch.field, before).changed,
+          );
+          this.applyRow(t, r, changes, fileName);
+          if (r.customerId !== t.customerId)
+            this.db
+              .prepare('UPDATE tasks SET customer_id = ? WHERE id = ?')
+              .run(r.customerId, t.id);
+          this.store.log(
+            t.id,
+            'Import',
+            `Joined by hand to row ${r.row} of ${fileName}${r.customerId !== t.customerId ? `, No. ${t.customerId || '(none)'} → ${r.customerId || '(none)'}` : ''}.`,
+          );
+          changed++;
+          continue;
+        }
         if (!sel.addRows.includes(r.row)) continue;
         this.addTask(
           source.projectId,
@@ -501,7 +535,11 @@ export class Sources {
       }
       for (const r of c.removed) {
         const t = taskOf.get(r)!;
-        if (!sel.removeTaskIds.includes(t.id) || t.fileState !== 'in_file')
+        if (
+          !sel.removeTaskIds.includes(t.id) ||
+          t.fileState !== 'in_file' ||
+          joined.has(t.id)
+        )
           continue;
         this.db
           .prepare(

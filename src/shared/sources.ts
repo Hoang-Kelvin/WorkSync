@@ -111,4 +111,9 @@ export interface ApplySelection {
   change: { taskId: string; keepMine: string[] }[];
   /** Tasks to mark Removed from file. */
   removeTaskIds: string[];
+  /**
+   * New rows the owner joined to an existing task by hand, such as a row whose
+   * ID changed. The task takes the row, with its new ID and values.
+   */
+  join?: { row: number; taskId: string }[];
 }
