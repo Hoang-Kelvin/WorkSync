@@ -91,6 +91,8 @@ export interface Project {
   publishNotes: boolean;
   /** Whether WorkSync publishes the project's unpublished changes when it closes. */
   publishOnClose: boolean;
+  /** The Board's hidden status columns and own columns. */
+  board: BoardSettings;
   /** The Tasks table's columns, sort and filters, or null for the defaults. */
   tableSettings: TableSettings | null;
   /** How reports write dates (spec 05). */
@@ -192,6 +194,8 @@ export interface Task {
   links: TaskLink[];
   /** True when the owner chose the language; it is then never detected again. */
   languageSet: boolean;
+  /** The owner's own Board column the task sits in, if any (see board.ts). */
+  boardColumn: string | null;
   /** Tasks in this build are all added by hand. */
   source: 'hand' | 'file';
   /** For tasks from a file: the linked source file, the row and what the file says. */
@@ -318,6 +322,8 @@ export function shortDate(date: string | null): string {
 export function fileDate(date: string | null): string {
   return date ? date.replaceAll('-', '/') : '';
 }
+
+import type { BoardSettings } from './board';
 
 // ---------------------------------------------------------------- rules
 

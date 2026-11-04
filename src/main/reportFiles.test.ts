@@ -17,6 +17,7 @@ const project: Project = {
   publishFolder: null,
   publishNotes: false,
   publishOnClose: false,
+  board: { hidden: [], columns: [] },
   tableSettings: null,
   dateFormat: 'YYYY/MM/DD',
 };
@@ -28,6 +29,7 @@ const base: Task = {
   sourceFileId: null,
   links: [],
   languageSet: false,
+  boardColumn: null,
   sheetRow: null,
   fileState: 'hand',
   statusWord: '対応中',

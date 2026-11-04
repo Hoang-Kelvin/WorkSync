@@ -1236,3 +1236,49 @@ select.lang-pick option {
   background: var(--raised);
   color: var(--fg);
 }
+
+/* ---------------------------------------------------------- Board columns */
+.col.own {
+  border-style: dashed;
+}
+.own-h {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.own-h b {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.own-h .st {
+  height: 20px;
+  font-size: 11px;
+}
+.col.hidden-col {
+  opacity: 0.6;
+}
+.bc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+.bc-row .switch,
+.bc-row .icon-btn {
+  margin-left: auto;
+}
+.bc-row input.inp.sm {
+  width: 200px;
+}
+.bc-add {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.bc-add input.inp.sm {
+  width: 200px;
+}

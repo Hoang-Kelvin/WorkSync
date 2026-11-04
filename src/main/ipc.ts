@@ -427,6 +427,9 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
     if (err) throw new Error(err);
   },
   bulkUpdate: async (ids, change) => need().bulkUpdate(ids, change),
+  setBoard: async (id, board) => need().setBoard(id, board),
+  setBoardColumn: async (taskId, columnId) =>
+    need().setBoardColumn(taskId, columnId),
   setTableSettings: async (id, settings) =>
     need().setTableSettings(id, settings),
   addSituationUpdate: async (id, input) => need().addSituationUpdate(id, input),

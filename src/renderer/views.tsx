@@ -1,6 +1,7 @@
 import {
   useMemo,
   useState,
+  type FormEvent,
   type DragEvent,
   type MouseEvent,
   type ReactNode,
@@ -17,8 +18,17 @@ import {
   type Task,
 } from '../shared/model';
 import { useApp } from './appState';
+import {
+  boardSlots,
+  slotOf,
+  type BoardColumn,
+  type BoardSettings,
+  type BoardSlot,
+} from '../shared/board';
+
 import { Icon } from './Icon';
 import {
+  Modal,
   Labels,
   MetaChips,
   PriorityTag,
@@ -282,34 +292,47 @@ export function BoardView({
 }) {
   const { tasks, project, putTask, toast, attempt } = useApp();
   const p = project(projectId)!;
-  const [showCancelled, setShowCancelled] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
+  const [managing, setManaging] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
-  const [over, setOver] = useState<Status | null>(null);
+  const [over, setOver] = useState<string | null>(null);
   const list = tasks.filter((t) => t.projectId === projectId && props.match(t));
-  const columns = STATUSES.filter((s) => s !== 'Cancelled' || showCancelled);
+  const columns = boardSlots(p.board, showHidden);
+  const inHidden = list.filter(
+    (t) => p.board.hidden.includes(t.status) && slotOf(t, p.board) === t.status,
+  ).length;
 
-  const move = async (id: string, to: Status) => {
+  // Puts a task in a column: the column's status, and its own column if it is one.
+  const place = async (id: string, status: Status, column: string | null) => {
+    let u = tasks.find((x) => x.id === id)!;
+    if (u.status !== status) {
+      const r = await window.worksync.updateTask(id, { status });
+      u = r;
+    }
+    if ((u.boardColumn ?? null) !== column || column)
+      u = await window.worksync.setBoardColumn(id, column);
+    return u;
+  };
+  const move = async (id: string, slot: BoardSlot) => {
     const t = tasks.find((x) => x.id === id);
-    if (!t || t.status === to) return;
-    const from = t.status;
-    putTask({ ...t, status: to });
-    const u = await attempt(() =>
-      window.worksync.updateTask(id, { status: to }),
-    );
+    if (!t || slotOf(t, p.board) === slot.key) return;
+    const column = slot.kind === 'own' ? slot.id : null;
+    putTask({ ...t, status: slot.status, boardColumn: column });
+    const u = await attempt(() => place(id, slot.status, column));
     if (!u) return putTask(t);
     putTask(u);
-    toast(`No. ${t.customerId} moved to ${to}.`, {
+    toast(`No. ${t.customerId} moved to ${slot.name}.`, {
       label: 'Undo',
       run: () =>
         void attempt(async () =>
-          putTask(await window.worksync.updateTask(id, { status: from })),
+          putTask(await place(id, t.status, t.boardColumn)),
         ),
     });
   };
 
-  const sorted = (s: Status) => {
-    const col = list.filter((t) => t.status === s);
-    return s === 'Done' || s === 'Cancelled'
+  const sorted = (slot: BoardSlot) => {
+    const col = list.filter((t) => slotOf(t, p.board) === slot.key);
+    return slot.status === 'Done' || slot.status === 'Cancelled'
       ? col.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       : col.sort(byPriority);
   };
@@ -319,37 +342,61 @@ export function BoardView({
       {props.header(
         'Board',
         `${p.name} · drag a card to change its status, right-click it to change its priority`,
-        <button
-          className="btn sm"
-          aria-pressed={showCancelled}
-          onClick={() => setShowCancelled(!showCancelled)}
-        >
-          {showCancelled ? 'Hide Cancelled' : 'Show Cancelled'}
-        </button>,
+        <div style={{ display: 'flex', gap: 8 }}>
+          {(p.board.hidden.length > 0 || showHidden) && (
+            <button
+              className="btn sm"
+              aria-pressed={showHidden}
+              onClick={() => setShowHidden(!showHidden)}
+              title={`Hidden: ${p.board.hidden.join(', ')}`}
+            >
+              {showHidden
+                ? 'Hide hidden columns'
+                : `Show hidden${inHidden ? ` (${inHidden})` : ''}`}
+            </button>
+          )}
+          <button className="btn sm" onClick={() => setManaging(true)}>
+            <Icon name="sliders" />
+            Columns
+          </button>
+        </div>,
+      )}
+      {managing && (
+        <BoardColumnsDialog project={p} onClose={() => setManaging(false)} />
       )}
       <div className="hscroll">
         <div className="board" style={{ minWidth: columns.length * 218 }}>
-          {columns.map((s) => {
-            const col = sorted(s);
+          {columns.map((slot) => {
+            const col = sorted(slot);
+            const hidden =
+              slot.kind === 'status' && p.board.hidden.includes(slot.status);
             return (
               <section
-                key={s}
-                className={`col ${over === s ? 'drop' : ''}`}
-                aria-label={s}
+                key={slot.key}
+                className={`col ${over === slot.key ? 'drop' : ''} ${slot.kind === 'own' ? 'own' : ''} ${hidden ? 'hidden-col' : ''}`}
+                aria-label={slot.name}
                 onDragOver={(e: DragEvent) => {
                   e.preventDefault();
-                  setOver(s);
+                  setOver(slot.key);
                 }}
-                onDragLeave={() => setOver((o) => (o === s ? null : o))}
+                onDragLeave={() => setOver((o) => (o === slot.key ? null : o))}
                 onDrop={(e: DragEvent) => {
                   e.preventDefault();
                   setOver(null);
+                  setDragging(null);
                   const id = e.dataTransfer.getData('text/plain');
-                  if (id) void move(id, s);
+                  if (id) void move(id, slot);
                 }}
               >
                 <div className="col-h">
-                  <StatusChip status={s} />
+                  {slot.kind === 'own' ? (
+                    <span className="own-h" title={`Status: ${slot.status}`}>
+                      <b>{slot.name}</b>
+                      <StatusChip status={slot.status} />
+                    </span>
+                  ) : (
+                    <StatusChip status={slot.status} />
+                  )}
                   <span className="count">{col.length}</span>
                 </div>
                 {col.map((t) => (
@@ -413,5 +460,170 @@ export function BoardView({
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * The Board's columns: show or hide each status, and add, rename or delete
+ * your own columns. An own column sits under one status, so a card moved
+ * there takes that status; deleting it puts its cards back in that status.
+ */
+function BoardColumnsDialog({
+  project: p,
+  onClose,
+}: {
+  project: Project;
+  onClose: () => void;
+}) {
+  const { attempt, putProject, tasks, toast } = useApp();
+  const [b, setB] = useState<BoardSettings>(p.board);
+  const [name, setName] = useState('');
+  const [under, setUnder] = useState<Status>('In progress');
+  const count = (c: BoardColumn) =>
+    tasks.filter(
+      (t) =>
+        t.projectId === p.id && t.boardColumn === c.id && t.status === c.status,
+    ).length;
+  const save = async (next: BoardSettings) => {
+    setB(next);
+    const u = await attempt(() => window.worksync.setBoard(p.id, next));
+    if (u) putProject(u);
+  };
+  const add = (e: FormEvent) => {
+    e.preventDefault();
+    const n = name.trim();
+    if (!n) return;
+    void save({
+      ...b,
+      columns: [
+        ...b.columns,
+        { id: Math.random().toString(36).slice(2, 10), name: n, status: under },
+      ],
+    });
+    setName('');
+    toast(`Added the column ${n}, under ${under}.`);
+  };
+  return (
+    <Modal
+      title="Board columns"
+      subtitle={`${p.name} · each project keeps its own`}
+      onClose={onClose}
+      narrow
+      footer={
+        <button className="btn primary" onClick={onClose}>
+          Done
+        </button>
+      }
+    >
+      <div className="form">
+        <fieldset>
+          <legend>Status columns</legend>
+          {STATUSES.map((s) => {
+            const n = tasks.filter(
+              (t) => t.projectId === p.id && t.status === s,
+            ).length;
+            const shown = !b.hidden.includes(s);
+            return (
+              <div key={s} className="bc-row">
+                <StatusChip status={s} />
+                <span className="muted">
+                  {n} task{n === 1 ? '' : 's'}
+                </span>
+                <button
+                  className="switch"
+                  role="switch"
+                  aria-checked={shown}
+                  aria-label={`Show ${s}`}
+                  onClick={() =>
+                    void save({
+                      ...b,
+                      hidden: shown
+                        ? [...b.hidden, s]
+                        : b.hidden.filter((x) => x !== s),
+                    })
+                  }
+                >
+                  <span />
+                </button>
+              </div>
+            );
+          })}
+          <span className="hint-text">
+            Hiding a column only hides it on the Board; its tasks keep their
+            status. Show hidden on the Board shows them again for a moment.
+          </span>
+        </fieldset>
+        <fieldset>
+          <legend>Your own columns</legend>
+          {b.columns.map((c) => (
+            <div key={c.id} className="bc-row">
+              <input
+                className="inp sm"
+                defaultValue={c.name}
+                aria-label={`Name of ${c.name}`}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v && v !== c.name)
+                    void save({
+                      ...b,
+                      columns: b.columns.map((x) =>
+                        x.id === c.id ? { ...x, name: v } : x,
+                      ),
+                    });
+                }}
+              />
+              <span className="muted">
+                under {c.status} · {count(c)}
+              </span>
+              <button
+                className="icon-btn"
+                aria-label={`Delete the column ${c.name}`}
+                onClick={() => {
+                  void save({
+                    ...b,
+                    columns: b.columns.filter((x) => x.id !== c.id),
+                  });
+                  toast(
+                    `Deleted ${c.name}. Its tasks are back in ${c.status}.`,
+                  );
+                }}
+              >
+                <Icon name="trash" />
+              </button>
+            </div>
+          ))}
+          <form className="bc-add" onSubmit={add}>
+            <input
+              className="inp sm"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Name, such as Waiting for test"
+              aria-label="New column name"
+            />
+            <select
+              className="inp sm"
+              value={under}
+              onChange={(e) => setUnder(e.target.value as Status)}
+              aria-label="Status of the new column"
+            >
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  under {s}
+                </option>
+              ))}
+            </select>
+            <button className="btn sm" type="submit" disabled={!name.trim()}>
+              <Icon name="plus" />
+              Add
+            </button>
+          </form>
+          <span className="hint-text">
+            A card moved to your column takes its status, so the file and
+            reports see that status. If the status changes elsewhere, the card
+            goes back to the status column.
+          </span>
+        </fieldset>
+      </div>
+    </Modal>
   );
 }

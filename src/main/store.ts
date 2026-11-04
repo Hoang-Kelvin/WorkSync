@@ -30,6 +30,7 @@ import {
 } from '../shared/model';
 import { DEFAULT_SETTINGS, type AppSettings } from '../shared/settings';
 import type { OwnerTranslation } from '../shared/ownerBatch';
+import { cleanBoard, type BoardSettings } from '../shared/board';
 
 type Row = Record<string, unknown>;
 const str = (v: unknown): string => (v == null ? '' : String(v));
@@ -145,6 +146,7 @@ export class Store {
       publishFolder: r.publish_folder == null ? null : str(r.publish_folder),
       publishNotes: Number(r.publish_notes) === 1,
       publishOnClose: Number(r.publish_on_close) === 1,
+      board: cleanBoard(r.board ? JSON.parse(str(r.board)) : null),
       dateFormat: (DATE_FORMATS as readonly string[]).includes(
         str(r.date_format),
       )
@@ -235,6 +237,57 @@ export class Store {
     return this.getProject(id);
   }
 
+  /**
+   * Saves the Board's columns. Tasks in an own column that is removed go back
+   * to the column of their status.
+   */
+  setBoard(id: string, board: BoardSettings): Project {
+    const b = cleanBoard(board);
+    this.getProject(id);
+    this.tx(() => {
+      this.db
+        .prepare('UPDATE projects SET board = ? WHERE id = ?')
+        .run(JSON.stringify(b), id);
+      const keep = b.columns.map((c) => c.id);
+      const rows = this.db
+        .prepare(
+          'SELECT id, board_column FROM tasks WHERE project_id = ? AND board_column IS NOT NULL',
+        )
+        .all(id) as Row[];
+      for (const r of rows)
+        if (!keep.includes(str(r.board_column)))
+          this.db
+            .prepare('UPDATE tasks SET board_column = NULL WHERE id = ?')
+            .run(str(r.id));
+    });
+    return this.getProject(id);
+  }
+
+  /** Puts a task in one of the Board's own columns, or back in its status column. */
+  setBoardColumn(taskId: string, columnId: string | null): Task {
+    const t = this.getTask(taskId);
+    const col = columnId
+      ? this.getProject(t.projectId).board.columns.find(
+          (c) => c.id === columnId,
+        )
+      : null;
+    if (columnId && !col)
+      throw new Error('That Board column no longer exists.');
+    if (col && col.status !== t.status)
+      throw new Error(`Set the status to ${col.status} first.`);
+    if ((t.boardColumn ?? null) === (columnId ?? null)) return t;
+    this.tx(() => {
+      this.db
+        .prepare(
+          'UPDATE tasks SET board_column = ?, updated_at = ? WHERE id = ?',
+        )
+        .run(columnId, this.now(), taskId);
+      if (col)
+        this.log(taskId, 'Edit', `Moved to the Board column ${col.name}.`);
+    });
+    return this.getTask(taskId);
+  }
+
   /** Remembers the Tasks table's columns, sort and filters; null goes back to the defaults. */
   setTableSettings(id: string, settings: TableSettings | null): Project {
     this.getProject(id);
@@ -284,6 +337,7 @@ export class Store {
       projectId: str(r.project_id),
       links: JSON.parse(str(r.links) || '[]'),
       languageSet: Number(r.language_set) === 1,
+      boardColumn: opt(r.board_column),
       customerId: str(r.customer_id),
       source: str(r.source) as Task['source'],
       sourceFileId: opt(r.source_file_id),

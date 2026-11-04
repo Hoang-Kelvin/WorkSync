@@ -22,6 +22,7 @@ import type {
 } from './model';
 import type { FileFormat } from './importRules';
 import type { AppSettings, StorageInfo } from './settings';
+import type { BoardSettings } from './board';
 import type { OwnerAnswer, OwnerBatch, OwnerTranslation } from './ownerBatch';
 import type { Batch, ReadAnswer } from './aiBatch';
 import type { PendingChange, WritePlan, WriteResult } from './writes';
@@ -112,6 +113,8 @@ export interface WorkSyncApi {
   openLink(target: string): Promise<void>;
   /** One change to several tasks, from the Tasks table. */
   bulkUpdate(ids: string[], change: BulkChange): Promise<Task[]>;
+  setBoard(projectId: string, board: BoardSettings): Promise<Project>;
+  setBoardColumn(taskId: string, columnId: string | null): Promise<Task>;
   setTableSettings(
     projectId: string,
     settings: TableSettings | null,
@@ -244,6 +247,8 @@ export const API_METHODS = [
   'openLink',
   'bulkUpdate',
   'setTableSettings',
+  'setBoard',
+  'setBoardColumn',
   'addSituationUpdate',
   'setDifficultyOpen',
   'deleteTask',

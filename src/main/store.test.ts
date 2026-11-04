@@ -410,3 +410,20 @@ describe('tasks from a file', () => {
     ).toBe('Mine');
   });
 });
+
+describe('Board columns', () => {
+  it('moves tasks into own columns and back when one is deleted', () => {
+    const p = project();
+    const t = store.createTask(p.id, input({ status: 'In review' }));
+    store.setBoard(p.id, {
+      hidden: [],
+      columns: [{ id: 'w', name: 'Waiting for test', status: 'In review' }],
+    });
+    expect(store.setBoardColumn(t.id, 'w').boardColumn).toBe('w');
+    expect(store.listActivity(t.id)[0].text).toMatch(/Waiting for test/);
+    store.updateTask(t.id, { status: 'Done' });
+    expect(() => store.setBoardColumn(t.id, 'w')).toThrow(/In review first/);
+    store.setBoard(p.id, { hidden: [], columns: [] });
+    expect(store.getTask(t.id).boardColumn).toBeNull();
+  });
+});

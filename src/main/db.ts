@@ -196,6 +196,11 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE projects ADD COLUMN publish_on_close INTEGER NOT NULL DEFAULT 0;
   `,
+  // 14: the Board's own columns and hidden columns (spec 03, Board)
+  `
+  ALTER TABLE projects ADD COLUMN board TEXT;
+  ALTER TABLE tasks ADD COLUMN board_column TEXT;
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
