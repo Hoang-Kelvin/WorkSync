@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
 import { migrate } from './db';
-import { buildPage } from './publishPage';
+import { buildPage, pageData } from './publishPage';
 import {
   EXPORT_FILE,
   FINGERPRINT_FILE,
@@ -84,6 +84,32 @@ describe('the published page', () => {
       includeNotes: true,
     });
     expect(withNotes).toContain('Private note');
+  });
+
+  it('carries the owner’s Board columns, with each task in its column', () => {
+    const t = store.listTasks()[0];
+    store.updateTask(t.id, { status: 'In review' });
+    store.setBoard(projectId, {
+      hidden: ['On hold', 'Cancelled'],
+      columns: [{ id: 'w', name: 'Waiting for test', status: 'In review' }],
+    });
+    store.setBoardColumn(t.id, 'w');
+    const data = pageData({
+      project: store.getProject(projectId),
+      tasks: store.listTasks(),
+      updates: {},
+      publishedAt: '2026-11-03T05:20:00Z',
+      today: '2026-11-03',
+      includeNotes: false,
+    });
+    expect(data.board.map((c) => c.name)).toEqual([
+      'Not started',
+      'In progress',
+      'Waiting for test',
+      'In review',
+      'Done',
+    ]);
+    expect(data.tasks[0].col).toBe('own:w');
   });
 
   it('cannot be broken by task text', () => {
