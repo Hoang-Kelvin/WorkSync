@@ -425,6 +425,18 @@ export class Store {
   updateTask(id: string, patch: Partial<TaskInput>): Task {
     const before = this.getTask(id);
     const project = this.getProject(before.projectId);
+    // The ID and the customer's own text of a task from a file change only with the file.
+    if (before.source === 'file') {
+      for (const k of [
+        'customerId',
+        'titleOriginal',
+        'descriptionOriginal',
+      ] as const)
+        if (patch[k] !== undefined && patch[k] !== before[k])
+          throw new Error(
+            'The No., title and description come from the customer’s file. They change when the file does.',
+          );
+    }
     const merged = this.clean({ ...before, ...patch });
     // The owner's choice wins; otherwise a new title, or going back to Detect, detects again.
     const languageSet = patch.languageSet ?? before.languageSet;

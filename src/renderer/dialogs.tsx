@@ -416,6 +416,12 @@ export function TaskDialog({
               className="inp mono"
               value={v.customerId}
               onChange={set('customerId')}
+              readOnly={fromFile}
+              title={
+                fromFile
+                  ? 'From the customer’s file, which matches the task by it. It changes when the file does.'
+                  : undefined
+              }
               placeholder="Next number"
             />
           </label>
