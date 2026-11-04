@@ -83,8 +83,10 @@ export function TasksView({
   useEffect(() => () => window.clearTimeout(saveTimer.current), []);
 
   const all = useMemo(
-    () => tasks.filter((t) => t.projectId === projectId),
-    [tasks, projectId],
+    () => tasks.filter((t) => t.projectId === projectId && props.passes(t)),
+    // props.passes changes with the top bar filter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tasks, projectId, props.passes],
   );
   const rows = useMemo(
     () => tableRows(all, settings, props.query, { people }),

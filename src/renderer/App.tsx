@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Startup } from '../shared/ipc';
-import { BUILT_VIEWS, inFocus, type Project, type Task } from '../shared/model';
+import {
+  BUILT_VIEWS,
+  inFocus,
+  matchesSearch,
+  type Project,
+  type Task,
+} from '../shared/model';
 import { AppProvider, useApp } from './appState';
 import {
   ConfirmDelete,
@@ -23,6 +29,14 @@ import { PublishDialog, PublishedView, usePublishStatus } from './publish';
 import { WriteDialog, usePendingCount } from './writeCopy';
 import { ReportDialog } from './reports';
 import { SettingsDialog } from './settings';
+import { FilterButton, FilterNotice } from './filterBar';
+import {
+  NO_FILTER,
+  matchesFilter,
+  type ViewFilter,
+} from '../shared/viewFilter';
+
+const FILTER_KEY = 'worksync.filter';
 import { PeopleDialog } from './people';
 import { LinkWizard } from './LinkWizard';
 import { AiDialog, GlossaryDialog, type AiSession } from './ai';
@@ -106,6 +120,7 @@ function Shell({
     reloadAll,
     toast,
     sources,
+    people,
   } = useApp();
   const [route, setRoute] = useState<Route>({ view: 'focus', scope: 'all' });
   const [active, setActive] = useState<string | null>(projects[0]?.id ?? null);
@@ -120,6 +135,25 @@ function Shell({
   const [headEl, setHeadEl] = useState<HTMLDivElement | null>(null);
   const [aiSession, setAiSession] = useState<AiSession | null>(null);
   const [dataWarning, setDataWarning] = useState(warning);
+  const [filter, setFilterState] = useState<ViewFilter>(() => {
+    try {
+      return {
+        ...NO_FILTER,
+        ...JSON.parse(localStorage.getItem(FILTER_KEY) ?? '{}'),
+      };
+    } catch {
+      return NO_FILTER;
+    }
+  });
+  const setFilter = (f: ViewFilter) => {
+    setFilterState(f);
+    try {
+      localStorage.setItem(FILTER_KEY, JSON.stringify(f));
+    } catch {
+      // Remembering the filter is only a convenience.
+    }
+  };
+  const [filterOpen, setFilterOpen] = useState(false);
 
   // Keep the route valid when a view is turned off or a project changes.
   useEffect(() => {
@@ -156,8 +190,18 @@ function Shell({
   const closeMenu = useCallback(() => setMenu(null), []);
 
   // Each view renders its header into the fixed area above the scrolling content.
+  const passes = useCallback(
+    (t: Task) => matchesFilter(t, filter, people),
+    [filter, people],
+  );
+  const match = useCallback(
+    (t: Task) => passes(t) && matchesSearch(t, query),
+    [passes, query],
+  );
   const props: ViewProps = {
     query,
+    match,
+    passes,
     openTask: setOpenId,
     openMenu,
     header: (title, subtitle, right) =>
@@ -448,6 +492,17 @@ function Shell({
               />
               <span className="kbd">Ctrl K</span>
             </label>
+            <FilterButton
+              filter={filter}
+              setFilter={setFilter}
+              tasks={tasks.filter(
+                (t) =>
+                  t.fileState !== 'removed' &&
+                  (!currentProjectId || t.projectId === currentProjectId),
+              )}
+              open={filterOpen}
+              setOpen={setFilterOpen}
+            />
             <button
               className="btn"
               aria-pressed={originalFirst}
@@ -553,6 +608,11 @@ function Shell({
             </button>
           </header>
           <div className="notices">
+            <FilterNotice
+              filter={filter}
+              setFilter={setFilter}
+              onEdit={() => setFilterOpen(true)}
+            />
             {dataWarning && (
               <div className="notice warn" role="alert">
                 <Icon name="alert" />

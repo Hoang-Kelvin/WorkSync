@@ -12,7 +12,6 @@ import {
   focusReasons,
   inFocus,
   isClosed,
-  matchesSearch,
   type Project,
   type Status,
   type Task,
@@ -32,6 +31,10 @@ import {
 
 export interface ViewProps {
   query: string;
+  /** The search and the top bar filter together. */
+  match: (t: Task) => boolean;
+  /** The top bar filter alone, for views that search on their own. */
+  passes: (t: Task) => boolean;
   openTask: (id: string) => void;
   openMenu: (
     task: Task,
@@ -200,7 +203,7 @@ export function FocusView({
   const days = (t: Task) => project(t.projectId)?.dueSoonDays ?? 7;
   const shown = base
     .filter((t) => !quick || QUICK[quick].test(flags(t, today, days(t))))
-    .filter((t) => matchesSearch(t, props.query))
+    .filter((t) => props.match(t))
     .sort(byPriority);
   const chips = (
     <div className="qchips" role="group" aria-label="Quick filters">
@@ -282,9 +285,7 @@ export function BoardView({
   const [showCancelled, setShowCancelled] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<Status | null>(null);
-  const list = tasks.filter(
-    (t) => t.projectId === projectId && matchesSearch(t, props.query),
-  );
+  const list = tasks.filter((t) => t.projectId === projectId && props.match(t));
   const columns = STATUSES.filter((s) => s !== 'Cancelled' || showCancelled);
 
   const move = async (id: string, to: Status) => {

@@ -10,7 +10,6 @@ import {
   fileDate,
   flags,
   isClosed,
-  matchesSearch,
   shortDate,
   shownPriority,
   type ImportSummary,
@@ -48,9 +47,7 @@ export function TimelineView({
   const [zoom, setZoom] = useState<Zoom>('weeks');
   const list = tasks.filter(
     (t) =>
-      t.projectId === projectId &&
-      t.fileState !== 'removed' &&
-      matchesSearch(t, props.query),
+      t.projectId === projectId && t.fileState !== 'removed' && props.match(t),
   );
   const dated = list
     .filter((t) => t.plannedStart || t.plannedEnd)
@@ -333,7 +330,7 @@ export function CalendarView({
       t.projectId === projectId &&
       t.fileState !== 'removed' &&
       !isClosed(t) &&
-      matchesSearch(t, props.query),
+      props.match(t),
   );
 
   const byDay = useMemo(() => {
@@ -549,7 +546,8 @@ export function DashboardView({
   }, [projectId, sources]);
 
   const all = tasks.filter(
-    (t) => t.projectId === projectId && t.fileState !== 'removed',
+    (t) =>
+      t.projectId === projectId && t.fileState !== 'removed' && props.match(t),
   );
   const open = all.filter((t) => !isClosed(t));
   const f = (t: Task) => flags(t, today, p.dueSoonDays);
