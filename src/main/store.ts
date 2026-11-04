@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   DATE_FORMATS,
   DEFAULT_VIEWS,
+  STATUSES,
   EMPTY_SITUATION,
   LANGUAGES,
   LEVEL_NAME,
@@ -263,6 +264,16 @@ export class Store {
   setBoard(id: string, board: BoardSettings): Project {
     const b = cleanBoard(board);
     this.getProject(id);
+    const names = b.columns.map((c) => c.name.toLowerCase());
+    const clash = b.columns.find(
+      (c, i) =>
+        STATUSES.some((s) => s.toLowerCase() === names[i]) ||
+        names.indexOf(names[i]) !== i,
+    );
+    if (clash)
+      throw new Error(
+        `There is already a column called ${clash.name}. Choose another name.`,
+      );
     this.tx(() => {
       this.db
         .prepare('UPDATE projects SET board = ? WHERE id = ?')
@@ -550,7 +561,8 @@ export class Store {
       patch.status === 'Done' &&
       before.status !== 'Done' &&
       !merged.actualEnd &&
-      patch.actualEnd === undefined
+      // The form sends every field; only a date the owner typed now counts as theirs.
+      (patch.actualEnd ?? null) === (before.actualEnd ?? null)
     ) {
       merged.actualEnd = this.today();
       if (merged.actualStart && merged.actualStart > merged.actualEnd)

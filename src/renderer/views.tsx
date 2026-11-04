@@ -487,10 +487,13 @@ function BoardColumnsDialog({
       (t) =>
         t.projectId === p.id && t.boardColumn === c.id && t.status === c.status,
     ).length;
+  // Shown only once saved, so a refused change never stays on screen.
   const save = async (next: BoardSettings) => {
-    setB(next);
     const u = await attempt(() => window.worksync.setBoard(p.id, next));
-    if (u) putProject(u);
+    if (!u) return false;
+    setB(u.board);
+    putProject(u);
+    return true;
   };
   const add = (e: FormEvent) => {
     e.preventDefault();
@@ -502,9 +505,11 @@ function BoardColumnsDialog({
         ...b.columns,
         { id: Math.random().toString(36).slice(2, 10), name: n, status: under },
       ],
+    }).then((ok) => {
+      if (!ok) return;
+      setName('');
+      toast(`Added the column ${n}, under ${under}.`);
     });
-    setName('');
-    toast(`Added the column ${n}, under ${under}.`);
   };
   return (
     <Modal
@@ -566,7 +571,25 @@ function BoardColumnsDialog({
                 aria-label={`Name of ${c.name}`}
                 onBlur={(e) => {
                   const v = e.target.value.trim();
-                  if (v && v !== c.name)
+                  // The same rule as adding: no status name, no other column's name.
+                  const taken = [
+                    ...STATUSES,
+                    ...b.columns
+                      .filter((x) => x.id !== c.id)
+                      .map((x) => x.name),
+                  ].find((x) => x.toLowerCase() === v.toLowerCase());
+                  if (taken) {
+                    toast(
+                      `There is already a column called ${taken}. Choose another name.`,
+                    );
+                    e.target.value = c.name;
+                    return;
+                  }
+                  if (!v) {
+                    e.target.value = c.name;
+                    return;
+                  }
+                  if (v !== c.name)
                     void save({
                       ...b,
                       columns: b.columns.map((x) =>
@@ -585,9 +608,12 @@ function BoardColumnsDialog({
                   void save({
                     ...b,
                     columns: b.columns.filter((x) => x.id !== c.id),
-                  });
-                  toast(
-                    `Deleted ${c.name}. Its tasks are back in ${c.status}.`,
+                  }).then(
+                    (ok) =>
+                      ok &&
+                      toast(
+                        `Deleted ${c.name}. Its tasks are back in ${c.status}.`,
+                      ),
                   );
                 }}
               >

@@ -517,3 +517,40 @@ describe('checks from the test report', () => {
     );
   });
 });
+
+describe('checks from the second test report', () => {
+  it('sets the actual end when the form sets Done with an empty date (N2)', () => {
+    const t = store.createTask(project().id, input({ status: 'In progress' }));
+    // The edit form sends every field, the empty date too.
+    const u = store.updateTask(t.id, {
+      ...input({ status: 'Done' }),
+      customerId: t.customerId,
+    });
+    expect(u.actualEnd).toBe(clock.slice(0, 10));
+    // A date the owner typed is kept.
+    const t2 = store.createTask(t.projectId, input({ status: 'In progress' }));
+    expect(
+      store.updateTask(t2.id, { status: 'Done', actualEnd: '2026-10-30' })
+        .actualEnd,
+    ).toBe('2026-10-30');
+  });
+
+  it('refuses a Board column named like a status or another column (N1)', () => {
+    const p = project();
+    expect(() =>
+      store.setBoard(p.id, {
+        hidden: [],
+        columns: [{ id: 'a', name: 'on hold', status: 'In review' }],
+      }),
+    ).toThrow(/already a column called on hold/);
+    expect(() =>
+      store.setBoard(p.id, {
+        hidden: [],
+        columns: [
+          { id: 'a', name: 'Waiting', status: 'In review' },
+          { id: 'b', name: 'waiting', status: 'Done' },
+        ],
+      }),
+    ).toThrow(/already a column/);
+  });
+});

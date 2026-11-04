@@ -298,6 +298,23 @@ describe('Sources', () => {
     expect(sources.review(source.id, version(v1, 'c')).deletedRows).toEqual([]);
   });
 
+  it('refuses the same sheet of the same file twice, but not another sheet (N3)', () => {
+    link();
+    expect(() => link()).toThrow(/already linked/);
+    expect(store.listTasks()).toHaveLength(3);
+    const other = sources.link(
+      {
+        projectId,
+        file: '/box/WBS.xlsx',
+        pattern: null,
+        format: { ...FORMAT, sheet: 'Issues' },
+        mainLanguage: 'ja',
+      },
+      version(v1, 'z'),
+    );
+    expect(other.added).toBe(3);
+  });
+
   it('keeps the last ten snapshots', () => {
     const { source } = link();
     for (let i = 0; i < 12; i++)

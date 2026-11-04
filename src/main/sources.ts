@@ -256,6 +256,28 @@ export class Sources {
     }
     if (!read.rows.length)
       throw new Error('No task rows were found with this file format.');
+    // The same sheet of the same file twice would make every task twice (spec 04 allows
+    // another sheet of the same file, which is another source).
+    const same = (a: string, b: string) => {
+      const n = (x: string) => {
+        const r = path.resolve(x);
+        return process.platform === 'linux' ? r : r.toLowerCase();
+      };
+      return n(a) === n(b);
+    };
+    const dup = this.list().find(
+      (s) =>
+        s.projectId === input.projectId &&
+        s.format.sheet === input.format.sheet &&
+        (same(s.currentFile, v.file) ||
+          (!!input.pattern &&
+            s.pattern === input.pattern &&
+            same(s.path, path.dirname(input.file)))),
+    );
+    if (dup)
+      throw new Error(
+        `The sheet “${input.format.sheet}” of ${path.basename(v.file)} is already linked to this project. Review its changes under Files instead, or link another sheet.`,
+      );
     this.tx(() => {
       this.db
         .prepare(
