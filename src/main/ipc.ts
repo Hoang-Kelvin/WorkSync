@@ -38,7 +38,7 @@ import {
   replaceDatabase,
 } from './backups';
 import { log, logFolder, startLog } from './log';
-import { exportProject, importProject } from './projectTransfer';
+import { exportProject, importProject, readExport } from './projectTransfer';
 import { sharedFolderWarning, type StorageInfo } from '../shared/settings';
 import { addSampleProject } from './sample';
 import { FileLinks } from './fileLinks';
@@ -62,6 +62,8 @@ const writtenCopies = new Set<string>();
 const chosenFiles = new Set<string>();
 let startup: Startup | null = null;
 let dataFolder = '';
+/** .worksync files the owner picked in this session; only these are imported. */
+const chosenImports = new Set<string>();
 /** Backup files the owner picked from elsewhere in this session. */
 const chosenBackups = new Set<string>();
 
@@ -413,8 +415,8 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
     log('info', 'Exported a project copy');
     return { file };
   },
-  importProject: async () => {
-    need();
+  chooseImport: async () => {
+    const st = need();
     let file = process.env.WORKSYNC_TEST_IMPORT_FILE ?? null;
     if (!file) {
       const win =
@@ -427,14 +429,45 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
       file = r.canceled ? null : (r.filePaths[0] ?? null);
     }
     if (!file) return null;
-    // A backup first, as for any change this large.
-    backupBefore(db!, backupFolder(), 'manual');
+    const x = readExport(fs.readFileSync(file));
+    chosenImports.add(file);
+    const name = String(x.tables.projects[0].name ?? x.name);
+    const tasks = st.listTasks();
+    const sameName = st
+      .listProjects()
+      .filter((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase())
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        tasks: tasks.filter((t) => t.projectId === p.id).length,
+      }));
+    return {
+      file,
+      name,
+      exportedAt: x.exportedAt,
+      tasks: (x.tables.tasks ?? []).length,
+      sameName,
+    };
+  },
+  importProject: async (file, replaceProjectId) => {
+    const st = need();
+    if (!chosenImports.has(file)) throw new Error('Choose the file again.');
+    const replacing = replaceProjectId ? st.getProject(replaceProjectId) : null;
+    // A backup first, as for any change this large; replacing can be undone from it.
+    backupBefore(db!, backupFolder(), replacing ? 'delete' : 'manual');
+    // The new project comes in first, so a failed import never loses the old one.
     const r = importProject(
       db!,
       fs.readFileSync(file),
       path.join(dataFolder, 'snapshots'),
       new Date().toISOString(),
     );
+    let name = r.name;
+    if (replacing) {
+      st.deleteProject(replacing.id);
+      name = st.updateProject(r.projectId, { name: replacing.name }).name;
+      log('info', 'Replaced a project with an imported copy');
+    }
     // Linked files are checked on this PC; they may be somewhere else here.
     const { sources: s, links: l } = needLinks();
     for (const src of s.list().filter((x) => x.projectId === r.projectId))
@@ -446,7 +479,7 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
         (x) => x.projectId === r.projectId && x.state === 'missing',
       ).length;
     log('info', `Imported a project with ${r.tasks} tasks`);
-    return { ...r, missingFiles };
+    return { ...r, name, missingFiles };
   },
   relinkSource: async (sourceId) => {
     const { sources: s, links: l } = needLinks();

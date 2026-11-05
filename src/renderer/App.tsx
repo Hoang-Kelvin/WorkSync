@@ -18,7 +18,7 @@ import {
   viewName,
 } from './dialogs';
 import { Icon } from './Icon';
-import { Toast } from './parts';
+import { Modal, Toast } from './parts';
 import { PriorityMenu, type MenuAnchor } from './PriorityMenu';
 import { TaskPopup } from './TaskPopup';
 import { BoardView, FocusView, initials, type ViewProps } from './views';
@@ -76,6 +76,12 @@ type Dialog =
   | { kind: 'publish'; projectId: string }
   | { kind: 'write' }
   | { kind: 'settings' }
+  | {
+      kind: 'importClash';
+      info: NonNullable<
+        Awaited<ReturnType<typeof window.worksync.chooseImport>>
+      >;
+    }
   | { kind: 'report'; projectId: string; taskIds?: string[] };
 
 export function App() {
@@ -218,14 +224,22 @@ function Shell({
       ),
   };
 
+  // Import: pick the file, and ask first when a project here has the same name.
   const importCopy = async () => {
-    const r = await attempt(() => window.worksync.importProject());
+    const info = await attempt(() => window.worksync.chooseImport());
+    if (!info) return;
+    if (info.sameName.length) setDialog({ kind: 'importClash', info });
+    else await finishImport(info.file, null);
+  };
+  const finishImport = async (file: string, replace: string | null) => {
+    const r = await attempt(() => window.worksync.importProject(file, replace));
     if (!r) return;
+    setDialog(null);
     await reloadAll();
     setActive(r.projectId);
     go({ view: 'focus', scope: r.projectId });
     toast(
-      `Imported ${r.name} with ${r.tasks} task${r.tasks === 1 ? '' : 's'}.${r.missingFiles ? ` ${r.missingFiles} linked file${r.missingFiles === 1 ? ' is' : 's are'} not at the same place on this PC: use Find the file under Files.` : ''}`,
+      `${replace ? 'Replaced' : 'Imported'} ${r.name} with ${r.tasks} task${r.tasks === 1 ? '' : 's'}.${replace ? ' The old one is in the backups.' : ''}${r.missingFiles ? ` ${r.missingFiles} linked file${r.missingFiles === 1 ? ' is' : 's are'} not at the same place on this PC: use Find the file under Files.` : ''}`,
     );
   };
 
@@ -812,6 +826,14 @@ function Shell({
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.kind === 'importClash' && (
+        <ImportClash
+          info={dialog.info}
+          onCopy={() => void finishImport(dialog.info.file, null)}
+          onReplace={(id) => void finishImport(dialog.info.file, id)}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {dialog?.kind === 'settings' && (
         <SettingsDialog onClose={() => setDialog(null)} />
       )}
@@ -893,5 +915,120 @@ function Welcome({
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Importing a project whose name is already used here: make a copy beside
+ * it, or replace the existing project with the imported one.
+ */
+function ImportClash({
+  info,
+  onCopy,
+  onReplace,
+  onClose,
+}: {
+  info: NonNullable<Awaited<ReturnType<typeof window.worksync.chooseImport>>>;
+  onCopy: () => void;
+  onReplace: (projectId: string) => void;
+  onClose: () => void;
+}) {
+  const { projects } = useApp();
+  const [target, setTarget] = useState(info.sameName[0].id);
+  const [busy, setBusy] = useState(false);
+  const old = info.sameName.find((p) => p.id === target)!;
+  const exported = info.exportedAt
+    ? new Date(info.exportedAt).toLocaleString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '';
+  // The name a copy would get, as Windows names copies.
+  const taken = new Set(projects.map((p) => p.name.trim().toLowerCase()));
+  const root = info.name.replace(/\s*\(\d+\)$/, '');
+  let n = 1;
+  while (taken.has(`${root} (${n})`.toLowerCase())) n++;
+  const copyName = `${root} (${n})`;
+  return (
+    <Modal
+      title={`A project called ${info.name} already exists`}
+      subtitle="Keep both, or replace yours with the one you are importing."
+      onClose={onClose}
+      narrow
+      footer={
+        <>
+          <button className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="btn"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              onCopy();
+            }}
+          >
+            Import as a copy
+          </button>
+          <button
+            className="btn danger"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              onReplace(old.id);
+            }}
+          >
+            Replace {old.name}
+          </button>
+        </>
+      }
+    >
+      <div className="form">
+        <div className="clash">
+          <div>
+            <small>Here now</small>
+            {info.sameName.length > 1 ? (
+              <select
+                className="inp sm"
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                aria-label="Project to replace"
+              >
+                {info.sameName.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <b>{old.name}</b>
+            )}
+            <span>
+              {old.tasks} task{old.tasks === 1 ? '' : 's'}
+            </span>
+          </div>
+          <div>
+            <small>In the file</small>
+            <b>{info.name}</b>
+            <span>
+              {info.tasks} task{info.tasks === 1 ? '' : 's'}
+              {exported ? ` · exported ${exported}` : ''}
+            </span>
+          </div>
+        </div>
+        <p className="muted step-help">
+          <b>Import as a copy</b> adds it as {copyName}, and yours stays as it
+          is.
+        </p>
+        <p className="muted step-help">
+          <b>Replace {old.name}</b> deletes yours, with its tasks, notes and
+          history, and puts the imported one in its place. WorkSync backs up
+          first, so you can get yours back from Settings.
+        </p>
+      </div>
+    </Modal>
   );
 }

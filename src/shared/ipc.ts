@@ -104,8 +104,25 @@ export interface WorkSyncApi {
     projectId: string,
     includeNotes: boolean,
   ): Promise<{ file: string } | null>;
-  /** Adds a project from a .worksync file as a new project; null when cancelled. */
-  importProject(): Promise<{
+  /**
+   * Asks for a .worksync file and says what it holds, and which projects here
+   * have the same name; null when cancelled.
+   */
+  chooseImport(): Promise<{
+    file: string;
+    name: string;
+    exportedAt: string;
+    tasks: number;
+    sameName: { id: string; name: string; tasks: number }[];
+  } | null>;
+  /**
+   * Adds the project from the chosen file: as a copy, or in place of a project
+   * with the same name (that one is deleted, after a backup).
+   */
+  importProject(
+    file: string,
+    replaceProjectId: string | null,
+  ): Promise<{
     projectId: string;
     name: string;
     tasks: number;
@@ -254,6 +271,7 @@ export const API_METHODS = [
   'updateProject',
   'deleteProject',
   'exportProject',
+  'chooseImport',
   'importProject',
   'relinkSource',
   'addSampleProject',

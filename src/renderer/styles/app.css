@@ -1307,3 +1307,27 @@ select.lang-pick option {
   border-style: solid;
   align-items: flex-start;
 }
+.clash {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.clash > div {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgb(var(--hl) / 0.03);
+  font-size: 13px;
+}
+.clash small {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.clash span {
+  color: var(--muted);
+  font-size: 12.5px;
+}
