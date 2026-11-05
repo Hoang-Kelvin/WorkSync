@@ -146,7 +146,6 @@ describe('reports', () => {
       task({ status: 'Done', actualEnd: '2026-11-04' }),
       task({
         plannedEnd: '2026-11-01',
-        situation: { ...EMPTY_SITUATION, waitingOn: 'Customer' },
       }),
     ];
     expect(periodOverview(all, project, opts(), '2026-11-03')).toMatchObject({
@@ -154,7 +153,6 @@ describe('reports', () => {
       finished: 1,
       started: 1,
       overdue: 1,
-      waitingOnCustomer: 1,
     });
   });
 
@@ -189,7 +187,6 @@ describe('reports', () => {
       situation: {
         handledBy: 'Yamada',
         doingNow: 'Testing the fix',
-        waitingOn: 'Customer',
         nextStep: 'Customer confirms',
         nextDate: '2026-11-05',
         asOf: '2026-11-02',
@@ -207,7 +204,7 @@ describe('reports', () => {
     expect(briefParts(t, opts(), '2026-11-03', 7)).toMatchObject({
       doingNow: 'In progress · Yamada: testing the fix',
       difficulties: ['No staging access (Customer IT)'],
-      next: 'Customer confirms by 2026/11/05 · waiting on customer',
+      next: 'Customer confirms by 2026/11/05',
       due: 'Overdue, was due 2026/11/01',
       asOf: '2026/11/02',
     });

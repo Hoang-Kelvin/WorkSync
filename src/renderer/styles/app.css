@@ -1428,3 +1428,51 @@ select.lang-pick option {
 .field.editable.wide > .v {
   margin-top: 8px;
 }
+
+/* Pin: tilted when not pinned, upright and in the accent colour when pinned. */
+.pin-toggle .ic {
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+.pin-toggle.on {
+  color: var(--accent);
+}
+.pin-toggle.on .ic {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pin-toggle .ic {
+    transition: none;
+  }
+}
+
+/* Add row: the empty fields of a section. */
+.add-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+.add-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px 3px 6px;
+  border-radius: 999px;
+  border: 1px dashed var(--line-strong);
+  background: none;
+  color: var(--muted);
+  font: 500 12px var(--ui);
+  cursor: pointer;
+}
+.add-chip .ic {
+  width: 12px;
+  height: 12px;
+}
+.add-chip:hover,
+.add-chip:focus-visible {
+  color: var(--accent);
+  border-color: rgb(var(--acc) / 0.6);
+}

@@ -4,7 +4,6 @@ import {
   LEVEL_NAME,
   STATUSES,
   addDays,
-  brief,
   byPriority,
   daysBetween,
   fileDate,
@@ -544,7 +543,7 @@ export function DashboardView({
   projectId: string;
   props: ViewProps;
 }) {
-  const { tasks, today, project, attempt, toast, sources } = useApp();
+  const { tasks, today, project, sources } = useApp();
   const p = project(projectId)!;
   const showNo = useShowNo();
   const [asTable, setAsTable] = useState(false);
@@ -565,9 +564,6 @@ export function DashboardView({
   const days = p.dueSoonDays;
   const withDiff = open.filter((t) => f(t).openDifficulties > 0);
   const diffCount = open.reduce((n, t) => n + f(t).openDifficulties, 0);
-  const waiting = open
-    .filter((t) => t.situation.waitingOn === 'Customer')
-    .sort(byPriority);
   const total = all.length || 1;
   const statusCounts = STATUSES.map((s) => ({
     s,
@@ -578,19 +574,6 @@ export function DashboardView({
     n: open.filter((t) => shownPriority(t) === k).length,
   }));
   const maxLevel = Math.max(1, ...levelCounts.map((x) => x.n));
-
-  const copyWaiting = async () => {
-    const ok = await attempt(async () => {
-      await window.worksync.copyText(
-        waiting.map((t) => brief(t).text).join('\n\n'),
-      );
-      return true;
-    });
-    if (ok)
-      toast(
-        `Copied ${waiting.length} brief${waiting.length === 1 ? '' : 's'} for the customer meeting.`,
-      );
-  };
 
   const tile = (
     label: string,
@@ -671,12 +654,6 @@ export function DashboardView({
           diffCount,
           `on ${withDiff.length} task${withDiff.length === 1 ? '' : 's'}`,
           'alert',
-        )}
-        {tile(
-          'Waiting on customer',
-          waiting.length,
-          'ready for the next meeting',
-          'ball',
         )}
       </div>
       <div className="panels">
@@ -796,18 +773,6 @@ export function DashboardView({
         </section>
         <section className="panel">
           <div className="panel-h">
-            <h2>Waiting on the customer</h2>
-            <button
-              className="btn sm"
-              disabled={!waiting.length}
-              onClick={() => void copyWaiting()}
-            >
-              <Icon name="copy" />
-              Copy {waiting.length} brief{waiting.length === 1 ? '' : 's'}
-            </button>
-          </div>
-          {miniList(waiting, 'Nothing is waiting on the customer.')}
-          <div className="panel-h" style={{ marginTop: 22 }}>
             <h2>Overdue</h2>
           </div>
           {miniList(overdue.sort(byPriority), 'Nothing is overdue.')}

@@ -1,5 +1,8 @@
 import {
+  createContext,
+  useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type FormEvent,
@@ -10,7 +13,6 @@ import {
   LANGUAGES,
   LEVEL_NAME,
   STATUSES,
-  WAITING_ON,
   brief,
   daysBetween,
   fileDate,
@@ -24,7 +26,6 @@ import {
   type TaskInput,
   type TaskLink,
   type Task,
-  type WaitingOn,
   assigneeText,
 } from '../shared/model';
 import type { PendingChange } from '../shared/writes';
@@ -58,14 +59,8 @@ function Description({ task }: { task: Task }) {
   const [open, setOpen] = useState(false);
   const orig = paragraphs(task.descriptionOriginal);
   const tr = paragraphs(task.descriptionTranslation);
-  if (!orig.length && !tr.length) {
-    return (
-      <section className="sec sec-desc">
-        <h3>Description</h3>
-        <div className="muted">No description.</div>
-      </section>
-    );
-  }
+  // Nothing to show: the section is left out.
+  if (!orig.length && !tr.length) return null;
   const langName = LANGUAGES[task.language];
   const same = task.translationState === 'Not needed' || !tr.length;
   const long =
@@ -204,7 +199,6 @@ function SituationForm({
   const [v, setV] = useState({
     handledBy: s.handledBy,
     doingNow: s.doingNow,
-    waitingOn: s.waitingOn,
     nextStep: s.nextStep,
     nextDate: s.nextDate ?? '',
     difficulty: '',
@@ -217,7 +211,6 @@ function SituationForm({
     const parts = {
       handledBy: v.handledBy,
       doingNow: v.doingNow,
-      waitingOn: v.waitingOn as WaitingOn,
       nextStep: v.nextStep,
       nextDate: v.nextDate || null,
     };
@@ -261,30 +254,16 @@ function SituationForm({
           situation.
         </p>
       )}
-      <div className="two">
-        <label>
-          Handled by
-          <input
-            className="inp"
-            value={v.handledBy}
-            onChange={set('handledBy')}
-            placeholder="Who is working on it now"
-            autoFocus
-          />
-        </label>
-        <label>
-          Waiting on
-          <select
-            className="inp"
-            value={v.waitingOn}
-            onChange={set('waitingOn')}
-          >
-            {WAITING_ON.map((w) => (
-              <option key={w}>{w}</option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <label>
+        Handled by
+        <input
+          className="inp"
+          value={v.handledBy}
+          onChange={set('handledBy')}
+          placeholder="Who is working on it now"
+          autoFocus
+        />
+      </label>
       <label>
         Doing now
         <textarea
@@ -477,6 +456,33 @@ function DifficultyRow({
 type Draft = Record<string, string>;
 
 /**
+ * Empty fields are hidden. The Add row under a section names them; picking
+ * one opens it here, and it stays once it has a value.
+ */
+const AddCtx = createContext<{
+  adding: string | null;
+  setAdding: (name: string | null) => void;
+}>({ adding: null, setAdding: () => {} });
+
+/** The empty fields of a section, as small links that open them. */
+function AddFields({ names }: { names: string[] }) {
+  const { adding, setAdding } = useContext(AddCtx);
+  const shown = names.filter((n) => n !== adding);
+  if (!shown.length) return null;
+  return (
+    <div className="add-fields">
+      <span className="muted">Add</span>
+      {shown.map((n) => (
+        <button key={n} className="add-chip" onClick={() => setAdding(n)}>
+          <Icon name="plus" />
+          {n}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
  * A field of the popup that can be changed where it is: the pencil, or a
  * double-click on the value, opens it. Saves through the same path as Edit
  * task, so file tasks still get their changes written to your copy.
@@ -488,6 +494,7 @@ function EditField({
   v,
   pend,
   wide,
+  empty,
   start,
   editor,
   patch,
@@ -500,6 +507,8 @@ function EditField({
   pend?: string;
   /** Shown as a block, such as the summary, rather than a small field. */
   wide?: boolean;
+  /** Nothing entered: hidden until it is added from the Add row. */
+  empty?: boolean;
   start: () => Draft;
   editor: (
     d: Draft,
@@ -508,10 +517,22 @@ function EditField({
   patch: (d: Draft) => Partial<TaskInput>;
 }) {
   const { attempt, putTask } = useApp();
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const set = (key: string) => (e: { target: { value: string } }) =>
-    setDraft((d) => ({ ...d, [key]: e.target.value }));
+  const [draft, setDrafted] = useState<Draft | null>(null);
+  const add = useContext(AddCtx);
   const label = name ?? (typeof k === 'string' ? k : undefined);
+  const isAdding = !!label && add.adding === label;
+  const setDraft = (d: Draft | null) => {
+    setDrafted(d);
+    if (!d && isAdding) add.setAdding(null);
+  };
+  // Before paint, so a key pressed right after picking it reaches the editor.
+  useLayoutEffect(() => {
+    if (isAdding) setDrafted(start());
+    // Opens once when picked from the Add row.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdding]);
+  const set = (key: string) => (e: { target: { value: string } }) =>
+    setDrafted((d) => ({ ...d, [key]: e.target.value }));
   const save = async (e?: FormEvent) => {
     e?.preventDefault();
     if (!draft) return;
@@ -532,6 +553,7 @@ function EditField({
       void save();
     }
   };
+  if (empty && !draft && !isAdding) return null;
   return (
     <div
       className={`field editable ${wide ? 'wide' : ''} ${pend ? 'pending' : ''} ${draft ? 'editing' : ''}`}
@@ -587,7 +609,15 @@ function EditField({
 /** Web addresses and file paths kept with the task (spec 02, Links). */
 function Links({ task }: { task: Task }) {
   const { attempt, putTask, toast } = useApp();
-  const [adding, setAdding] = useState(false);
+  const fromRow = useContext(AddCtx);
+  const [adding, setOpen] = useState(false);
+  const setAdding = (open: boolean) => {
+    setOpen(open);
+    if (!open && fromRow.adding === 'Link') fromRow.setAdding(null);
+  };
+  useLayoutEffect(() => {
+    if (fromRow.adding === 'Link') setOpen(true);
+  }, [fromRow.adding]);
   const [target, setTarget] = useState('');
   const [name, setName] = useState('');
   const save = async (links: TaskLink[]) => {
@@ -610,6 +640,7 @@ function Links({ task }: { task: Task }) {
       setAdding(false);
     }
   };
+  if (!task.links.length && !adding) return null;
   return (
     <div className="field links-field">
       <div className="k">
@@ -652,9 +683,7 @@ function Links({ task }: { task: Task }) {
               </li>
             ))}
           </ul>
-        ) : (
-          !adding && <span className="muted">None</span>
-        )}
+        ) : null}
         {adding && (
           <form className="link-add" onSubmit={add}>
             <input
@@ -818,6 +847,8 @@ export function TaskPopup({
   const label = useTaskLabel();
   const task = tasks.find((t) => t.id === taskId);
   const [updating, setUpdating] = useState<false | 'update' | 'fix'>(false);
+  const [adding, setAdding] = useState<string | null>(null);
+  useEffect(() => setAdding(null), [taskId]);
   const [pending, setPending] = useState<PendingChange[]>([]);
   // Customer-field changes not yet written to the owner's copy, marked on their fields.
   useEffect(() => {
@@ -916,525 +947,559 @@ export function TaskPopup({
     .map((x) => x.name);
 
   return (
-    <div
-      className="tm-bg"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-    >
+    <AddCtx.Provider value={{ adding, setAdding }}>
       <div
-        className={`tm ${priorityClass(task)}`}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="tmTitle"
+        className="tm-bg"
+        onMouseDown={(e) => e.target === e.currentTarget && onClose()}
       >
-        <header
-          className="tm-head"
-          onWheel={(e) => {
-            // The header does not scroll; the wheel over it scrolls the main column.
-            const main = mainRef.current;
-            if (main && getComputedStyle(main).overflowY === 'auto')
-              main.scrollBy({ top: e.deltaY });
-          }}
+        <div
+          className={`tm ${priorityClass(task)}`}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tmTitle"
         >
-          <div className="tm-top">
-            <TaskNumber task={task} />
-            <button
-              className={`pri-btn ${level} ${task.priorityOverride ? 'ovr' : ''}`}
-              aria-haspopup="dialog"
-              title="Change priority"
-              onClick={(e) => openMenu(task, e.currentTarget)}
-            >
-              {task.priorityOverride && <Icon name="user" />}
-              {LEVEL_NAME[level]}
-              {task.priorityOverride && (
-                <span className="sr">, your override</span>
-              )}
-              <Icon name="chev" />
-            </button>
-            <span className="pname">{p.name}</span>
-            <span className="sp" />
-            <button
-              className="icon-btn"
-              title="Edit task"
-              aria-label="Edit task"
-              onClick={() => onEdit(task)}
-            >
-              <Icon name="edit" />
-            </button>
-            <button
-              className="icon-btn"
-              aria-pressed={task.pinned}
-              title={
-                task.pinned
-                  ? 'Unpin from the focus list'
-                  : 'Pin to the focus list'
-              }
-              style={task.pinned ? { color: 'var(--accent)' } : undefined}
-              onClick={() => void pin()}
-            >
-              <Icon name="pin" />
-            </button>
-            <button
-              className="icon-btn"
-              title="Delete task"
-              aria-label="Delete task"
-              onClick={() => onDelete(task)}
-            >
-              <Icon name="trash" />
-            </button>
-            <button className="icon-btn" aria-label="Close" onClick={onClose}>
-              <Icon name="x" />
-            </button>
-          </div>
-          <div ref={titleRef}>
-            <Titles task={task} big />
-          </div>
-          <div className="tm-meta">
-            <StatusChip status={task.status} />
-            <DeadlineChip task={task} dueSoonDays={p.dueSoonDays} />
-            {flagChips.map((x) => (
-              <span key={x} className="chip over">
-                {x}
-              </span>
-            ))}
-            {task.labels.map((l) => (
-              <span key={l} className="label">
-                {l}
-              </span>
-            ))}
-            <span className="sp" />
-            <button className="btn" onClick={() => void copyBrief()}>
-              <Icon name="copy" />
-              Copy brief
-            </button>
-            {canCopyInFile && (
+          <header
+            className="tm-head"
+            onWheel={(e) => {
+              // The header does not scroll; the wheel over it scrolls the main column.
+              const main = mainRef.current;
+              if (main && getComputedStyle(main).overflowY === 'auto')
+                main.scrollBy({ top: e.deltaY });
+            }}
+          >
+            <div className="tm-top">
+              <TaskNumber task={task} />
               <button
-                className="btn"
-                onClick={() => void copyBriefInFile()}
-                title={`The brief in ${LANGUAGES[task.language]}, for the customer side`}
+                className={`pri-btn ${level} ${task.priorityOverride ? 'ovr' : ''}`}
+                aria-haspopup="dialog"
+                title="Change priority"
+                onClick={(e) => openMenu(task, e.currentTarget)}
               >
-                <Icon name="globe" />
-                {task.language === 'ja' ? '日本語で' : LANGUAGES[task.language]}
+                {task.priorityOverride && <Icon name="user" />}
+                {LEVEL_NAME[level]}
+                {task.priorityOverride && (
+                  <span className="sr">, your override</span>
+                )}
+                <Icon name="chev" />
               </button>
-            )}
-            <button
-              className="btn primary"
-              onClick={() => setUpdating('update')}
-            >
-              <Icon name="edit" />
-              Update situation
-            </button>
-          </div>
-        </header>
-        <div className="tm-body">
-          <div className="tm-main" ref={mainRef}>
-            <section className="sec">
-              <EditField
-                task={task}
-                wide
-                name="Summary"
-                k={<h3>Summary</h3>}
-                start={() => ({ summary: task.summary })}
-                editor={(d, set) => (
-                  <textarea
-                    className="inp"
-                    rows={3}
-                    aria-label="Summary"
-                    value={d.summary}
-                    onChange={set('summary')}
-                    autoFocus
-                  />
-                )}
-                patch={(d) => ({ summary: d.summary })}
-                v={
-                  task.summary ? (
-                    <div className="summary">{task.summary}</div>
-                  ) : (
-                    <div className="summary missing">
-                      <span>
-                        No summary yet, so this task’s brief is incomplete.
-                      </span>
-                    </div>
-                  )
+              <span className="pname">{p.name}</span>
+              <span className="sp" />
+              <button
+                className="icon-btn"
+                title="Edit task"
+                aria-label="Edit task"
+                onClick={() => onEdit(task)}
+              >
+                <Icon name="edit" />
+              </button>
+              <button
+                className={`icon-btn pin-toggle ${task.pinned ? 'on' : ''}`}
+                aria-pressed={task.pinned}
+                title={
+                  task.pinned
+                    ? 'Unpin from the focus list'
+                    : 'Pin to the focus list'
                 }
-              />
-            </section>
-            <section className="sec">
-              <h3>
-                Situation <span className="fresh">· {fresh}</span>
-                {s.asOf && !updating && (
-                  <button
-                    className="linkbtn"
-                    title="Change what you last recorded, without making a new update"
-                    onClick={() => setUpdating('fix')}
-                  >
-                    Fix a mistake
-                  </button>
-                )}
-              </h3>
-              <div className="situ">
-                {updating ? (
-                  <SituationForm
-                    key={updating}
-                    task={task}
-                    fix={updating === 'fix'}
-                    onDone={() => setUpdating(false)}
-                  />
-                ) : (
-                  <dl className="kv">
-                    <dt>Handled by</dt>
-                    <dd>{s.handledBy || 'Not recorded'}</dd>
-                    <dt>Doing now</dt>
-                    <dd>{s.doingNow || 'Not recorded'}</dd>
-                    <dt>Difficulties</dt>
-                    <dd>
-                      {task.difficulties.length ? (
-                        <ul className="diffs">
-                          {task.difficulties.map((d) => (
-                            <DifficultyRow key={d.id} task={task} d={d} />
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className="muted">None</span>
-                      )}
-                    </dd>
-                    <dt>Waiting on</dt>
-                    <dd>
-                      {s.waitingOn === 'Nobody' ? (
-                        'Nobody'
-                      ) : (
-                        <span className="chip">
-                          <Icon name="ball" />
-                          {s.waitingOn}
-                        </span>
-                      )}
-                    </dd>
-                    <dt>Next step</dt>
-                    <dd>
-                      {s.nextStep ? (
-                        <>
-                          <b>{s.nextStep}</b>
-                          {s.nextDate && (
-                            <span className="muted">
-                              {' '}
-                              by {shortDate(s.nextDate)}
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        'Not decided yet'
-                      )}
-                    </dd>
-                    <dt>As of</dt>
-                    <dd className="mono">
-                      {s.asOf ? fileDate(s.asOf) : 'Never'}
-                    </dd>
-                  </dl>
-                )}
-              </div>
-            </section>
-            <Description task={task} />
-          </div>
-          <aside className="tm-side">
-            <section className="sec sec-fields">
-              <h3>Task fields</h3>
-              <div className="fields">
+                onClick={() => void pin()}
+              >
+                <Icon name="pin" />
+              </button>
+              <button
+                className="icon-btn"
+                title="Delete task"
+                aria-label="Delete task"
+                onClick={() => onDelete(task)}
+              >
+                <Icon name="trash" />
+              </button>
+              <button className="icon-btn" aria-label="Close" onClick={onClose}>
+                <Icon name="x" />
+              </button>
+            </div>
+            <div ref={titleRef}>
+              <Titles task={task} big />
+            </div>
+            <div className="tm-meta">
+              <StatusChip status={task.status} />
+              <DeadlineChip task={task} dueSoonDays={p.dueSoonDays} />
+              {flagChips.map((x) => (
+                <span key={x} className="chip over">
+                  {x}
+                </span>
+              ))}
+              {task.labels.map((l) => (
+                <span key={l} className="label">
+                  {l}
+                </span>
+              ))}
+              <span className="sp" />
+              <button className="btn" onClick={() => void copyBrief()}>
+                <Icon name="copy" />
+                Copy brief
+              </button>
+              {canCopyInFile && (
+                <button
+                  className="btn"
+                  onClick={() => void copyBriefInFile()}
+                  title={`The brief in ${LANGUAGES[task.language]}, for the customer side`}
+                >
+                  <Icon name="globe" />
+                  {task.language === 'ja'
+                    ? '日本語で'
+                    : LANGUAGES[task.language]}
+                </button>
+              )}
+              <button
+                className="btn primary"
+                onClick={() => setUpdating('update')}
+              >
+                <Icon name="edit" />
+                Update situation
+              </button>
+            </div>
+          </header>
+          <div className="tm-body">
+            <div className="tm-main" ref={mainRef}>
+              <section className="sec">
                 <EditField
                   task={task}
-                  k="Assignee"
-                  pend={pend('assignee')}
-                  start={() => ({ assignee: task.assignee })}
-                  editor={(d, set) => (
-                    <>
-                      <input
-                        className="inp"
-                        aria-label="Assignee"
-                        list="tmPeople"
-                        value={d.assignee}
-                        onChange={set('assignee')}
-                        autoFocus
-                      />
-                      <datalist id="tmPeople">
-                        {names.map((n) => (
-                          <option key={n} value={n} />
-                        ))}
-                      </datalist>
-                    </>
-                  )}
-                  patch={(d) => ({ assignee: d.assignee })}
-                  v={
-                    task.assignee ? (
-                      assigneeText(people, task, 'both')
-                    ) : (
-                      <span className="muted">Not set</span>
-                    )
-                  }
-                />
-                <EditField
-                  task={task}
-                  k="Status"
-                  pend={pend('status')}
-                  start={() => ({ status: task.status })}
-                  editor={(d, set) => (
-                    <select
-                      className="inp"
-                      aria-label="Status"
-                      value={d.status}
-                      onChange={set('status')}
-                      autoFocus
-                    >
-                      {STATUSES.map((x) => (
-                        <option key={x}>{x}</option>
-                      ))}
-                    </select>
-                  )}
-                  patch={(d) => ({ status: d.status as Status })}
-                  v={task.status}
-                />
-                <EditField
-                  task={task}
-                  k="Planned"
-                  pend={pend('plannedStart', 'plannedEnd')}
-                  start={() => ({
-                    plannedStart: task.plannedStart ?? '',
-                    plannedEnd: task.plannedEnd ?? '',
-                  })}
-                  editor={(d, set) => (
-                    <div className="two">
-                      <label>
-                        Start
-                        <input
-                          className="inp"
-                          type="date"
-                          value={d.plannedStart}
-                          onChange={set('plannedStart')}
-                        />
-                      </label>
-                      <label>
-                        End
-                        <input
-                          className="inp"
-                          type="date"
-                          value={d.plannedEnd}
-                          onChange={set('plannedEnd')}
-                        />
-                      </label>
-                    </div>
-                  )}
-                  patch={(d) => ({
-                    plannedStart: d.plannedStart || null,
-                    plannedEnd: d.plannedEnd || null,
-                  })}
-                  v={
-                    task.plannedStart || task.plannedEnd ? (
-                      <span className="mono">
-                        {fileDate(task.plannedStart) || '…'} →{' '}
-                        {fileDate(task.plannedEnd) || '…'}
-                      </span>
-                    ) : (
-                      <span className="muted">No dates</span>
-                    )
-                  }
-                />
-                <EditField
-                  task={task}
-                  k="Actual"
-                  pend={pend('actualStart', 'actualEnd')}
-                  start={() => ({
-                    actualStart: task.actualStart ?? '',
-                    actualEnd: task.actualEnd ?? '',
-                  })}
-                  editor={(d, set) => (
-                    <div className="two">
-                      <label>
-                        Start
-                        <input
-                          className="inp"
-                          type="date"
-                          value={d.actualStart}
-                          onChange={set('actualStart')}
-                        />
-                      </label>
-                      <label>
-                        End
-                        <input
-                          className="inp"
-                          type="date"
-                          value={d.actualEnd}
-                          onChange={set('actualEnd')}
-                        />
-                      </label>
-                    </div>
-                  )}
-                  patch={(d) => ({
-                    actualStart: d.actualStart || null,
-                    actualEnd: d.actualEnd || null,
-                  })}
-                  v={
-                    task.actualStart || task.actualEnd ? (
-                      <span className="mono">
-                        {task.actualStart ? fileDate(task.actualStart) : '…'} →{' '}
-                        {task.actualEnd
-                          ? fileDate(task.actualEnd)
-                          : isClosed(task)
-                            ? 'no end date'
-                            : 'ongoing'}
-                      </span>
-                    ) : (
-                      <span className="muted">
-                        {task.status === 'Not started'
-                          ? 'Not started'
-                          : 'No dates recorded'}
-                      </span>
-                    )
-                  }
-                />
-                <Field
-                  k="Priority"
-                  pend={pend('priority')}
-                  v={
-                    <>
-                      {LEVEL_NAME[task.priority]}{' '}
-                      <button
-                        className="linkbtn"
-                        onClick={(e) => openMenu(task, e.currentTarget)}
-                      >
-                        Change
-                      </button>
-                    </>
-                  }
-                />
-                <EditField
-                  task={task}
-                  k="Category"
-                  pend={pend('category')}
-                  start={() => ({ category: task.category })}
-                  editor={(d, set) => (
-                    <input
-                      className="inp"
-                      aria-label="Category"
-                      value={d.category}
-                      onChange={set('category')}
-                      autoFocus
-                    />
-                  )}
-                  patch={(d) => ({ category: d.category })}
-                  v={task.category || <span className="muted">Not set</span>}
-                />
-                <EditField
-                  task={task}
-                  k="Remarks"
-                  pend={pend('remarks')}
-                  start={() => ({ remarks: task.remarks })}
+                  wide
+                  name="Summary"
+                  k={<h3>Summary</h3>}
+                  start={() => ({ summary: task.summary })}
                   editor={(d, set) => (
                     <textarea
                       className="inp"
                       rows={3}
-                      aria-label="Remarks"
-                      lang={task.language}
-                      value={d.remarks}
-                      onChange={set('remarks')}
+                      aria-label="Summary"
+                      value={d.summary}
+                      onChange={set('summary')}
                       autoFocus
                     />
                   )}
-                  patch={(d) => ({ remarks: d.remarks })}
+                  patch={(d) => ({ summary: d.summary })}
                   v={
-                    task.remarks ? (
-                      <span lang={task.language}>{task.remarks}</span>
+                    task.summary ? (
+                      <div className="summary">{task.summary}</div>
                     ) : (
-                      <span className="muted">Empty</span>
+                      <div className="summary missing">
+                        <span>
+                          No summary yet, so this task’s brief is incomplete.
+                        </span>
+                      </div>
                     )
                   }
                 />
-              </div>
-            </section>
-            <section className="sec">
-              <h3>Only for you</h3>
-              <div className="fields">
-                <EditField
-                  task={task}
-                  k={
-                    <>
-                      <Icon name="check" />
-                      Next action
-                    </>
-                  }
-                  name="Next action"
-                  start={() => ({
-                    nextAction: task.nextAction,
-                    nextActionDate: task.nextActionDate ?? '',
-                  })}
-                  editor={(d, set) => (
-                    <>
+              </section>
+              <section className="sec">
+                <h3>
+                  Situation <span className="fresh">· {fresh}</span>
+                  {s.asOf && !updating && (
+                    <button
+                      className="linkbtn"
+                      title="Change what you last recorded, without making a new update"
+                      onClick={() => setUpdating('fix')}
+                    >
+                      Fix a mistake
+                    </button>
+                  )}
+                </h3>
+                <div className="situ">
+                  {updating ? (
+                    <SituationForm
+                      key={updating}
+                      task={task}
+                      fix={updating === 'fix'}
+                      onDone={() => setUpdating(false)}
+                    />
+                  ) : // Only what was entered is shown.
+                  s.asOf ||
+                    s.handledBy ||
+                    s.doingNow ||
+                    s.nextStep ||
+                    task.difficulties.length ? (
+                    <dl className="kv">
+                      {s.handledBy && (
+                        <>
+                          <dt>Handled by</dt>
+                          <dd>{s.handledBy}</dd>
+                        </>
+                      )}
+                      {s.doingNow && (
+                        <>
+                          <dt>Doing now</dt>
+                          <dd>{s.doingNow}</dd>
+                        </>
+                      )}
+                      {task.difficulties.length > 0 && (
+                        <>
+                          <dt>Difficulties</dt>
+                          <dd>
+                            <ul className="diffs">
+                              {task.difficulties.map((d) => (
+                                <DifficultyRow key={d.id} task={task} d={d} />
+                              ))}
+                            </ul>
+                          </dd>
+                        </>
+                      )}
+                      {s.nextStep && (
+                        <>
+                          <dt>Next step</dt>
+                          <dd>
+                            <b>{s.nextStep}</b>
+                            {s.nextDate && (
+                              <span className="muted">
+                                {' '}
+                                by {shortDate(s.nextDate)}
+                              </span>
+                            )}
+                          </dd>
+                        </>
+                      )}
+                      {s.asOf && (
+                        <>
+                          <dt>As of</dt>
+                          <dd className="mono">{fileDate(s.asOf)}</dd>
+                        </>
+                      )}
+                    </dl>
+                  ) : (
+                    <div className="muted">
+                      No situation recorded yet. Use Update situation to add
+                      one.
+                    </div>
+                  )}
+                </div>
+              </section>
+              <Description task={task} />
+            </div>
+            <aside className="tm-side">
+              <section className="sec sec-fields">
+                <h3>Task fields</h3>
+                <div className="fields">
+                  <EditField
+                    task={task}
+                    k="Assignee"
+                    empty={!task.assignee}
+                    pend={pend('assignee')}
+                    start={() => ({ assignee: task.assignee })}
+                    editor={(d, set) => (
+                      <>
+                        <input
+                          className="inp"
+                          aria-label="Assignee"
+                          list="tmPeople"
+                          value={d.assignee}
+                          onChange={set('assignee')}
+                          autoFocus
+                        />
+                        <datalist id="tmPeople">
+                          {names.map((n) => (
+                            <option key={n} value={n} />
+                          ))}
+                        </datalist>
+                      </>
+                    )}
+                    patch={(d) => ({ assignee: d.assignee })}
+                    v={
+                      task.assignee ? (
+                        assigneeText(people, task, 'both')
+                      ) : (
+                        <span className="muted">Not set</span>
+                      )
+                    }
+                  />
+                  <EditField
+                    task={task}
+                    k="Status"
+                    pend={pend('status')}
+                    start={() => ({ status: task.status })}
+                    editor={(d, set) => (
+                      <select
+                        className="inp"
+                        aria-label="Status"
+                        value={d.status}
+                        onChange={set('status')}
+                        autoFocus
+                      >
+                        {STATUSES.map((x) => (
+                          <option key={x}>{x}</option>
+                        ))}
+                      </select>
+                    )}
+                    patch={(d) => ({ status: d.status as Status })}
+                    v={task.status}
+                  />
+                  <EditField
+                    task={task}
+                    k="Planned"
+                    empty={!task.plannedStart && !task.plannedEnd}
+                    pend={pend('plannedStart', 'plannedEnd')}
+                    start={() => ({
+                      plannedStart: task.plannedStart ?? '',
+                      plannedEnd: task.plannedEnd ?? '',
+                    })}
+                    editor={(d, set) => (
+                      <div className="two">
+                        <label>
+                          Start
+                          <input
+                            className="inp"
+                            type="date"
+                            value={d.plannedStart}
+                            onChange={set('plannedStart')}
+                          />
+                        </label>
+                        <label>
+                          End
+                          <input
+                            className="inp"
+                            type="date"
+                            value={d.plannedEnd}
+                            onChange={set('plannedEnd')}
+                          />
+                        </label>
+                      </div>
+                    )}
+                    patch={(d) => ({
+                      plannedStart: d.plannedStart || null,
+                      plannedEnd: d.plannedEnd || null,
+                    })}
+                    v={
+                      task.plannedStart || task.plannedEnd ? (
+                        <span className="mono">
+                          {fileDate(task.plannedStart) || '…'} →{' '}
+                          {fileDate(task.plannedEnd) || '…'}
+                        </span>
+                      ) : (
+                        <span className="muted">No dates</span>
+                      )
+                    }
+                  />
+                  <EditField
+                    task={task}
+                    k="Actual"
+                    empty={!task.actualStart && !task.actualEnd}
+                    pend={pend('actualStart', 'actualEnd')}
+                    start={() => ({
+                      actualStart: task.actualStart ?? '',
+                      actualEnd: task.actualEnd ?? '',
+                    })}
+                    editor={(d, set) => (
+                      <div className="two">
+                        <label>
+                          Start
+                          <input
+                            className="inp"
+                            type="date"
+                            value={d.actualStart}
+                            onChange={set('actualStart')}
+                          />
+                        </label>
+                        <label>
+                          End
+                          <input
+                            className="inp"
+                            type="date"
+                            value={d.actualEnd}
+                            onChange={set('actualEnd')}
+                          />
+                        </label>
+                      </div>
+                    )}
+                    patch={(d) => ({
+                      actualStart: d.actualStart || null,
+                      actualEnd: d.actualEnd || null,
+                    })}
+                    v={
+                      task.actualStart || task.actualEnd ? (
+                        <span className="mono">
+                          {task.actualStart ? fileDate(task.actualStart) : '…'}{' '}
+                          →{' '}
+                          {task.actualEnd
+                            ? fileDate(task.actualEnd)
+                            : isClosed(task)
+                              ? 'no end date'
+                              : 'ongoing'}
+                        </span>
+                      ) : (
+                        <span className="muted">
+                          {task.status === 'Not started'
+                            ? 'Not started'
+                            : 'No dates recorded'}
+                        </span>
+                      )
+                    }
+                  />
+                  <Field
+                    k="Priority"
+                    pend={pend('priority')}
+                    v={
+                      <>
+                        {LEVEL_NAME[task.priority]}{' '}
+                        <button
+                          className="linkbtn"
+                          onClick={(e) => openMenu(task, e.currentTarget)}
+                        >
+                          Change
+                        </button>
+                      </>
+                    }
+                  />
+                  <EditField
+                    task={task}
+                    k="Category"
+                    empty={!task.category}
+                    pend={pend('category')}
+                    start={() => ({ category: task.category })}
+                    editor={(d, set) => (
                       <input
                         className="inp"
-                        aria-label="Next action"
-                        value={d.nextAction}
-                        onChange={set('nextAction')}
+                        aria-label="Category"
+                        value={d.category}
+                        onChange={set('category')}
                         autoFocus
                       />
-                      <input
+                    )}
+                    patch={(d) => ({ category: d.category })}
+                    v={task.category || <span className="muted">Not set</span>}
+                  />
+                  <EditField
+                    task={task}
+                    k="Remarks"
+                    empty={!task.remarks}
+                    pend={pend('remarks')}
+                    start={() => ({ remarks: task.remarks })}
+                    editor={(d, set) => (
+                      <textarea
                         className="inp"
-                        type="date"
-                        aria-label="Next action date"
-                        value={d.nextActionDate}
-                        onChange={set('nextActionDate')}
+                        rows={3}
+                        aria-label="Remarks"
+                        lang={task.language}
+                        value={d.remarks}
+                        onChange={set('remarks')}
+                        autoFocus
                       />
-                    </>
-                  )}
-                  patch={(d) => ({
-                    nextAction: d.nextAction,
-                    nextActionDate: d.nextActionDate || null,
-                  })}
-                  v={
-                    task.nextAction ? (
+                    )}
+                    patch={(d) => ({ remarks: d.remarks })}
+                    v={
+                      task.remarks ? (
+                        <span lang={task.language}>{task.remarks}</span>
+                      ) : (
+                        <span className="muted">Empty</span>
+                      )
+                    }
+                  />
+                </div>
+                <AddFields
+                  names={[
+                    !task.assignee && 'Assignee',
+                    !task.plannedStart && !task.plannedEnd && 'Planned',
+                    !task.actualStart && !task.actualEnd && 'Actual',
+                    !task.category && 'Category',
+                    !task.remarks && 'Remarks',
+                  ].filter((x): x is string => !!x)}
+                />
+              </section>
+              <section className="sec">
+                <h3>Only for you</h3>
+                <div className="fields">
+                  <EditField
+                    task={task}
+                    k={
                       <>
-                        {task.nextAction}
-                        {task.nextActionDate && (
-                          <span className="muted">
-                            {' '}
-                            · {shortDate(task.nextActionDate)}
-                          </span>
-                        )}
+                        <Icon name="check" />
+                        Next action
                       </>
-                    ) : (
-                      <span className="muted">None</span>
-                    )
-                  }
+                    }
+                    name="Next action"
+                    empty={!task.nextAction && !task.nextActionDate}
+                    start={() => ({
+                      nextAction: task.nextAction,
+                      nextActionDate: task.nextActionDate ?? '',
+                    })}
+                    editor={(d, set) => (
+                      <>
+                        <input
+                          className="inp"
+                          aria-label="Next action"
+                          value={d.nextAction}
+                          onChange={set('nextAction')}
+                          autoFocus
+                        />
+                        <input
+                          className="inp"
+                          type="date"
+                          aria-label="Next action date"
+                          value={d.nextActionDate}
+                          onChange={set('nextActionDate')}
+                        />
+                      </>
+                    )}
+                    patch={(d) => ({
+                      nextAction: d.nextAction,
+                      nextActionDate: d.nextActionDate || null,
+                    })}
+                    v={
+                      task.nextAction ? (
+                        <>
+                          {task.nextAction}
+                          {task.nextActionDate && (
+                            <span className="muted">
+                              {' '}
+                              · {shortDate(task.nextActionDate)}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="muted">None</span>
+                      )
+                    }
+                  />
+                  <EditField
+                    task={task}
+                    k="Notes"
+                    empty={!task.notes}
+                    start={() => ({ notes: task.notes })}
+                    editor={(d, set) => (
+                      <textarea
+                        className="inp"
+                        rows={4}
+                        aria-label="Notes"
+                        value={d.notes}
+                        onChange={set('notes')}
+                        autoFocus
+                      />
+                    )}
+                    patch={(d) => ({ notes: d.notes })}
+                    v={
+                      task.notes ? (
+                        <span style={{ whiteSpace: 'pre-wrap' }}>
+                          {task.notes}
+                        </span>
+                      ) : (
+                        <span className="muted">None</span>
+                      )
+                    }
+                  />
+                  <Links task={task} />
+                </div>
+                <AddFields
+                  names={[
+                    !task.nextAction && !task.nextActionDate && 'Next action',
+                    !task.notes && 'Notes',
+                    !task.links.length && 'Link',
+                  ].filter((x): x is string => !!x)}
                 />
-                <EditField
-                  task={task}
-                  k="Notes"
-                  start={() => ({ notes: task.notes })}
-                  editor={(d, set) => (
-                    <textarea
-                      className="inp"
-                      rows={4}
-                      aria-label="Notes"
-                      value={d.notes}
-                      onChange={set('notes')}
-                      autoFocus
-                    />
-                  )}
-                  patch={(d) => ({ notes: d.notes })}
-                  v={
-                    task.notes ? (
-                      <span style={{ whiteSpace: 'pre-wrap' }}>
-                        {task.notes}
-                      </span>
-                    ) : (
-                      <span className="muted">None</span>
-                    )
-                  }
-                />
-                <Links task={task} />
-              </div>
-            </section>
-            <History task={task} />
-            <SourceSection task={task} />
-          </aside>
+              </section>
+              <History task={task} />
+              <SourceSection task={task} />
+            </aside>
+          </div>
         </div>
       </div>
-    </div>
+    </AddCtx.Provider>
   );
 }
 

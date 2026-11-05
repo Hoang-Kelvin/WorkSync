@@ -192,7 +192,7 @@ export function DeadlineChip({
   );
 }
 
-/** Status, deadline, open difficulties and Waiting on. */
+/** Status, deadline and open difficulties. */
 export function MetaChips({
   task,
   dueSoonDays,
@@ -202,7 +202,6 @@ export function MetaChips({
 }) {
   const { today } = useApp();
   const f = flags(task, today, dueSoonDays);
-  const w = task.situation.waitingOn;
   return (
     <>
       <StatusChip status={task.status} />
@@ -211,12 +210,6 @@ export function MetaChips({
         <span className="chip">
           <Icon name="alert" />
           {f.openDifficulties} open
-        </span>
-      )}
-      {w !== 'Nobody' && !isClosed(task) && (
-        <span className="chip">
-          <Icon name="ball" />
-          {w === 'Me' ? 'Waiting on me' : `Waiting: ${w}`}
         </span>
       )}
     </>

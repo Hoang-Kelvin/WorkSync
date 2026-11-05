@@ -6,7 +6,6 @@ import {
   LEVELS,
   LEVEL_NAME,
   STATUSES,
-  WAITING_ON,
   fileDate,
   matchesSearch,
   shownPriority,
@@ -105,20 +104,6 @@ export const TABLE_COLUMNS: TableColumn[] = [
     sortValue: (t) => t.situation.handledBy.toLowerCase(),
   },
   {
-    key: 'waitingOn',
-    label: 'Waiting on',
-    width: 104,
-    filter: 'choice',
-    choices: WAITING_ON.map((w) => [w, w]),
-    text: (t) =>
-      t.situation.waitingOn === 'Nobody' ? '' : t.situation.waitingOn,
-    sortValue: (t) =>
-      t.situation.waitingOn === 'Nobody'
-        ? ''
-        : WAITING_ON.indexOf(t.situation.waitingOn) + 1,
-    choiceValue: (t) => t.situation.waitingOn,
-  },
-  {
     key: 'plannedStart',
     label: 'Planned start',
     width: 104,
@@ -210,7 +195,6 @@ export const DEFAULT_TABLE: TableSettings = {
     'status',
     'priority',
     'handledBy',
-    'waitingOn',
     'plannedEnd',
     'labels',
   ],

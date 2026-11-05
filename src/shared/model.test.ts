@@ -102,11 +102,8 @@ describe('flags', () => {
     );
   });
 
-  it('needs my action when waiting on me or my next action is due', () => {
-    expect(
-      flags(task({ situation: { ...EMPTY_SITUATION, waitingOn: 'Me' } }), TODAY)
-        .needsMyAction,
-    ).toBe(true);
+  it('needs my action when my next action is due', () => {
+    expect(flags(task(), TODAY).needsMyAction).toBe(false);
     expect(flags(task({ nextActionDate: TODAY }), TODAY).needsMyAction).toBe(
       true,
     );
@@ -261,7 +258,6 @@ describe('search and brief', () => {
         situation: {
           handledBy: 'Yamada',
           doingNow: 'Reproducing it',
-          waitingOn: 'Customer',
           nextStep: 'Send logs',
           nextDate: '2026-11-05',
           asOf: '2026-11-02',
@@ -280,7 +276,7 @@ describe('search and brief', () => {
     expect(b.where).toBe(
       'In progress · Yamada: reproducing it · 1 open difficulty: no staging access · as of 2 Nov',
     );
-    expect(b.next).toBe('Send logs by 5 Nov · waiting on customer');
+    expect(b.next).toBe('Send logs by 5 Nov');
     expect(b.text.split('\n')[0]).toBe(
       'No. 012  Login screen times out (ログイン画面のタイムアウト)',
     );

@@ -246,7 +246,6 @@ async function xlsxReport(h: ReportHead, tasks: Task[]): Promise<Buffer> {
       ['Started in the period', ov.started],
       ['Overdue', ov.overdue],
       ['Open difficulties', ov.difficulties],
-      ['Waiting on the customer', ov.waitingOnCustomer],
       ...ov.byStatus.map((x) => [x.status, x.count] as [string, number]),
     ];
     for (const [k, v] of lines) {
@@ -707,7 +706,7 @@ async function docxReport(h: ReportHead, tasks: Task[]): Promise<Buffer> {
     );
     const facts = [
       `${ov.open} open task${ov.open === 1 ? '' : 's'}, ${ov.finished} finished and ${ov.started} started in the period.`,
-      `${ov.overdue} overdue, ${ov.difficulties} open difficult${ov.difficulties === 1 ? 'y' : 'ies'}, ${ov.waitingOnCustomer} waiting on the customer.`,
+      `${ov.overdue} overdue, and ${ov.difficulties} open difficult${ov.difficulties === 1 ? 'y' : 'ies'}.`,
       `By status: ${ov.byStatus.map((x) => `${x.status} ${x.count}`).join(', ') || 'no tasks'}.`,
     ];
     for (const f of facts)

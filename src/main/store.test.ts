@@ -108,7 +108,6 @@ describe('Store', () => {
     store.addSituationUpdate(t.id, {
       handledBy: 'Yamada',
       doingNow: 'Reproducing',
-      waitingOn: 'Customer',
     });
     clock = '2026-11-05T09:00:00.000Z';
     const u = store.addSituationUpdate(t.id, {
@@ -118,7 +117,6 @@ describe('Store', () => {
     expect(u.situation).toMatchObject({
       handledBy: 'Yamada',
       doingNow: 'Reproducing',
-      waitingOn: 'Customer',
       nextStep: 'Send logs',
       asOf: '2026-11-05',
     });

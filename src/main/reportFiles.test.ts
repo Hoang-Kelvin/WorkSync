@@ -62,7 +62,6 @@ const base: Task = {
     ...EMPTY_SITUATION,
     handledBy: 'Yamada',
     doingNow: 'Reproducing on staging',
-    waitingOn: 'Our team',
     nextStep: 'Redeploy',
     nextDate: '2026-11-04',
     asOf: '2026-11-02',

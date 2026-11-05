@@ -26,9 +26,6 @@ export const STATUSES = [
 ] as const;
 export type Status = (typeof STATUSES)[number];
 
-export const WAITING_ON = ['Me', 'Customer', 'Our team', 'Nobody'] as const;
-export type WaitingOn = (typeof WAITING_ON)[number];
-
 export type TranslationState =
   | 'Not translated'
   | 'Translated'
@@ -165,7 +162,6 @@ export interface Difficulty {
 export interface Situation {
   handledBy: string;
   doingNow: string;
-  waitingOn: WaitingOn;
   nextStep: string;
   nextDate: string | null;
   /** When the situation was last confirmed. Null until the first update. */
@@ -285,7 +281,6 @@ export type ProjectInput = Pick<
 export interface SituationInput {
   handledBy?: string;
   doingNow?: string;
-  waitingOn?: WaitingOn;
   nextStep?: string;
   nextDate?: string | null;
   newDifficulty?: { text: string; resolver: string };
@@ -364,9 +359,8 @@ export function flags(t: Task, today: string, dueSoonDays = 7): Flags {
       daysBetween(today, t.plannedStart) < 0,
     needsMyAction:
       open &&
-      (s.waitingOn === 'Me' ||
-        (t.nextActionDate !== null &&
-          daysBetween(today, t.nextActionDate) <= 0)),
+      t.nextActionDate !== null &&
+      daysBetween(today, t.nextActionDate) <= 0,
     nextStepOverdue:
       open &&
       s.nextDate !== null &&
@@ -537,7 +531,7 @@ export function brief(t: Task): Brief {
     );
   if (s.asOf) where.push(`as of ${shortDate(s.asOf)}`);
   const next = s.nextStep
-    ? `${s.nextStep}${s.nextDate ? ` by ${shortDate(s.nextDate)}` : ''}${s.waitingOn !== 'Nobody' ? ` · waiting on ${s.waitingOn === 'Me' ? 'me' : s.waitingOn.toLowerCase()}` : ''}`
+    ? `${s.nextStep}${s.nextDate ? ` by ${shortDate(s.nextDate)}` : ''}`
     : 'Not decided yet';
   const what = t.summary || 'No summary yet';
   const title = t.titleTranslation
@@ -559,7 +553,6 @@ export function brief(t: Task): Brief {
 export const EMPTY_SITUATION: Situation = {
   handledBy: '',
   doingNow: '',
-  waitingOn: 'Nobody',
   nextStep: '',
   nextDate: null,
   asOf: null,

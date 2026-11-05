@@ -3,7 +3,6 @@ import {
   type Level,
   type Status,
   type TaskInput,
-  type WaitingOn,
 } from '../shared/model';
 import type { Store } from './store';
 
@@ -20,7 +19,6 @@ interface SampleTask {
   end?: number;
   hb?: string;
   now?: string;
-  wait?: WaitingOn;
   next?: string;
   nextIn?: number;
   diff?: string;
@@ -43,7 +41,6 @@ const TASKS: SampleTask[] = [
     end: 2,
     hb: 'Yamada (our team)',
     now: 'Reproducing the timeout on the staging server',
-    wait: 'Our team',
     next: 'Fix the session setting and redeploy',
     nextIn: 1,
     diff: 'Staging logs need the customer’s approval to read',
@@ -63,7 +60,6 @@ const TASKS: SampleTask[] = [
     end: -2,
     hb: 'Tanaka (customer)',
     now: 'Checking the fix with real shipping files',
-    wait: 'Customer',
     next: 'Customer confirms the fix',
     nextIn: 2,
   },
@@ -79,7 +75,6 @@ const TASKS: SampleTask[] = [
     end: 9,
     hb: 'Sato (our team)',
     now: 'Waiting for approval to add memory to the batch server',
-    wait: 'Customer',
     next: 'Approval from the customer’s IT team',
     nextIn: -3,
     diff: 'Server change needs a change request',
@@ -96,7 +91,6 @@ const TASKS: SampleTask[] = [
     end: 3,
     hb: 'You and Suzuki (customer)',
     now: 'Customer is reviewing the role table',
-    wait: 'Customer',
     pin: true,
   },
   {
@@ -111,7 +105,6 @@ const TASKS: SampleTask[] = [
     end: 7,
     hb: 'Nguyen (our team)',
     now: 'Testing line wrapping for long product names',
-    wait: 'Our team',
     diff: 'No sample with the longest product names',
   },
   {
@@ -126,7 +119,6 @@ const TASKS: SampleTask[] = [
     end: 5,
     hb: 'Customer IT',
     now: 'Checking the mail filter rules',
-    wait: 'Customer',
   },
   {
     id: '014',
@@ -140,7 +132,6 @@ const TASKS: SampleTask[] = [
     end: 12,
     hb: 'Sato (our team)',
     now: 'Adding an index and testing with production-size data',
-    wait: 'Our team',
     next: 'Performance test report',
     nextIn: 8,
   },
@@ -156,7 +147,6 @@ const TASKS: SampleTask[] = [
     end: 9,
     hb: 'You',
     now: 'Waiting to start',
-    wait: 'Me',
     next: 'Ask the customer for the purchase order',
     nextIn: 1,
   },
@@ -172,7 +162,6 @@ const TASKS: SampleTask[] = [
     end: 15,
     hb: 'Nguyen (our team)',
     now: 'Building the chart component',
-    wait: 'Our team',
   },
   {
     id: '033',
@@ -259,7 +248,6 @@ export function addSampleProject(store: Store, today: string): string {
       store.addSituationUpdate(t.id, {
         handledBy: s.hb ?? '',
         doingNow: s.now ?? '',
-        waitingOn: s.wait ?? 'Nobody',
         nextStep: s.next ?? '',
         nextDate: s.nextIn === undefined ? null : addDays(today, s.nextIn),
         newDifficulty: s.diff ? { text: s.diff, resolver: '' } : undefined,

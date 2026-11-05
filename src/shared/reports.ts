@@ -171,8 +171,6 @@ export function periodOverview(
       (n, t) => n + t.difficulties.filter((d) => d.open).length,
       0,
     ),
-    waitingOnCustomer: open.filter((t) => t.situation.waitingOn === 'Customer')
-      .length,
     byStatus: STATUSES.map((s) => ({
       status: s,
       count: tasks.filter((t) => t.status === s).length,
@@ -329,14 +327,6 @@ export const COLUMNS: Column[] = [
         : '',
   },
   {
-    key: 'waitingOn',
-    label: 'Waiting on',
-    ja: 'ボール',
-    width: 12,
-    value: (t) =>
-      t.situation.waitingOn === 'Nobody' ? '' : t.situation.waitingOn,
-  },
-  {
     key: 'labels',
     label: 'Labels',
     ja: 'ラベル',
@@ -411,12 +401,6 @@ export function briefParts(
         ? `${f.overdue ? '期限超過、期限' : '期限'} ${dateIn(t.plannedEnd, o)}`
         : `${f.overdue ? 'Overdue, was due' : 'Due'} ${dateIn(t.plannedEnd, o)}`
       : '';
-  const waiting =
-    s.waitingOn === 'Nobody'
-      ? ''
-      : inJa
-        ? ` · ボール: ${{ Me: '当方', Customer: 'お客様', 'Our team': '当社チーム' }[s.waitingOn]}`
-        : ` · waiting on ${s.waitingOn === 'Me' ? 'us' : lower(s.waitingOn)}`;
   return {
     what: ownerText(t.summary || '', o, ja),
     doingNow: where,
@@ -425,7 +409,7 @@ export function briefParts(
         `${ownerText(d.text, o, ja)}${d.resolver ? ` (${d.resolver})` : ''}`,
     ),
     next: s.nextStep
-      ? `${ownerText(s.nextStep, o, ja)}${s.nextDate ? (inJa ? `（${dateIn(s.nextDate, o)}まで）` : ` by ${dateIn(s.nextDate, o)}`) : ''}${waiting}`
+      ? `${ownerText(s.nextStep, o, ja)}${s.nextDate ? (inJa ? `（${dateIn(s.nextDate, o)}まで）` : ` by ${dateIn(s.nextDate, o)}`) : ''}`
       : '',
     due,
     asOf: s.asOf ? dateIn(s.asOf, o) : '',

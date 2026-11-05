@@ -401,7 +401,6 @@ export class Store {
       situation: {
         handledBy: str(r.handled_by),
         doingNow: str(r.doing_now),
-        waitingOn: str(r.waiting_on) as Task['situation']['waitingOn'],
         nextStep: str(r.next_step),
         nextDate: opt(r.next_date),
         asOf: opt(r.as_of),
@@ -778,7 +777,8 @@ export class Store {
     const next = {
       handledBy: input.handledBy?.trim() ?? s.handledBy,
       doingNow: input.doingNow?.trim() ?? s.doingNow,
-      waitingOn: input.waitingOn ?? s.waitingOn,
+      // Waiting on is no longer asked; the column stays for old data.
+      waitingOn: 'Nobody',
       nextStep: input.nextStep?.trim() ?? s.nextStep,
       nextDate: input.nextDate === undefined ? s.nextDate : input.nextDate,
       asOf: this.today(),
@@ -819,8 +819,6 @@ export class Store {
         next.doingNow && `Doing now: ${next.doingNow}.`,
         next.nextStep &&
           `Next: ${next.nextStep}${next.nextDate ? ` by ${next.nextDate.replaceAll('-', '/')}` : ''}.`,
-        next.waitingOn !== 'Nobody' &&
-          `Waiting on ${next.waitingOn === 'Me' ? 'me' : next.waitingOn.toLowerCase()}.`,
       ].filter(Boolean);
       if (input.newDifficulty?.text.trim()) {
         const position = t.difficulties.length;
@@ -882,14 +880,14 @@ export class Store {
     const next = {
       handledBy: input.handledBy?.trim() ?? s.handledBy,
       doingNow: input.doingNow?.trim() ?? s.doingNow,
-      waitingOn: input.waitingOn ?? s.waitingOn,
+      // Waiting on is no longer asked; the column stays for old data.
+      waitingOn: 'Nobody',
       nextStep: input.nextStep?.trim() ?? s.nextStep,
       nextDate: input.nextDate === undefined ? s.nextDate : input.nextDate,
     };
-    const names: [keyof typeof next, string][] = [
+    const names: [Exclude<keyof typeof next, 'waitingOn'>, string][] = [
       ['handledBy', 'Handled by'],
       ['doingNow', 'Doing now'],
-      ['waitingOn', 'Waiting on'],
       ['nextStep', 'Next step'],
       ['nextDate', 'Expected date'],
     ];
@@ -1366,7 +1364,6 @@ export class Store {
       at: str(r.at),
       handledBy: str(r.handled_by),
       doingNow: str(r.doing_now),
-      waitingOn: str(r.waiting_on),
       nextStep: str(r.next_step),
       nextDate: opt(r.next_date),
     }));

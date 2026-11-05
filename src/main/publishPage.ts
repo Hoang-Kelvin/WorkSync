@@ -22,7 +22,6 @@ export interface SituationEntry {
   at: string;
   handledBy: string;
   doingNow: string;
-  waitingOn: string;
   nextStep: string;
   nextDate: string | null;
 }
@@ -69,7 +68,6 @@ export function pageData(input: PageInput) {
         level: shownPriority(t),
         levelName: LEVEL_NAME[shownPriority(t)],
         labels: t.labels,
-        waiting: t.situation.waitingOn,
         deadline: d ? { text: d.text, tone: d.tone } : null,
         overdue: f.overdue,
         difficulties: f.openDifficulties,
@@ -137,7 +135,6 @@ export function buildPage(input: PageInput): string {
   </div>
   <div class="chips" role="group" aria-label="Filter">
     <button data-f="open" aria-pressed="true">All open</button>
-    <button data-f="customer" aria-pressed="false">Waiting on customer</button>
     <button data-f="overdue" aria-pressed="false">Overdue</button>
     <button data-f="top" aria-pressed="false">Urgent and high</button>
     <button data-f="all" aria-pressed="false">Everything, with done</button>
@@ -223,7 +220,7 @@ $('meta').innerHTML=(D.project.customer?'<span>'+esc(D.project.customer)+'</span
 var filter='open',origFirst=false,openIds={},view=location.hash==='#board'?'board':'briefs';
 var paras=function(s){s=(s||'').trim();if(!s)return[];var b=s.split(/\\n\\s*\\n/);return(b.length>1?b:s.split('\\n')).map(function(x){return x.trim()}).filter(Boolean)};
 function matches(t,q){q=q.trim().toLowerCase().replace(/^no\\.?\\s*/,'');if(!q)return true;return[t.id,t.title,t.orig,t.what,t.where,t.next].concat(t.labels).join('\\n').toLowerCase().indexOf(q)>=0}
-function pass(t){if(filter==='all')return true;if(t.closed)return false;if(filter==='customer')return t.waiting==='Customer';if(filter==='overdue')return t.overdue;if(filter==='top')return t.level==='U'||t.level==='H';return true}
+function pass(t){if(filter==='all')return true;if(t.closed)return false;if(filter==='overdue')return t.overdue;if(filter==='top')return t.level==='U'||t.level==='H';return true}
 function card(t){
   var main=origFirst&&t.orig?t.orig:t.title;
   var tag=(t.level==='U'||t.level==='H')&&!t.closed?'<span class="tag '+t.level+'">'+esc(t.levelName)+'</span>':'';
@@ -251,7 +248,7 @@ function render(){
   $('briefs').innerHTML=list.map(function(t){
     var main=origFirst&&t.orig?t.orig:t.title,sub=origFirst&&t.orig?t.title:t.orig;
     var tag=(t.level==='U'||t.level==='H')&&!t.closed?'<span class="tag '+t.level+'">'+esc(t.levelName)+'</span>':'';
-    var chips='<span class="st">'+esc(t.status)+'</span>'+(t.deadline?'<span class="chip '+(t.deadline.tone==='over'?'over':'')+'">'+esc(t.deadline.text)+'</span>':'')+(t.difficulties?'<span class="chip">⚠ '+t.difficulties+' open</span>':'')+(t.waiting!=='Nobody'&&!t.closed?'<span class="chip">Waiting: '+esc(t.waiting)+'</span>':'');
+    var chips='<span class="st">'+esc(t.status)+'</span>'+(t.deadline?'<span class="chip '+(t.deadline.tone==='over'?'over':'')+'">'+esc(t.deadline.text)+'</span>':'')+(t.difficulties?'<span class="chip">⚠ '+t.difficulties+' open</span>':'');
     var o=paras(t.descOrig),tr=paras(t.descTr),n=Math.max(o.length,tr.length),desc='';
     if(n){desc='<h4>Description</h4>'+(tr.length?'<div class="pairs">'+Array.from({length:n}).map(function(_,i){var l=origFirst?o:tr,r=origFirst?tr:o;return '<p>'+esc(l[i]||'')+'</p><p>'+esc(r[i]||'')+'</p>'}).join('')+'</div>':'<div class="pairs" style="grid-template-columns:1fr"><p lang="'+esc(t.lang)+'">'+esc(o.join('\\n\\n'))+'</p></div>')}
     var upd=t.updates.length?'<h4>Latest situation updates</h4><ul class="upd">'+t.updates.map(function(u){return '<li><b>'+esc(day(u.at.slice(0,10)))+'</b> · '+esc([u.handledBy,u.doingNow].filter(Boolean).join(': ')||'Confirmed')+(u.nextStep?' · next: '+esc(u.nextStep)+(u.nextDate?' by '+esc(day(u.nextDate)):''):'')+'</li>'}).join('')+'</ul>':'';
@@ -273,7 +270,7 @@ $('origFirst').addEventListener('change',function(e){origFirst=e.target.checked;
 Array.prototype.forEach.call(document.querySelectorAll('[data-f]'),function(b){b.addEventListener('click',function(){filter=b.getAttribute('data-f');Array.prototype.forEach.call(document.querySelectorAll('[data-f]'),function(x){x.setAttribute('aria-pressed',x===b?'true':'false')});render()})});
 var open=D.tasks.filter(function(t){return !t.closed});
 var c=function(f){return open.filter(f).length};
-$('tiles').innerHTML=[['Open tasks',open.length],['Overdue',c(function(t){return t.overdue})],['Open difficulties',open.reduce(function(n,t){return n+t.difficulties},0)],['Waiting on customer',c(function(t){return t.waiting==='Customer'})]].map(function(x){return '<div class="tile"><b>'+x[1]+'</b><span>'+esc(x[0])+'</span></div>'}).join('');
+$('tiles').innerHTML=[['Open tasks',open.length],['Overdue',c(function(t){return t.overdue})],['Open difficulties',open.reduce(function(n,t){return n+t.difficulties},0)]].map(function(x){return '<div class="tile"><b>'+x[1]+'</b><span>'+esc(x[0])+'</span></div>'}).join('');
 var max=function(a){return Math.max.apply(null,[1].concat(a.map(function(x){return x[1]})))};
 var bars=function(rows,color){var m=max(rows);return rows.map(function(x){return '<div class="bar"><span>'+esc(x[0])+'</span><i style="width:'+Math.round(x[1]/m*100)+'%;background:'+(color(x[0])||'var(--accent)')+'"></i><b>'+x[1]+'</b></div>'}).join('')};
 $('byStatus').innerHTML=bars(D.statuses.map(function(s){return[s,D.tasks.filter(function(t){return t.status===s}).length]}).filter(function(x){return x[1]}),function(){return ''});

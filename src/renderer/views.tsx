@@ -266,7 +266,7 @@ export function FocusView({
           {props.query || quick ? (
             'No tasks match. Clear the search or the filter to see the full focus list.'
           ) : projectTasks.length ? (
-            'Nothing needs attention right now. Tasks appear here when they are pinned, urgent, overdue, due soon, late to start, waiting on you, or past their next step.'
+            'Nothing needs attention right now. Tasks appear here when they are pinned, urgent, overdue, due soon, late to start, with your next action due, or past their next step.'
           ) : (
             <>
               <p style={{ margin: '0 0 12px' }}>No tasks yet.</p>

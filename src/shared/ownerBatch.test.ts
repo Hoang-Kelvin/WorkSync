@@ -51,7 +51,6 @@ const task = (o: Partial<Task> = {}): Task => ({
     doingNow: 'Testing the fix',
     nextStep: 'Redeploy',
     nextDate: '2026-11-04',
-    waitingOn: 'Customer',
   },
   difficulties: [
     {
@@ -143,9 +142,7 @@ describe('owner translations', () => {
     expect(b.text).toContain(
       '現状: 対応中 · Yamada: （未翻訳）Testing the fix · 期限 2026年11月5日',
     );
-    expect(b.text).toContain(
-      '今後の予定: 再デプロイ（2026年11月4日まで） · ボール: お客様',
-    );
+    expect(b.text).toContain('今後の予定: 再デプロイ（2026年11月4日まで）');
   });
 
   it('writes dates in the project format', () => {
