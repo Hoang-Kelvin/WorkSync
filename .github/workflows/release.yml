@@ -1,18 +1,45 @@
 name: Release
 
-# Pushing a tag such as v0.1.0 checks the code, builds WorkSync on Windows,
-# macOS and Linux, and publishes a GitHub release with the builds attached.
-# The release text comes from .github/release-notes/<tag>.md.
+# Publishes a GitHub release with the Windows, macOS and Linux builds.
+#
+# It runs when the version in package.json has release notes in
+# .github/release-notes/v<version>.md and no tag v<version> exists yet: bump
+# the version, add the notes, and push. It also runs for a pushed v* tag.
+# The release creates the tag on the commit it was built from.
 
 on:
   push:
+    branches: ['**']
     tags: ['v*']
 
 permissions:
   contents: read
 
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      release: ${{ steps.plan.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        run: |
+          tag="v$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            tag="$GITHUB_REF_NAME"; release=true
+          elif [ -f ".github/release-notes/$tag.md" ] && [ -z "$(git ls-remote --tags origin "refs/tags/$tag")" ]; then
+            release=true
+          else
+            release=false
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "Version $tag, release: $release"
+
   check:
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,7 +53,7 @@ jobs:
       - run: npm test
 
   make:
-    needs: check
+    needs: [plan, check]
     strategy:
       fail-fast: true
       matrix:
@@ -57,7 +84,7 @@ jobs:
           retention-days: 7
 
   release:
-    needs: make
+    needs: [plan, make]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -70,9 +97,11 @@ jobs:
         run: find dist -type f
       - uses: softprops/action-gh-release@v2
         with:
-          name: WorkSync ${{ github.ref_name }}
-          body_path: .github/release-notes/${{ github.ref_name }}.md
-          prerelease: ${{ startsWith(github.ref_name, 'v0.') }}
+          tag_name: ${{ needs.plan.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: WorkSync ${{ needs.plan.outputs.tag }}
+          body_path: .github/release-notes/${{ needs.plan.outputs.tag }}.md
+          make_latest: true
           fail_on_unmatched_files: true
           files: |
             dist/**/*.zip
