@@ -1,9 +1,9 @@
 {
   "name": "worksync",
   "productName": "WorkSync",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "private": true,
-  "description": "Cross-platform desktop app for managing and assigning tasks within a team",
+  "description": "Desktop task tracker for project managers whose customers send task lists as Excel files in another language",
   "keywords": [],
   "license": "Apache-2.0",
   "author": "Hoang-Kelvin",

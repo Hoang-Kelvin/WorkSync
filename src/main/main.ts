@@ -1,4 +1,4 @@
-import { app, BrowserWindow, nativeTheme } from 'electron';
+import { app, BrowserWindow, nativeTheme, session } from 'electron';
 import path from 'node:path';
 import {
   backupTick,
@@ -28,6 +28,10 @@ const createWindow = (): void => {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // Windows and macOS use the system's spell checker. On Linux, Electron
+      // would download dictionaries from Google, and WorkSync makes no network
+      // requests, so spell checking is off there.
+      spellcheck: process.platform !== 'linux',
     },
   });
 
@@ -45,6 +49,13 @@ const createWindow = (): void => {
 };
 
 app.whenReady().then(() => {
+  // See spellcheck above: no dictionary downloads on Linux.
+  if (process.platform === 'linux') {
+    session.defaultSession.setSpellCheckerEnabled(false);
+    session.defaultSession.setSpellCheckerDictionaryDownloadURL(
+      'http://127.0.0.1:9/',
+    );
+  }
   registerIpcHandlers();
   createWindow();
   setInterval(checkLinkedFiles, CHECK_EVERY_MS);

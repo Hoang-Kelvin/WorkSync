@@ -1,0 +1,80 @@
+name: Release
+
+# Pushing a tag such as v0.1.0 checks the code, builds WorkSync on Windows,
+# macOS and Linux, and publishes a GitHub release with the builds attached.
+# The release text comes from .github/release-notes/<tag>.md.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+  make:
+    needs: check
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+          - os: macos-latest
+            name: macos
+          - os: ubuntu-latest
+            name: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install Linux packaging tools
+        if: matrix.name == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm fakeroot dpkg
+      - run: npm ci
+      - run: npm run make
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WorkSync-${{ matrix.name }}
+          path: out/make/**/*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    needs: make
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: List the builds
+        run: find dist -type f
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: WorkSync ${{ github.ref_name }}
+          body_path: .github/release-notes/${{ github.ref_name }}.md
+          prerelease: ${{ startsWith(github.ref_name, 'v0.') }}
+          fail_on_unmatched_files: true
+          files: |
+            dist/**/*.zip
+            dist/**/*.deb
+            dist/**/*.rpm

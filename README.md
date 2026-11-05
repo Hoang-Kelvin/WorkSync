@@ -1,122 +1,282 @@
 # WorkSync
 
-A personal desktop app for a project manager who tracks customer tasks kept in
-Excel files written in another language, such as Japanese. It keeps the
-manager's own understanding of each task next to the original text, shows the
-work visually, and publishes a read-only copy to a shared folder. It runs from
-an unzipped folder with no installation and no server. Targets Windows and
-macOS first, then Linux.
+**A desktop task tracker for project managers whose customers send task lists
+as Excel files in another language.**
 
-> **Status:** the first version, steps 1 to 8 of the build plan. Projects and tasks, the Focus card
-> grid, the Board, the task popup and the priority menu, and linked Excel
-> files: set up a file format once, link the file by its path, and review
-> each new version before it changes anything. Gemini batches: Copy for AI
-> builds one request for many tasks with the project glossary, and Paste from
-> AI checks the answer before filling in translations and summaries. The
-> Timeline, Calendar and Dashboard views. Publishing a read-only page and an
-> Excel export to the shared folder. Writing changes into the owner's copy of
-> the customer's file, cell by cell, for .xlsx, .xlsm, .xls and CSV files.
-> Excel and Word reports, with your notes translated for reports in the
-> customer's language. The Tasks table, the People list, Settings with
-> backups and restore, and light and dark modes. All eight steps of the
-> build plan are in place.
+Some customers keep the task list in a spreadsheet written in Japanese. They
+update it every few days and expect you to follow along. WorkSync reads that
+file, keeps your translation, summary and current situation next to each task,
+and shows the work as cards, a board, a timeline and a dashboard. When
+something changes, it writes your updates back into **your own copy** of the
+customer's file. The original is never touched.
 
-## Tech stack
+It runs from an unzipped folder: no installer, no administrator rights, no
+server and no account. Your data stays on your PC.
 
-- [Electron](https://www.electronjs.org/) for the desktop shell
-- [Electron Forge](https://www.electronforge.io/) + [Vite](https://vite.dev/) for building and packaging
-- [React](https://react.dev/) + TypeScript for the UI
-- [oxlint](https://oxc.rs/docs/guide/usage/linter) and [oxfmt](https://oxc.rs/docs/guide/usage/formatter) for linting and formatting
+![Focus view with the sample project](.github/images/focus.png)
 
-## Getting started
+---
 
-Requires Node.js 22.13 or newer.
+## Contents
+
+- [Features](#features)
+- [Download and run](#download-and-run)
+- [First steps](#first-steps)
+- [Your data](#your-data)
+- [Sharing with others](#sharing-with-others)
+- [Building from source](#building-from-source)
+- [Known limitations](#known-limitations)
+- [License](#license)
+
+## Features
+
+**Customer files**
+
+- Link an `.xlsx`, `.xlsm`, `.xls` or `.csv` file by its path. Set up the
+  columns once, then review each new version before anything changes:
+  added, changed and removed rows are listed for you to accept.
+- Write your changes back into your own copy of the file, cell by cell, so
+  the layout and formatting stay as they were.
+
+**Your understanding of each task**
+
+- A translation, a short summary and the current situation (who handles it,
+  what is happening, difficulties, the next step) for every task.
+- Private notes and a next action that only you see.
+- A glossary per project, so product names and terms translate the same way
+  every time. A people list matches the names used in the file to the people
+  you mean.
+
+**Views**
+
+- **Focus**: what needs attention today, sorted by priority and due date.
+- **Board**: drag cards between statuses. You can hide status columns or add
+  your own.
+- **Tasks** table, **Timeline**, **Calendar** and **Dashboard**. Filters work
+  in every view.
+
+**Translation with AI, without an API key**
+
+- **Copy for AI** builds one request for many tasks, with your glossary. Paste
+  it into an AI chat such as Gemini, paste the answer back, and WorkSync checks
+  it before filling in translations and summaries.
+
+**Reports and sharing**
+
+- Excel and Word reports, including reports in the customer's language with
+  your notes translated.
+- Publish a read-only web page and an Excel export to a shared folder, for
+  colleagues who don't use WorkSync.
+- Export a whole project as a `.worksync` file for another WorkSync user to
+  import.
+
+**Everyday comforts**
+
+- Light and dark mode, following your system.
+- Daily backups, with restore from Settings.
+- English, Japanese and Vietnamese as task languages.
+
+| Task details                                                                   | Board                                  |
+| ------------------------------------------------------------------------------ | -------------------------------------- |
+| ![A task with its summary, situation and description](.github/images/task.png) | ![The board](.github/images/board.png) |
+
+![The dashboard in dark mode](.github/images/dashboard-dark.png)
+
+## Download and run
+
+Get the latest version from the
+[Releases page](https://github.com/Hoang-Kelvin/WorkSync/releases).
+
+### Windows
+
+1. Download `WorkSync-win32-x64-<version>.zip`.
+2. Unzip it into a folder on a local drive, such as `D:\Tools\WorkSync`.
+3. Run `worksync.exe`.
+
+The app isn't code signed yet, so Windows SmartScreen may warn you the first
+time. Choose **More info**, then **Run anyway**.
+
+### macOS (Apple silicon)
+
+1. Download `WorkSync-darwin-arm64-<version>.zip` and unzip it.
+2. Move `WorkSync.app` to your Applications folder.
+3. The app isn't signed yet, so macOS blocks it the first time. Right-click
+   the app and choose **Open**, then **Open** again. If macOS says the app is
+   damaged, run this once in Terminal:
+
+```bash
+xattr -cr /Applications/WorkSync.app
+```
+
+### Linux
+
+Install the `.deb` (Debian, Ubuntu) or the `.rpm` (Fedora, openSUSE):
+
+```bash
+sudo apt install ./worksync_<version>_amd64.deb
+```
+
+```bash
+sudo dnf install ./worksync-<version>-1.x86_64.rpm
+```
+
+### Updating
+
+Download the new version and replace the app folder. On Windows and macOS your
+data lives beside the app folder, not inside it, so it carries over.
+
+## First steps
+
+1. **Try the sample project** from the welcome screen. It's a made-up project
+   with Japanese tasks, so you can explore before linking real files. Delete it
+   whenever you like.
+2. **Create a project.** Choose the customer's language and the language you
+   work in.
+3. **Link the customer's file.** A short wizard asks which sheet and columns
+   hold the No., title, status, dates and so on. You can link more than one
+   file to a project.
+4. **Review changes.** When the customer updates the file, open **Files**,
+   check what changed, and accept it.
+5. **Translate and summarise** with **Copy for AI** and **Paste from AI**, or
+   type your own.
+6. **Keep the situation current.** Open a task, choose **Update situation**,
+   and the brief is ready to copy into chat or email.
+7. **Share.** Publish to a shared folder, make a report, or write your changes
+   into your copy of the customer's file.
+
+## Your data
+
+- **Where it lives**
+  - Windows and macOS: a `WorkSync-data` folder next to the app folder.
+  - Linux, and when you run from source: the system's app-data folder.
+  - **Settings** shows the exact location.
+- **What's in it**
+  - A SQLite database, `worksync.db`.
+  - Snapshots of the file versions you've read.
+  - A `backups` folder with one backup a day for the last 14 days.
+- **What leaves your PC**: nothing, unless you choose to.
+  - WorkSync makes no network requests.
+  - It writes outside its data folder only when you publish, export, make a
+    report or write your copy of a customer file.
+  - The AI step is copy and paste: you decide what goes into the chat.
+- **The customer's file is never edited.** WorkSync reads it, and writes only
+  into a separate copy you choose.
+
+## Sharing with others
+
+There are two ways to share, depending on whether the other person uses
+WorkSync.
+
+- **For anyone: publish.** Choose a shared folder (a network drive, Box,
+  OneDrive and so on) in **Publish**. WorkSync writes a read-only `index.html`
+  with a list and board view, plus an Excel export. Colleagues open the page in
+  their browser. You can also have it publish automatically when you close the
+  app.
+- **For another WorkSync user: export a copy.** In **Project settings**,
+  choose **Export a copy**. They choose **Import a project** and get the whole
+  project with its history, glossary and people. If they already have a project
+  with the same name, they choose whether to import it as a copy or to replace
+  theirs. Each person then edits their own copy, so there are no conflicts.
+
+## Building from source
+
+You need [Node.js](https://nodejs.org/) 22.13 or newer.
+
+```bash
+git clone https://github.com/Hoang-Kelvin/WorkSync.git
+```
+
+```bash
+cd WorkSync
+```
 
 ```bash
 npm install
+```
+
+```bash
 npm start
 ```
 
-`npm start` runs the app in development mode with hot reload for the UI.
+`npm start` runs the app in development mode, with hot reload for the UI.
 
-## Scripts
+| Command             | What it does                                       |
+| ------------------- | -------------------------------------------------- |
+| `npm start`         | Run the app in development mode                    |
+| `npm test`          | Run the unit tests                                 |
+| `npm run typecheck` | Type-check the whole project                       |
+| `npm run lint`      | Run oxlint and check formatting                    |
+| `npm run lint:fix`  | Fix lint issues and format the code                |
+| `npm run package`   | Build an unpacked app for the current OS in `out/` |
+| `npm run make`      | Build the zip or packages for the current OS       |
 
-| Command             | What it does                                         |
-| ------------------- | ---------------------------------------------------- |
-| `npm start`         | Run the app in development mode                      |
-| `npm run package`   | Build an unpacked app for the current OS into `out/` |
-| `npm run make`      | Build installers/distributables for the current OS   |
-| `npm run typecheck` | Type-check the whole project                         |
-| `npm test`          | Run the unit tests                                   |
-| `npm run lint`      | Run oxlint and check formatting                      |
-| `npm run lint:fix`  | Auto-fix lint issues and format the code             |
+- `npm run make` builds for the OS it runs on. Windows and macOS produce a zip,
+  and Linux produces `.deb` and `.rpm` packages (these need `dpkg`, `fakeroot`
+  and `rpm`).
+- To build the Windows zip from Linux or macOS, run
+  `npx electron-forge make --platform=win32`.
 
-`npm run make` builds for the OS it runs on. Windows and macOS produce a zip
-that runs without installing, and Linux produces `.deb` and `.rpm` packages
-(which need `dpkg`, `fakeroot` and `rpm` installed). A Windows zip can also be
-built from Linux or macOS with `npx electron-forge make --platform=win32`.
+### Built with
 
-## Getting a Windows build
+- [Electron](https://www.electronjs.org/), with
+  [Electron Forge](https://www.electronforge.io/) and
+  [Vite](https://vite.dev/) for building and packaging.
+- [React](https://react.dev/) and TypeScript for the UI.
+- `node:sqlite` for storage.
+- [oxlint](https://oxc.rs/docs/guide/usage/linter) and
+  [oxfmt](https://oxc.rs/docs/guide/usage/formatter) for linting and
+  formatting.
+- [Vitest](https://vitest.dev/) for tests.
 
-Every push runs the **Build** workflow on GitHub Actions. It checks lint and
-types, then builds on Windows, macOS and Linux. To try the app on a Windows PC:
-
-1. Open the repository's **Actions** tab and the latest **Build** run.
-2. Download the **WorkSync-windows** artifact and unzip it.
-3. Unzip the `WorkSync-win32-x64-*.zip` inside it into a folder on a local
-   drive, such as `D:\Tools`.
-4. Run `worksync.exe` in the `WorkSync-win32-x64` folder.
-
-The app keeps its data in a `WorkSync-data` folder beside the app folder, so
-replacing the app folder with a new version keeps the data. The folder holds
-the SQLite database, `worksync.db`, and a `backups` folder with one backup a
-day for the last 14 days. With `npm start` the data goes into the user's
-app-data folder instead. Builds are not
-code signed yet, so Windows SmartScreen may warn the first time: choose
-**More info**, then **Run anyway**.
-
-## Project structure
+### Project layout
 
 ```
 src/
-  main/       Electron main process: window, IPC handlers and the data
-    db.ts       SQLite schema, migrations and daily backups (node:sqlite)
-    store.ts    All reads and writes of projects, tasks and history
-  preload/    Preload script: the only bridge between main and renderer
-  renderer/   React UI (runs as sandboxed web content)
-  shared/     Types and rules used by more than one process
-    model.ts    The task model: flags, focus list, sorting, language detection
-forge.config.mts        Packaging, makers and Electron fuses
-vite.*.config.mts       Vite config for the main, preload and renderer builds
+  main/       Electron main process: window, IPC handlers, files and data
+    db.ts       SQLite schema and migrations
+    store.ts    Reads and writes of projects, tasks and history
+    sources.ts  Linked customer files: reading, reviewing and applying changes
+  preload/    The only bridge between the main process and the UI
+  renderer/   React UI (sandboxed web content)
+  shared/     Types and rules used by both sides
+forge.config.mts      Packaging, makers and Electron fuses
+vite.*.config.mts     Vite config for the main, preload and renderer builds
 ```
 
-## Adding a main-process feature
+### Contributing
 
-The renderer has no Node.js access. To expose a new capability:
+Issues and pull requests are welcome. Before opening a pull request, run
+`npm run lint`, `npm run typecheck` and `npm test`. The **Build** workflow runs
+the same checks and builds for all three systems on every push.
 
-1. Add the method to `WorkSyncApi` and its name to `API_METHODS` in `src/shared/ipc.ts`.
-2. Implement it in the `handlers` object in `src/main/ipc.ts`.
-3. Call it from React as `window.worksync.<method>()`. The preload script
-   exposes every method in `API_METHODS`.
+A few conventions:
 
-Database changes go in a new entry at the end of `MIGRATIONS` in
-`src/main/db.ts`. Never edit a migration that has shipped. The app backs up
-the database before applying new migrations.
+- **Calling the main process.** The UI has no Node.js access. To add a call:
+  1. Add the method to `WorkSyncApi` and its name to `API_METHODS` in
+     `src/shared/ipc.ts`.
+  2. Implement it in the `handlers` object in `src/main/ipc.ts`.
+  3. Call it from React as `window.worksync.<method>()`.
+- **Database changes** go in a new entry at the end of `MIGRATIONS` in
+  `src/main/db.ts`. Never edit a migration that has shipped. The app backs up
+  the database before running new migrations.
 
-## Security defaults
+### Security
 
-- `contextIsolation` and `sandbox` are on and `nodeIntegration` is off.
-- The preload script exposes a narrow typed API, not `ipcRenderer`.
-- Production builds ship a strict Content-Security-Policy (see `vite.renderer.config.mts`).
-- Electron fuses disable `RunAsNode` and the Node CLI/inspect flags in packaged apps.
+- `contextIsolation` and `sandbox` are on, and `nodeIntegration` is off.
+- The preload script exposes a narrow, typed API instead of `ipcRenderer`.
+- Production builds ship a strict Content-Security-Policy (see
+  `vite.renderer.config.mts`).
+- Electron fuses turn off `RunAsNode` and the Node.js CLI and inspect flags in
+  packaged apps.
 
-## Not set up yet
+## Known limitations
 
-- Code signing and notarization (required to distribute on macOS and to avoid
-  SmartScreen warnings on Windows). See the note in `forge.config.mts`.
-- Auto-update and an app icon.
-- Task features, which follow the build plan in the specifications.
+- **No code signing yet**, so Windows and macOS warn the first time you open
+  the app (see [Download and run](#download-and-run)).
+- **No automatic updates.** Download new versions from the Releases page.
+- **macOS builds are for Apple silicon only.** Intel Macs aren't built yet.
+- **No app icon yet.**
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE).
+[Apache License 2.0](LICENSE).
