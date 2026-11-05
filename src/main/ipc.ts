@@ -564,6 +564,11 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
   setTableSettings: async (id, settings) =>
     need().setTableSettings(id, settings),
   addSituationUpdate: async (id, input) => need().addSituationUpdate(id, input),
+  correctSituation: async (id, input) => need().correctSituation(id, input),
+  editDifficulty: async (taskId, difficultyId, input) =>
+    need().editDifficulty(taskId, difficultyId, input),
+  deleteDifficulty: async (taskId, difficultyId) =>
+    need().deleteDifficulty(taskId, difficultyId),
   setDifficultyOpen: async (taskId, difficultyId, isOpen) =>
     need().setDifficultyOpen(taskId, difficultyId, isOpen),
   deleteTask: async (id) => need().deleteTask(id),

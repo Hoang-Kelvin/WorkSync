@@ -1331,3 +1331,100 @@ select.lang-pick option {
   color: var(--muted);
   font-size: 12.5px;
 }
+
+/* ---------- editing in the task popup ---------- */
+.field.editable .k {
+  min-height: 18px;
+}
+.field.editable.wide {
+  padding: 0;
+  background: none;
+  border: 0;
+}
+.field.editable.wide .k h3 {
+  margin: 0;
+}
+.fix-btn {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  padding: 2px 4px;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0.45;
+  display: inline-flex;
+}
+.fix-btn .ic {
+  width: 13px;
+  height: 13px;
+}
+.field.editable:hover .fix-btn,
+.fix-btn:focus-visible {
+  opacity: 1;
+  color: var(--accent);
+}
+.fix-btn:hover {
+  background: rgb(var(--hl) / 0.06);
+}
+.field.editable > .v {
+  cursor: text;
+}
+.field.editing {
+  border-color: rgb(var(--acc) / 0.5);
+}
+.inline-edit {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+  min-width: 0;
+}
+.inline-edit label {
+  display: grid;
+  gap: 3px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.inline-edit .two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.inline-edit .inp {
+  width: 100%;
+  min-width: 0;
+}
+.ie-foot {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ie-foot .muted {
+  font-size: 11px;
+  margin-right: auto;
+}
+.diffs .inline-edit {
+  flex: 1;
+  margin-top: 0;
+}
+.fix-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0 0 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.fix-note .ic {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+.field.editable.wide > .v {
+  margin-top: 8px;
+}

@@ -867,6 +867,129 @@ export class Store {
     return this.getTask(taskId);
   }
 
+  /**
+   * Fixes a mistake in the current situation. Unlike an update, it changes the
+   * newest update in place: As of stays, and no new update is added.
+   */
+  correctSituation(
+    id: string,
+    input: Omit<SituationInput, 'newDifficulty'>,
+  ): Task {
+    const t = this.getTask(id);
+    const s = t.situation;
+    if (!s.asOf)
+      throw new Error('This task has no situation yet. Use Update situation.');
+    const next = {
+      handledBy: input.handledBy?.trim() ?? s.handledBy,
+      doingNow: input.doingNow?.trim() ?? s.doingNow,
+      waitingOn: input.waitingOn ?? s.waitingOn,
+      nextStep: input.nextStep?.trim() ?? s.nextStep,
+      nextDate: input.nextDate === undefined ? s.nextDate : input.nextDate,
+    };
+    const names: [keyof typeof next, string][] = [
+      ['handledBy', 'Handled by'],
+      ['doingNow', 'Doing now'],
+      ['waitingOn', 'Waiting on'],
+      ['nextStep', 'Next step'],
+      ['nextDate', 'Expected date'],
+    ];
+    const changed = names.filter(([k]) => (next[k] ?? null) !== (s[k] ?? null));
+    if (!changed.length) return t;
+    this.tx(() => {
+      this.db
+        .prepare(
+          'UPDATE tasks SET handled_by = ?, doing_now = ?, waiting_on = ?, next_step = ?, next_date = ?, updated_at = ? WHERE id = ?',
+        )
+        .run(
+          next.handledBy,
+          next.doingNow,
+          next.waitingOn,
+          next.nextStep,
+          next.nextDate,
+          this.now(),
+          id,
+        );
+      const newest = this.db
+        .prepare(
+          'SELECT id FROM situation_updates WHERE task_id = ? ORDER BY at DESC LIMIT 1',
+        )
+        .get(id) as Row | undefined;
+      if (newest)
+        this.db
+          .prepare(
+            'UPDATE situation_updates SET handled_by = ?, doing_now = ?, waiting_on = ?, next_step = ?, next_date = ? WHERE id = ?',
+          )
+          .run(
+            next.handledBy,
+            next.doingNow,
+            next.waitingOn,
+            next.nextStep,
+            next.nextDate,
+            str(newest.id),
+          );
+      this.log(
+        id,
+        'Situation update',
+        `Corrected ${changed.map(([, n]) => n.toLowerCase()).join(', ')}.`,
+      );
+    });
+    return this.getTask(id);
+  }
+
+  /** Fixes the wording of a difficulty, or who can resolve it. */
+  editDifficulty(
+    taskId: string,
+    difficultyId: string,
+    input: { text: string; resolver: string },
+  ): Task {
+    const t = this.getTask(taskId);
+    const d = t.difficulties.find((x) => x.id === difficultyId);
+    if (!d) throw new Error('This difficulty was not found.');
+    const text = input.text.trim();
+    const resolver = input.resolver.trim();
+    if (!text)
+      throw new Error('A difficulty needs some text. To remove it, delete it.');
+    if (text === d.text && resolver === d.resolver) return t;
+    this.tx(() => {
+      this.db
+        .prepare('UPDATE difficulties SET text = ?, resolver = ? WHERE id = ?')
+        .run(text, resolver, difficultyId);
+      this.db
+        .prepare('UPDATE tasks SET updated_at = ? WHERE id = ?')
+        .run(this.now(), taskId);
+      this.log(
+        taskId,
+        'Difficulty',
+        text === d.text
+          ? `Changed who can resolve: ${text}.`
+          : `Corrected: ${d.text} → ${text}.`,
+      );
+    });
+    return this.getTask(taskId);
+  }
+
+  /** Removes a difficulty written by mistake, with its translations. */
+  deleteDifficulty(taskId: string, difficultyId: string): Task {
+    const t = this.getTask(taskId);
+    const d = t.difficulties.find((x) => x.id === difficultyId);
+    if (!d) return t;
+    this.tx(() => {
+      this.db
+        .prepare('DELETE FROM difficulties WHERE id = ?')
+        .run(difficultyId);
+      this.db
+        .prepare(
+          'DELETE FROM owner_translations WHERE task_id = ? AND field = ?',
+        )
+        .run(taskId, `difficulty:${difficultyId}`);
+      this.db
+        .prepare('UPDATE tasks SET updated_at = ? WHERE id = ?')
+        .run(this.now(), taskId);
+      this.log(taskId, 'Difficulty', `Deleted: ${d.text}.`);
+    });
+    return this.getTask(taskId);
+  }
+
   deleteTask(id: string): void {
     const t = this.getTask(id);
     this.tx(() => {

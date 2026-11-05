@@ -1,7 +1,15 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 import {
   LANGUAGES,
   LEVEL_NAME,
+  STATUSES,
   WAITING_ON,
   brief,
   daysBetween,
@@ -12,6 +20,8 @@ import {
   isClosed,
   linkKind,
   type ActivityEntry,
+  type Status,
+  type TaskInput,
   type TaskLink,
   type Task,
   type WaitingOn,
@@ -179,7 +189,16 @@ function Description({ task }: { task: Task }) {
   );
 }
 
-function SituationForm({ task, onDone }: { task: Task; onDone: () => void }) {
+function SituationForm({
+  task,
+  fix,
+  onDone,
+}: {
+  task: Task;
+  /** Fixing a mistake: changes the newest update in place, and As of stays. */
+  fix?: boolean;
+  onDone: () => void;
+}) {
   const { putTask, toast, attempt } = useApp();
   const s = task.situation;
   const [v, setV] = useState({
@@ -195,26 +214,53 @@ function SituationForm({ task, onDone }: { task: Task; onDone: () => void }) {
     setV({ ...v, [k]: e.target.value });
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    const parts = {
+      handledBy: v.handledBy,
+      doingNow: v.doingNow,
+      waitingOn: v.waitingOn as WaitingOn,
+      nextStep: v.nextStep,
+      nextDate: v.nextDate || null,
+    };
     const u = await attempt(() =>
-      window.worksync.addSituationUpdate(task.id, {
-        handledBy: v.handledBy,
-        doingNow: v.doingNow,
-        waitingOn: v.waitingOn as WaitingOn,
-        nextStep: v.nextStep,
-        nextDate: v.nextDate || null,
-        newDifficulty: v.difficulty.trim()
-          ? { text: v.difficulty, resolver: v.resolver }
-          : undefined,
-      }),
+      fix
+        ? window.worksync.correctSituation(task.id, parts)
+        : window.worksync.addSituationUpdate(task.id, {
+            ...parts,
+            newDifficulty: v.difficulty.trim()
+              ? { text: v.difficulty, resolver: v.resolver }
+              : undefined,
+          }),
     );
     if (u) {
       putTask(u);
-      toast('Situation updated. The brief now shows it.');
+      toast(
+        fix
+          ? 'Corrected. As of stays the same.'
+          : 'Situation updated. The brief now shows it.',
+      );
       onDone();
     }
   };
   return (
-    <form className="update" onSubmit={submit}>
+    <form
+      className="update"
+      onSubmit={submit}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          onDone();
+        }
+      }}
+    >
+      {fix && (
+        <p className="fix-note">
+          <Icon name="edit" />
+          Fixing a mistake: this changes the situation as you last recorded it.
+          As of stays {task.situation.asOf ? fileDate(task.situation.asOf) : ''}
+          , and no new update is added. To record new progress, use Update
+          situation.
+        </p>
+      )}
       <div className="two">
         <label>
           Handled by
@@ -267,35 +313,274 @@ function SituationForm({ task, onDone }: { task: Task; onDone: () => void }) {
           />
         </label>
       </div>
-      <div className="two">
-        <label>
-          New difficulty (optional)
-          <input
-            className="inp"
-            value={v.difficulty}
-            onChange={set('difficulty')}
-            placeholder="What is slowing the work down?"
-          />
-        </label>
-        <label>
-          Who can resolve it
-          <input
-            className="inp"
-            value={v.resolver}
-            onChange={set('resolver')}
-          />
-        </label>
-      </div>
+      {!fix && (
+        <div className="two">
+          <label>
+            New difficulty (optional)
+            <input
+              className="inp"
+              value={v.difficulty}
+              onChange={set('difficulty')}
+              placeholder="What is slowing the work down?"
+            />
+          </label>
+          <label>
+            Who can resolve it
+            <input
+              className="inp"
+              value={v.resolver}
+              onChange={set('resolver')}
+            />
+          </label>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn" onClick={onDone}>
           Cancel
         </button>
         <button className="btn primary" type="submit">
           <Icon name="check" />
-          Save update
+          {fix ? 'Save correction' : 'Save update'}
         </button>
       </div>
     </form>
+  );
+}
+
+/** One difficulty: resolve or reopen it, fix its wording, or delete it. */
+function DifficultyRow({
+  task,
+  d,
+}: {
+  task: Task;
+  d: Task['difficulties'][number];
+}) {
+  const { attempt, putTask, toast } = useApp();
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(d.text);
+  const [resolver, setResolver] = useState(d.resolver);
+  const run = async (fn: () => Promise<Task>, done?: string) => {
+    const u = await attempt(fn);
+    if (u) {
+      putTask(u);
+      if (done) toast(done);
+    }
+    return !!u;
+  };
+  if (editing)
+    return (
+      <li>
+        <Icon name={d.open ? 'alert' : 'check'} />
+        <form
+          className="inline-edit"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (
+              await run(() =>
+                window.worksync.editDifficulty(task.id, d.id, {
+                  text,
+                  resolver,
+                }),
+              )
+            )
+              setEditing(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation();
+              setEditing(false);
+            }
+          }}
+        >
+          <input
+            className="inp"
+            aria-label="Difficulty"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            autoFocus
+          />
+          <input
+            className="inp"
+            aria-label="Who can resolve it"
+            placeholder="Who can resolve it"
+            value={resolver}
+            onChange={(e) => setResolver(e.target.value)}
+          />
+          <div className="ie-foot">
+            <button
+              type="button"
+              className="btn sm"
+              onClick={() => setEditing(false)}
+            >
+              Cancel
+            </button>
+            <button className="btn sm primary" type="submit">
+              Save
+            </button>
+          </div>
+        </form>
+      </li>
+    );
+  return (
+    <li>
+      <Icon name={d.open ? 'alert' : 'check'} />
+      <span>
+        <span className={d.open ? '' : 'res'}>{d.text}</span>
+        <br />
+        <span className="by">
+          {d.resolver ? `${d.resolver} · ` : ''}since {shortDate(d.raisedOn)}
+          {d.open ? '' : ' · resolved'} ·{' '}
+          <button
+            className="linkbtn"
+            onClick={() =>
+              void run(() =>
+                window.worksync.setDifficultyOpen(task.id, d.id, !d.open),
+              )
+            }
+          >
+            {d.open ? 'Mark resolved' : 'Reopen'}
+          </button>{' '}
+          ·{' '}
+          <button
+            className="linkbtn"
+            onClick={() => {
+              setText(d.text);
+              setResolver(d.resolver);
+              setEditing(true);
+            }}
+          >
+            Edit
+          </button>{' '}
+          ·{' '}
+          <button
+            className="linkbtn"
+            onClick={() => {
+              if (
+                window.confirm(
+                  `Delete this difficulty?\n\n${d.text}\n\nUse this for one written by mistake. A difficulty that went away should be marked resolved instead, so the history keeps it.`,
+                )
+              )
+                void run(
+                  () => window.worksync.deleteDifficulty(task.id, d.id),
+                  'Difficulty deleted.',
+                );
+            }}
+          >
+            Delete
+          </button>
+        </span>
+      </span>
+    </li>
+  );
+}
+
+type Draft = Record<string, string>;
+
+/**
+ * A field of the popup that can be changed where it is: the pencil, or a
+ * double-click on the value, opens it. Saves through the same path as Edit
+ * task, so file tasks still get their changes written to your copy.
+ */
+function EditField({
+  task,
+  k,
+  name,
+  v,
+  pend,
+  wide,
+  start,
+  editor,
+  patch,
+}: {
+  task: Task;
+  k: ReactNode;
+  /** What the field is called, when k is not plain text. */
+  name?: string;
+  v: ReactNode;
+  pend?: string;
+  /** Shown as a block, such as the summary, rather than a small field. */
+  wide?: boolean;
+  start: () => Draft;
+  editor: (
+    d: Draft,
+    set: (key: string) => (e: { target: { value: string } }) => void,
+  ) => ReactNode;
+  patch: (d: Draft) => Partial<TaskInput>;
+}) {
+  const { attempt, putTask } = useApp();
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const set = (key: string) => (e: { target: { value: string } }) =>
+    setDraft((d) => ({ ...d, [key]: e.target.value }));
+  const label = name ?? (typeof k === 'string' ? k : undefined);
+  const save = async (e?: FormEvent) => {
+    e?.preventDefault();
+    if (!draft) return;
+    const u = await attempt(() =>
+      window.worksync.updateTask(task.id, patch(draft)),
+    );
+    if (u) {
+      putTask(u);
+      setDraft(null);
+    }
+  };
+  const keys = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      setDraft(null);
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      void save();
+    }
+  };
+  return (
+    <div
+      className={`field editable ${wide ? 'wide' : ''} ${pend ? 'pending' : ''} ${draft ? 'editing' : ''}`}
+    >
+      <div className="k">
+        {k}
+        {!draft && (
+          <button
+            className="fix-btn"
+            title={label ? `Edit ${label.toLowerCase()}` : 'Edit'}
+            aria-label={label ? `Edit ${label.toLowerCase()}` : 'Edit'}
+            onClick={() => setDraft(start())}
+          >
+            <Icon name="edit" />
+          </button>
+        )}
+      </div>
+      {draft ? (
+        <form className="inline-edit" onSubmit={save} onKeyDown={keys}>
+          {editor(draft, set)}
+          <div className="ie-foot">
+            <span className="muted">Ctrl+Enter saves · Esc cancels</span>
+            <button
+              type="button"
+              className="btn sm"
+              onClick={() => setDraft(null)}
+            >
+              Cancel
+            </button>
+            <button className="btn sm primary" type="submit">
+              Save
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div
+          className="v"
+          onDoubleClick={() => setDraft(start())}
+          title="Double-click to edit"
+        >
+          {v}
+        </div>
+      )}
+      {pend && !draft && (
+        <div className="pend">
+          <Icon name="save" /> {pend}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -532,7 +817,7 @@ export function TaskPopup({
   const { tasks, project, today, putTask, toast, attempt, people } = useApp();
   const label = useTaskLabel();
   const task = tasks.find((t) => t.id === taskId);
-  const [updating, setUpdating] = useState(false);
+  const [updating, setUpdating] = useState<false | 'update' | 'fix'>(false);
   const [pending, setPending] = useState<PendingChange[]>([]);
   // Customer-field changes not yet written to the owner's copy, marked on their fields.
   useEffect(() => {
@@ -626,12 +911,9 @@ export function TaskPopup({
       );
     }
   };
-  const toggleDifficulty = async (id: string, open: boolean) => {
-    const u = await attempt(() =>
-      window.worksync.setDifficultyOpen(task.id, id, open),
-    );
-    if (u) putTask(u);
-  };
+  const names = people
+    .filter((x) => x.projectId === task.projectId)
+    .map((x) => x.name);
 
   return (
     <div
@@ -734,7 +1016,10 @@ export function TaskPopup({
                 {task.language === 'ja' ? '日本語で' : LANGUAGES[task.language]}
               </button>
             )}
-            <button className="btn primary" onClick={() => setUpdating(true)}>
+            <button
+              className="btn primary"
+              onClick={() => setUpdating('update')}
+            >
               <Icon name="edit" />
               Update situation
             </button>
@@ -743,28 +1028,55 @@ export function TaskPopup({
         <div className="tm-body">
           <div className="tm-main" ref={mainRef}>
             <section className="sec">
-              <h3>Summary</h3>
-              {task.summary ? (
-                <div className="summary">{task.summary}</div>
-              ) : (
-                <div className="summary missing">
-                  <span>
-                    No summary yet, so this task’s brief is incomplete.
-                  </span>
-                  <button className="btn sm" onClick={() => onEdit(task)}>
-                    Write a summary
-                  </button>
-                </div>
-              )}
+              <EditField
+                task={task}
+                wide
+                name="Summary"
+                k={<h3>Summary</h3>}
+                start={() => ({ summary: task.summary })}
+                editor={(d, set) => (
+                  <textarea
+                    className="inp"
+                    rows={3}
+                    aria-label="Summary"
+                    value={d.summary}
+                    onChange={set('summary')}
+                    autoFocus
+                  />
+                )}
+                patch={(d) => ({ summary: d.summary })}
+                v={
+                  task.summary ? (
+                    <div className="summary">{task.summary}</div>
+                  ) : (
+                    <div className="summary missing">
+                      <span>
+                        No summary yet, so this task’s brief is incomplete.
+                      </span>
+                    </div>
+                  )
+                }
+              />
             </section>
             <section className="sec">
               <h3>
                 Situation <span className="fresh">· {fresh}</span>
+                {s.asOf && !updating && (
+                  <button
+                    className="linkbtn"
+                    title="Change what you last recorded, without making a new update"
+                    onClick={() => setUpdating('fix')}
+                  >
+                    Fix a mistake
+                  </button>
+                )}
               </h3>
               <div className="situ">
                 {updating ? (
                   <SituationForm
+                    key={updating}
                     task={task}
+                    fix={updating === 'fix'}
                     onDone={() => setUpdating(false)}
                   />
                 ) : (
@@ -778,28 +1090,7 @@ export function TaskPopup({
                       {task.difficulties.length ? (
                         <ul className="diffs">
                           {task.difficulties.map((d) => (
-                            <li key={d.id}>
-                              <Icon name={d.open ? 'alert' : 'check'} />
-                              <span>
-                                <span className={d.open ? '' : 'res'}>
-                                  {d.text}
-                                </span>
-                                <br />
-                                <span className="by">
-                                  {d.resolver ? `${d.resolver} · ` : ''}since{' '}
-                                  {shortDate(d.raisedOn)}
-                                  {d.open ? '' : ' · resolved'} ·{' '}
-                                  <button
-                                    className="linkbtn"
-                                    onClick={() =>
-                                      void toggleDifficulty(d.id, !d.open)
-                                    }
-                                  >
-                                    {d.open ? 'Mark resolved' : 'Reopen'}
-                                  </button>
-                                </span>
-                              </span>
-                            </li>
+                            <DifficultyRow key={d.id} task={task} d={d} />
                           ))}
                         </ul>
                       ) : (
@@ -847,9 +1138,29 @@ export function TaskPopup({
             <section className="sec sec-fields">
               <h3>Task fields</h3>
               <div className="fields">
-                <Field
+                <EditField
+                  task={task}
                   k="Assignee"
                   pend={pend('assignee')}
+                  start={() => ({ assignee: task.assignee })}
+                  editor={(d, set) => (
+                    <>
+                      <input
+                        className="inp"
+                        aria-label="Assignee"
+                        list="tmPeople"
+                        value={d.assignee}
+                        onChange={set('assignee')}
+                        autoFocus
+                      />
+                      <datalist id="tmPeople">
+                        {names.map((n) => (
+                          <option key={n} value={n} />
+                        ))}
+                      </datalist>
+                    </>
+                  )}
+                  patch={(d) => ({ assignee: d.assignee })}
                   v={
                     task.assignee ? (
                       assigneeText(people, task, 'both')
@@ -858,10 +1169,61 @@ export function TaskPopup({
                     )
                   }
                 />
-                <Field k="Status" v={task.status} pend={pend('status')} />
-                <Field
+                <EditField
+                  task={task}
+                  k="Status"
+                  pend={pend('status')}
+                  start={() => ({ status: task.status })}
+                  editor={(d, set) => (
+                    <select
+                      className="inp"
+                      aria-label="Status"
+                      value={d.status}
+                      onChange={set('status')}
+                      autoFocus
+                    >
+                      {STATUSES.map((x) => (
+                        <option key={x}>{x}</option>
+                      ))}
+                    </select>
+                  )}
+                  patch={(d) => ({ status: d.status as Status })}
+                  v={task.status}
+                />
+                <EditField
+                  task={task}
                   k="Planned"
                   pend={pend('plannedStart', 'plannedEnd')}
+                  start={() => ({
+                    plannedStart: task.plannedStart ?? '',
+                    plannedEnd: task.plannedEnd ?? '',
+                  })}
+                  editor={(d, set) => (
+                    <div className="two">
+                      <label>
+                        Start
+                        <input
+                          className="inp"
+                          type="date"
+                          value={d.plannedStart}
+                          onChange={set('plannedStart')}
+                        />
+                      </label>
+                      <label>
+                        End
+                        <input
+                          className="inp"
+                          type="date"
+                          value={d.plannedEnd}
+                          onChange={set('plannedEnd')}
+                        />
+                      </label>
+                    </div>
+                  )}
+                  patch={(d) => ({
+                    plannedStart: d.plannedStart || null,
+                    plannedEnd: d.plannedEnd || null,
+                  })}
                   v={
                     task.plannedStart || task.plannedEnd ? (
                       <span className="mono">
@@ -873,9 +1235,40 @@ export function TaskPopup({
                     )
                   }
                 />
-                <Field
+                <EditField
+                  task={task}
                   k="Actual"
                   pend={pend('actualStart', 'actualEnd')}
+                  start={() => ({
+                    actualStart: task.actualStart ?? '',
+                    actualEnd: task.actualEnd ?? '',
+                  })}
+                  editor={(d, set) => (
+                    <div className="two">
+                      <label>
+                        Start
+                        <input
+                          className="inp"
+                          type="date"
+                          value={d.actualStart}
+                          onChange={set('actualStart')}
+                        />
+                      </label>
+                      <label>
+                        End
+                        <input
+                          className="inp"
+                          type="date"
+                          value={d.actualEnd}
+                          onChange={set('actualEnd')}
+                        />
+                      </label>
+                    </div>
+                  )}
+                  patch={(d) => ({
+                    actualStart: d.actualStart || null,
+                    actualEnd: d.actualEnd || null,
+                  })}
                   v={
                     task.actualStart || task.actualEnd ? (
                       <span className="mono">
@@ -910,14 +1303,40 @@ export function TaskPopup({
                     </>
                   }
                 />
-                <Field
+                <EditField
+                  task={task}
                   k="Category"
                   pend={pend('category')}
+                  start={() => ({ category: task.category })}
+                  editor={(d, set) => (
+                    <input
+                      className="inp"
+                      aria-label="Category"
+                      value={d.category}
+                      onChange={set('category')}
+                      autoFocus
+                    />
+                  )}
+                  patch={(d) => ({ category: d.category })}
                   v={task.category || <span className="muted">Not set</span>}
                 />
-                <Field
+                <EditField
+                  task={task}
                   k="Remarks"
                   pend={pend('remarks')}
+                  start={() => ({ remarks: task.remarks })}
+                  editor={(d, set) => (
+                    <textarea
+                      className="inp"
+                      rows={3}
+                      aria-label="Remarks"
+                      lang={task.language}
+                      value={d.remarks}
+                      onChange={set('remarks')}
+                      autoFocus
+                    />
+                  )}
+                  patch={(d) => ({ remarks: d.remarks })}
                   v={
                     task.remarks ? (
                       <span lang={task.language}>{task.remarks}</span>
@@ -931,13 +1350,41 @@ export function TaskPopup({
             <section className="sec">
               <h3>Only for you</h3>
               <div className="fields">
-                <Field
+                <EditField
+                  task={task}
                   k={
                     <>
                       <Icon name="check" />
                       Next action
                     </>
                   }
+                  name="Next action"
+                  start={() => ({
+                    nextAction: task.nextAction,
+                    nextActionDate: task.nextActionDate ?? '',
+                  })}
+                  editor={(d, set) => (
+                    <>
+                      <input
+                        className="inp"
+                        aria-label="Next action"
+                        value={d.nextAction}
+                        onChange={set('nextAction')}
+                        autoFocus
+                      />
+                      <input
+                        className="inp"
+                        type="date"
+                        aria-label="Next action date"
+                        value={d.nextActionDate}
+                        onChange={set('nextActionDate')}
+                      />
+                    </>
+                  )}
+                  patch={(d) => ({
+                    nextAction: d.nextAction,
+                    nextActionDate: d.nextActionDate || null,
+                  })}
                   v={
                     task.nextAction ? (
                       <>
@@ -954,8 +1401,21 @@ export function TaskPopup({
                     )
                   }
                 />
-                <Field
+                <EditField
+                  task={task}
                   k="Notes"
+                  start={() => ({ notes: task.notes })}
+                  editor={(d, set) => (
+                    <textarea
+                      className="inp"
+                      rows={4}
+                      aria-label="Notes"
+                      value={d.notes}
+                      onChange={set('notes')}
+                      autoFocus
+                    />
+                  )}
+                  patch={(d) => ({ notes: d.notes })}
                   v={
                     task.notes ? (
                       <span style={{ whiteSpace: 'pre-wrap' }}>

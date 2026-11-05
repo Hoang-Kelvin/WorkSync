@@ -153,6 +153,16 @@ export interface WorkSyncApi {
     settings: TableSettings | null,
   ): Promise<Project>;
   addSituationUpdate(id: string, input: SituationInput): Promise<Task>;
+  correctSituation(
+    id: string,
+    input: Omit<SituationInput, 'newDifficulty'>,
+  ): Promise<Task>;
+  editDifficulty(
+    taskId: string,
+    difficultyId: string,
+    input: { text: string; resolver: string },
+  ): Promise<Task>;
+  deleteDifficulty(taskId: string, difficultyId: string): Promise<Task>;
   setDifficultyOpen(
     taskId: string,
     difficultyId: string,
@@ -288,6 +298,9 @@ export const API_METHODS = [
   'setBoardColumn',
   'addSituationUpdate',
   'setDifficultyOpen',
+  'correctSituation',
+  'editDifficulty',
+  'deleteDifficulty',
   'deleteTask',
   'listActivity',
   'addNote',

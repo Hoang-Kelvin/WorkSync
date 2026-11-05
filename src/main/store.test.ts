@@ -127,6 +127,66 @@ describe('Store', () => {
     expect(r.difficulties[0].open).toBe(false);
   });
 
+  it('fixes a mistake in the situation without making a new update', () => {
+    const t = store.createTask(project().id, input());
+    expect(() => store.correctSituation(t.id, { doingNow: 'x' })).toThrow(
+      /no situation yet/,
+    );
+    clock = '2026-11-03T09:00:00.000Z';
+    store.addSituationUpdate(t.id, {
+      doingNow: 'Reproducng',
+      nextStep: 'Logs',
+    });
+    clock = '2026-11-05T09:00:00.000Z';
+    const u = store.correctSituation(t.id, { doingNow: 'Reproducing ' });
+    expect(u.situation).toMatchObject({
+      doingNow: 'Reproducing',
+      nextStep: 'Logs',
+      asOf: '2026-11-03',
+    });
+    const ups = store.listSituationUpdates(t.id, 10);
+    expect(ups).toHaveLength(1);
+    expect(ups[0].doingNow).toBe('Reproducing');
+    expect(store.listActivity(t.id)[0].text).toBe('Corrected doing now.');
+    // Nothing changed: nothing logged.
+    const n = store.listActivity(t.id).length;
+    store.correctSituation(t.id, { doingNow: 'Reproducing' });
+    expect(store.listActivity(t.id)).toHaveLength(n);
+  });
+
+  it('edits and deletes a difficulty, with its translation', () => {
+    const t = store.createTask(project().id, input());
+    const d = store.addSituationUpdate(t.id, {
+      newDifficulty: { text: 'No acess', resolver: '' },
+    }).difficulties[0];
+    const e = store.editDifficulty(t.id, d.id, {
+      text: 'No access',
+      resolver: 'Customer IT',
+    });
+    expect(e.difficulties[0]).toMatchObject({
+      id: d.id,
+      text: 'No access',
+      resolver: 'Customer IT',
+      raisedOn: d.raisedOn,
+    });
+    expect(() =>
+      store.editDifficulty(t.id, d.id, { text: ' ', resolver: '' }),
+    ).toThrow(/needs some text/);
+    store.saveOwnerTranslations([
+      {
+        taskId: t.id,
+        field: `difficulty:${d.id}`,
+        language: 'ja',
+        source: 'No access',
+        text: 'アクセス不可',
+      },
+    ]);
+    const r = store.deleteDifficulty(t.id, d.id);
+    expect(r.difficulties).toHaveLength(0);
+    expect(store.listOwnerTranslations(t.projectId)).toHaveLength(0);
+    expect(store.listActivity(t.id)[0].text).toBe('Deleted: No access.');
+  });
+
   it('treats an override equal to the task level as no override', () => {
     const t = store.createTask(project().id, input({ priority: 'N' }));
     expect(store.setPriorityOverride(t.id, 'U').priorityOverride).toBe('U');
