@@ -315,6 +315,16 @@ describe('Sources', () => {
     expect(other.added).toBe(3);
   });
 
+  it('points a link at the file’s new place', () => {
+    const { source } = link();
+    const moved = sources.relocate(source.id, '/new/place/WBS.xlsx');
+    expect(moved).toMatchObject({
+      path: '/new/place/WBS.xlsx',
+      currentFile: '/new/place/WBS.xlsx',
+      state: 'ok',
+    });
+  });
+
   it('keeps the last ten snapshots', () => {
     const { source } = link();
     for (let i = 0; i < 12; i++)

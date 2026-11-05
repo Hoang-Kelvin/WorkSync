@@ -141,6 +141,26 @@ export function FilesView({
                             Review changes
                           </button>
                         )}
+                        {s.state === 'missing' && (
+                          <button
+                            className="btn sm accent-outline"
+                            title="The file is not at its old place. Choose where it is now."
+                            onClick={async () => {
+                              const u = await attempt(() =>
+                                window.worksync.relinkSource(s.id),
+                              );
+                              if (!u) return;
+                              setSources(await window.worksync.listSources());
+                              toast(
+                                u.state === 'changed'
+                                  ? 'Found. The file has changes: review them.'
+                                  : 'Found. The link follows the file at its new place.',
+                              );
+                            }}
+                          >
+                            Find the file
+                          </button>
+                        )}
                         <button
                           className="btn sm"
                           title="Open in Excel"

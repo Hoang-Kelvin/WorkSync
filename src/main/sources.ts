@@ -169,6 +169,17 @@ export class Sources {
     };
   }
 
+  /** Points a link at the file's new place: the file itself, or a file in the pattern's new folder. */
+  relocate(id: string, file: string): SourceFile {
+    const s = this.get(id);
+    this.db
+      .prepare(
+        "UPDATE source_files SET path = ?, current_file = ?, state = 'ok', state_detail = '' WHERE id = ?",
+      )
+      .run(s.pattern ? path.dirname(file) : file, file, id);
+    return this.get(id);
+  }
+
   setState(id: string, state: SourceState, detail = ''): void {
     this.db
       .prepare(

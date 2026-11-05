@@ -1303,3 +1303,7 @@ select.lang-pick option {
     display: none;
   }
 }
+.export-zone {
+  border-style: solid;
+  align-items: flex-start;
+}

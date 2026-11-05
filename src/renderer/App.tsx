@@ -218,6 +218,17 @@ function Shell({
       ),
   };
 
+  const importCopy = async () => {
+    const r = await attempt(() => window.worksync.importProject());
+    if (!r) return;
+    await reloadAll();
+    setActive(r.projectId);
+    go({ view: 'focus', scope: r.projectId });
+    toast(
+      `Imported ${r.name} with ${r.tasks} task${r.tasks === 1 ? '' : 's'}.${r.missingFiles ? ` ${r.missingFiles} linked file${r.missingFiles === 1 ? ' is' : 's are'} not at the same place on this PC: use Find the file under Files.` : ''}`,
+    );
+  };
+
   const addSample = async () => {
     const id = await attempt(() => window.worksync.addSampleProject());
     if (id) {
@@ -449,6 +460,14 @@ function Shell({
               >
                 <Icon name="plus" />
                 <span className="grow">New project</span>
+              </button>
+              <button
+                className="nav-item custom"
+                title="Add a project from a .worksync file someone gave you"
+                onClick={() => void importCopy()}
+              >
+                <Icon name="upload" />
+                <span className="grow">Import a project</span>
               </button>
             </div>
           </div>

@@ -212,6 +212,7 @@ export function ProjectDialog({
             </span>
           </label>
         )}
+        {project && <ExportCopy project={project} />}
         {project && onDeleted && (
           <div className="danger-zone">
             <span>
@@ -852,5 +853,54 @@ export function ConfirmDelete({
         </p>
       )}
     </Modal>
+  );
+}
+
+/**
+ * Saves a copy of the project for another WorkSync user. They import it as
+ * their own project and can change it freely; the two copies are independent.
+ */
+function ExportCopy({ project }: { project: Project }) {
+  const { attempt, toast } = useApp();
+  const [notes, setNotes] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    const r = await attempt(() =>
+      window.worksync.exportProject(project.id, notes),
+    );
+    setBusy(false);
+    if (r)
+      toast(
+        `Saved ${r.file.split(/[\\/]/).pop()}. Give it to the other person; they use Import a project.`,
+      );
+  };
+  return (
+    <div className="danger-zone export-zone">
+      <span>
+        <b>Give a copy to someone</b>
+        <small>
+          A .worksync file with the tasks, situations, history, glossary, people
+          and Board. Their copy is their own: changes do not come back here.
+        </small>
+        <label className="check" style={{ marginTop: 6 }}>
+          <input
+            type="checkbox"
+            checked={notes}
+            onChange={(e) => setNotes(e.target.checked)}
+          />{' '}
+          Include my notes and next actions
+        </label>
+      </span>
+      <button
+        type="button"
+        className="btn sm"
+        disabled={busy}
+        onClick={() => void save()}
+      >
+        <Icon name="save" />
+        {busy ? 'Saving…' : 'Export a copy…'}
+      </button>
+    </div>
   );
 }

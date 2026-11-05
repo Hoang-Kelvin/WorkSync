@@ -99,6 +99,21 @@ export interface WorkSyncApi {
 
   createProject(input: ProjectInput): Promise<Project>;
   updateProject(id: string, patch: ProjectPatch): Promise<Project>;
+  /** Saves a copy of the project as a .worksync file for another WorkSync user; null when cancelled. */
+  exportProject(
+    projectId: string,
+    includeNotes: boolean,
+  ): Promise<{ file: string } | null>;
+  /** Adds a project from a .worksync file as a new project; null when cancelled. */
+  importProject(): Promise<{
+    projectId: string;
+    name: string;
+    tasks: number;
+    sources: number;
+    missingFiles: number;
+  } | null>;
+  /** Points a linked file at its new place, chosen by the owner. */
+  relinkSource(sourceId: string): Promise<SourceFile | null>;
   /** Backs up the data, then deletes the project and everything WorkSync keeps for it. */
   deleteProject(id: string): Promise<{ tasks: number }>;
   /** Adds the sample project and returns its id. */
@@ -238,6 +253,9 @@ export const API_METHODS = [
   'createProject',
   'updateProject',
   'deleteProject',
+  'exportProject',
+  'importProject',
+  'relinkSource',
   'addSampleProject',
   'listTasks',
   'createTask',

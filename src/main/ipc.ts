@@ -38,6 +38,7 @@ import {
   replaceDatabase,
 } from './backups';
 import { log, logFolder, startLog } from './log';
+import { exportProject, importProject } from './projectTransfer';
 import { sharedFolderWarning, type StorageInfo } from '../shared/settings';
 import { addSampleProject } from './sample';
 import { FileLinks } from './fileLinks';
@@ -379,6 +380,103 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
   },
   createProject: async (input) => need().createProject(input),
   updateProject: async (id, patch) => need().updateProject(id, patch),
+  exportProject: async (projectId, includeNotes) => {
+    const st = need();
+    const p = st.getProject(projectId);
+    let file = process.env.WORKSYNC_TEST_EXPORT_FILE ?? null;
+    if (!file) {
+      const win =
+        BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+      const r = await dialog.showSaveDialog(win, {
+        title: 'Save a copy of the project',
+        defaultPath: path.join(
+          app.getPath('documents'),
+          `${p.name.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Project'}.worksync`,
+        ),
+        filters: [{ name: 'WorkSync project', extensions: ['worksync'] }],
+      });
+      file = r.canceled || !r.filePath ? null : r.filePath;
+    }
+    if (!file) return null;
+    // Never into Box or beside a customer file, where the customer could see it.
+    const problem = writeTargetProblem(
+      path.dirname(file),
+      needLinks().sources.list(),
+      'another folder',
+    );
+    if (problem) throw new Error(problem);
+    if (!file.toLowerCase().endsWith('.worksync')) file += '.worksync';
+    fs.writeFileSync(
+      file,
+      exportProject(db!, projectId, { includeNotes }, new Date().toISOString()),
+    );
+    log('info', 'Exported a project copy');
+    return { file };
+  },
+  importProject: async () => {
+    need();
+    let file = process.env.WORKSYNC_TEST_IMPORT_FILE ?? null;
+    if (!file) {
+      const win =
+        BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+      const r = await dialog.showOpenDialog(win, {
+        title: 'Import a WorkSync project',
+        filters: [{ name: 'WorkSync project', extensions: ['worksync'] }],
+        properties: ['openFile'],
+      });
+      file = r.canceled ? null : (r.filePaths[0] ?? null);
+    }
+    if (!file) return null;
+    // A backup first, as for any change this large.
+    backupBefore(db!, backupFolder(), 'manual');
+    const r = importProject(
+      db!,
+      fs.readFileSync(file),
+      path.join(dataFolder, 'snapshots'),
+      new Date().toISOString(),
+    );
+    // Linked files are checked on this PC; they may be somewhere else here.
+    const { sources: s, links: l } = needLinks();
+    for (const src of s.list().filter((x) => x.projectId === r.projectId))
+      l.check(src);
+    notifySources();
+    const missingFiles = s
+      .list()
+      .filter(
+        (x) => x.projectId === r.projectId && x.state === 'missing',
+      ).length;
+    log('info', `Imported a project with ${r.tasks} tasks`);
+    return { ...r, missingFiles };
+  },
+  relinkSource: async (sourceId) => {
+    const { sources: s, links: l } = needLinks();
+    const src = s.get(sourceId);
+    let file = process.env.WORKSYNC_TEST_PICK_FILE ?? null;
+    if (!file) {
+      const win =
+        BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+      const r = await dialog.showOpenDialog(win, {
+        title: `Find ${path.basename(src.currentFile)}`,
+        properties: ['openFile'],
+        filters: [
+          { name: 'Excel and CSV', extensions: ['xlsx', 'xlsm', 'xls', 'csv'] },
+        ],
+      });
+      file = r.canceled ? null : (r.filePaths[0] ?? null);
+    }
+    if (!file) return null;
+    // It must still have the sheet the format reads.
+    const sheets = l.inspect(file).sheets.map((x) => x.name);
+    if (!sheets.includes(src.format.sheet))
+      throw new Error(
+        `${path.basename(file)} has no sheet “${src.format.sheet}”. Choose the same customer file.`,
+      );
+    const moved = s.relocate(sourceId, file);
+    l.check(moved);
+    notifySources();
+    log('info', 'A linked file was found at a new place');
+    return s.get(sourceId);
+  },
   deleteProject: async (id) => {
     const st = need();
     st.getProject(id);
