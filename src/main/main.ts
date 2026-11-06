@@ -1,5 +1,7 @@
 import { app, BrowserWindow, nativeTheme, session } from 'electron';
 import path from 'node:path';
+import { log } from './log';
+import { koffiLoads } from './everything';
 import {
   addTrayItem,
   applyAppSettings,
@@ -18,6 +20,11 @@ import {
   registerIpcHandlers,
   remindMyTasks,
 } from './ipc';
+import {
+  dropQuickSearchKey,
+  setQuickSearchKey,
+  showQuickSearch,
+} from './quickSearch';
 
 /** Linked files are checked at start, when the window comes to the front, and every few minutes (spec 04). */
 const CHECK_EVERY_MS = 3 * 60 * 1000;
@@ -85,6 +92,18 @@ app.whenReady().then(() => {
   // My tasks reminders: every 5 minutes, and shortly after start.
   setTimeout(() => remindMyTasks(), 20 * 1000);
   setInterval(() => remindMyTasks(), 5 * 60 * 1000);
+  // The quick-search shortcut, from any app.
+  const key = appSettings().quickSearchKey;
+  if (key && !setQuickSearchKey(key))
+    log('info', `The quick-search shortcut ${key} is taken by another app`);
+  addTrayItem({ label: 'Quick search', click: showQuickSearch });
+  // For the end-to-end tests: open the quick-search box at start.
+  if (process.env.WORKSYNC_TEST_QUICK) setTimeout(showQuickSearch, 2500);
+  if (process.env.WORKSYNC_TEST_KOFFI) log('info', koffiLoads());
+  addTrayItem({
+    label: 'Catalog',
+    click: () => openInWindow({ page: 'catalog' }),
+  });
   addTrayItem({
     label: 'My tasks',
     click: () => openInWindow({ page: 'myTasks' }),
@@ -119,4 +138,7 @@ app.on('before-quit', () => {
   published = true;
   publishOnClose();
 });
-app.on('will-quit', closeStore);
+app.on('will-quit', () => {
+  dropQuickSearchKey();
+  closeStore();
+});

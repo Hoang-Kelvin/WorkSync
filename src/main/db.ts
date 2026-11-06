@@ -245,6 +245,20 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX notes_project ON notes(project_id);
   `,
+  // 19: the Catalog: apps, files and folders the owner opens often
+  `
+  CREATE TABLE catalog_entries (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    name TEXT NOT NULL,
+    path TEXT NOT NULL,
+    tags TEXT NOT NULL DEFAULT '[]',
+    note TEXT NOT NULL DEFAULT '',
+    favorite INTEGER NOT NULL DEFAULT 0,
+    added_at TEXT NOT NULL,
+    last_opened TEXT
+  );
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

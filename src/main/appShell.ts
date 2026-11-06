@@ -59,6 +59,8 @@ export function attachMainWindow(w: BrowserWindow): void {
   });
   w.on('closed', () => {
     if (mainWindow === w) mainWindow = null;
+    // The hidden quick-search window must not keep WorkSync running.
+    if (!tray) quitApp();
   });
 }
 

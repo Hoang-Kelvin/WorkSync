@@ -7,6 +7,13 @@ import type {
   MyTaskInput,
 } from '../shared/myTasks';
 import { parseTags, type Note, type NoteInput } from '../shared/notes';
+import {
+  baseName,
+  pathKey,
+  type CatalogEntry,
+  type CatalogEntryInput,
+  type EntryKind,
+} from '../shared/catalog';
 
 /**
  * The owner's own things, kept apart from projects: My tasks (and, next,
@@ -291,5 +298,138 @@ export class Mine {
         n.viewedAt,
       );
     return this.getNote(n.id);
+  }
+
+  // ------------------------------------------------------------ Catalog
+
+  private toEntry(r: Row, exists: (p: string) => boolean): CatalogEntry {
+    const path = str(r.path);
+    return {
+      id: str(r.id),
+      kind: str(r.kind) as EntryKind,
+      name: str(r.name),
+      path,
+      tags: JSON.parse(str(r.tags) || '[]'),
+      note: str(r.note),
+      favorite: Number(r.favorite) === 1,
+      addedAt: str(r.added_at),
+      lastOpened: r.last_opened == null ? null : str(r.last_opened),
+      missing: !exists(path),
+    };
+  }
+
+  /** Every entry, each checked for whether its path is still there. */
+  listCatalog(exists: (p: string) => boolean): CatalogEntry[] {
+    return (
+      this.db
+        .prepare('SELECT * FROM catalog_entries ORDER BY added_at')
+        .all() as Row[]
+    ).map((r) => this.toEntry(r, exists));
+  }
+
+  getEntry(id: string, exists: (p: string) => boolean): CatalogEntry {
+    const r = this.db
+      .prepare('SELECT * FROM catalog_entries WHERE id = ?')
+      .get(id) as Row | undefined;
+    if (!r) throw new Error('This entry was not found in the Catalog.');
+    return this.toEntry(r, exists);
+  }
+
+  /** The entry with this path, if the Catalog has it. */
+  findEntry(path: string): string | null {
+    const key = pathKey(path);
+    const rows = this.db
+      .prepare('SELECT id, path FROM catalog_entries')
+      .all() as Row[];
+    return str(rows.find((r) => pathKey(str(r.path)) === key)?.id) || null;
+  }
+
+  /** Adds an entry, or changes one when id is given. A path is in the Catalog once. */
+  saveEntry(
+    input: Partial<CatalogEntryInput>,
+    exists: (p: string) => boolean,
+    id?: string,
+  ): CatalogEntry {
+    const before = id ? this.getEntry(id, exists) : null;
+    const path = (input.path ?? before?.path ?? '').trim();
+    if (!path) throw new Error('Choose a file or folder.');
+    const kind = input.kind ?? before?.kind ?? 'file';
+    if (kind !== 'file' && kind !== 'folder')
+      throw new Error('An entry is a file or a folder.');
+    const other = this.findEntry(path);
+    if (other && other !== id)
+      throw new Error(`${baseName(path)} is already in the Catalog.`);
+    const v = {
+      name: (input.name ?? before?.name ?? '').trim() || baseName(path),
+      tags: parseTags((input.tags ?? before?.tags ?? []).join(',')),
+      note: (input.note ?? before?.note ?? '').trim(),
+      favorite: input.favorite ?? before?.favorite ?? false,
+    };
+    if (before && id) {
+      this.db
+        .prepare(
+          'UPDATE catalog_entries SET kind = ?, name = ?, path = ?, tags = ?, note = ?, favorite = ? WHERE id = ?',
+        )
+        .run(
+          kind,
+          v.name,
+          path,
+          JSON.stringify(v.tags),
+          v.note,
+          v.favorite ? 1 : 0,
+          id,
+        );
+      return this.getEntry(id, exists);
+    }
+    const newId = randomUUID();
+    this.db
+      .prepare(
+        'INSERT INTO catalog_entries (id, kind, name, path, tags, note, favorite, added_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        newId,
+        kind,
+        v.name,
+        path,
+        JSON.stringify(v.tags),
+        v.note,
+        v.favorite ? 1 : 0,
+        this.now(),
+      );
+    return this.getEntry(newId, exists);
+  }
+
+  /** Removes an entry from the Catalog; the file or folder itself stays. */
+  deleteEntry(id: string, exists: (p: string) => boolean): CatalogEntry {
+    const e = this.getEntry(id, exists);
+    this.db.prepare('DELETE FROM catalog_entries WHERE id = ?').run(id);
+    return e;
+  }
+
+  restoreEntry(e: CatalogEntry, exists: (p: string) => boolean): CatalogEntry {
+    if (this.findEntry(e.path))
+      throw new Error(`${baseName(e.path)} is already in the Catalog.`);
+    this.db
+      .prepare(
+        'INSERT INTO catalog_entries (id, kind, name, path, tags, note, favorite, added_at, last_opened) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        e.id,
+        e.kind,
+        e.name,
+        e.path,
+        JSON.stringify(parseTags(e.tags.join(','))),
+        e.note,
+        e.favorite ? 1 : 0,
+        e.addedAt,
+        e.lastOpened,
+      );
+    return this.getEntry(e.id, exists);
+  }
+
+  markOpened(id: string): void {
+    this.db
+      .prepare('UPDATE catalog_entries SET last_opened = ? WHERE id = ?')
+      .run(this.now(), id);
   }
 }

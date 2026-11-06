@@ -4,6 +4,11 @@ import type { BackupInfo, BackupKind, StorageInfo } from '../shared/settings';
 import { useApp } from './appState';
 import { Icon } from './Icon';
 import { Modal } from './parts';
+import {
+  acceleratorFor,
+  shortcutLabel,
+  type EverythingState,
+} from '../shared/catalog';
 
 const KIND_NAME: Record<BackupKind, string> = {
   daily: 'Daily',
@@ -229,6 +234,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           </div>
         </fieldset>
 
+        <QuickSearchSettings save={save} />
+
         <fieldset>
           <legend>New projects</legend>
           <div className="two">
@@ -399,5 +406,107 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         </fieldset>
       </div>
     </Modal>
+  );
+}
+
+const EVERYTHING_TEXT: Record<EverythingState, string> = {
+  ok: 'Everything is running.',
+  starting: 'Everything starts the first time you search.',
+  unavailable: 'Everything was not found next to WorkSync.',
+  off: 'Off: only the Catalog is searched.',
+  unsupported: 'Everything is for Windows only.',
+};
+
+/** The quick-search shortcut and Everything (FileManagement's Catalog search). */
+function QuickSearchSettings({
+  save,
+}: {
+  save: (
+    patch: Parameters<typeof window.worksync.updateSettings>[0],
+  ) => Promise<boolean>;
+}) {
+  const { settings } = useApp();
+  const [recording, setRecording] = useState(false);
+  const [state, setState] = useState<EverythingState | null>(null);
+  const mac = navigator.userAgent.includes('Mac');
+  const win = navigator.userAgent.includes('Windows');
+  useEffect(() => {
+    void window.worksync.everythingStatus().then(setState, () => {});
+  }, [settings.everything]);
+  return (
+    <fieldset>
+      <legend>Quick search</legend>
+      <div className="set-row">
+        <span>
+          <b>Shortcut</b>
+          <small>
+            Opens Catalog search from any app, while WorkSync runs.
+            {recording
+              ? ' Press the keys you want, with Ctrl or Alt. Esc cancels.'
+              : ''}
+          </small>
+        </span>
+        <span className="set-actions">
+          {recording ? (
+            <button
+              className="btn sm shortcut-rec"
+              autoFocus
+              onBlur={() => setRecording(false)}
+              onKeyDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.key === 'Escape') {
+                  setRecording(false);
+                  return;
+                }
+                const accel = acceleratorFor(e);
+                if (!accel) return;
+                setRecording(false);
+                void save({ quickSearchKey: accel });
+              }}
+            >
+              Press the keys…
+            </button>
+          ) : (
+            <>
+              <span className="cat-kbd shortcut-now">
+                {shortcutLabel(settings.quickSearchKey, mac)}
+              </span>
+              <button className="btn sm" onClick={() => setRecording(true)}>
+                Change
+              </button>
+              {settings.quickSearchKey && (
+                <button
+                  className="btn sm"
+                  onClick={() => void save({ quickSearchKey: null })}
+                >
+                  Turn off
+                </button>
+              )}
+            </>
+          )}
+        </span>
+      </div>
+      {win && (
+        <div className="set-row">
+          <span>
+            <b>Search files with Everything</b>
+            <small>
+              Files on this PC appear under the Catalog results.{' '}
+              {state ? EVERYTHING_TEXT[state] : ''}
+            </small>
+          </span>
+          <button
+            className="switch"
+            role="switch"
+            aria-checked={settings.everything}
+            aria-label="Search files with Everything"
+            onClick={() => void save({ everything: !settings.everything })}
+          >
+            <span />
+          </button>
+        </div>
+      )}
+    </fieldset>
   );
 }

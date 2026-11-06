@@ -4,6 +4,7 @@ import '@fontsource-variable/figtree';
 import '@fontsource-variable/bricolage-grotesque';
 import '@fontsource-variable/jetbrains-mono';
 import { App } from './App';
+import { QuickSearch } from './quick';
 import './styles/base.css';
 import './styles/app.css';
 
@@ -12,8 +13,10 @@ if (!container) {
   throw new Error('Root element #root not found');
 }
 
+// The quick-search box is the same page in a small window of its own.
+const quick = location.hash === '#quick';
+if (quick) document.documentElement.classList.add('quick');
+
 createRoot(container).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+  <StrictMode>{quick ? <QuickSearch /> : <App />}</StrictMode>,
 );

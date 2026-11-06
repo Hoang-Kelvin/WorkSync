@@ -30,6 +30,13 @@ import type { ReportOptions } from './reports';
 import type { MyTask, MyTaskInput } from './myTasks';
 import type { Note, NoteInput } from './notes';
 import type {
+  CatalogEntry,
+  CatalogEntryInput,
+  EntryKind,
+  EverythingAnswer,
+  EverythingState,
+} from './catalog';
+import type {
   AiResult,
   GlossaryTerm,
   Person,
@@ -281,6 +288,33 @@ export interface WorkSyncApi {
   /** Opens a web address written in a note, in the browser. */
   openNoteLink(noteId: string, url: string): Promise<void>;
 
+  /** The Catalog, each entry checked for whether its path is still there. */
+  listCatalog(): Promise<CatalogEntry[]>;
+  /** Asks for files or folders and adds them; paths already there are skipped. Null when cancelled. */
+  addToCatalog(
+    kind: EntryKind,
+  ): Promise<{ added: CatalogEntry[]; skipped: number } | null>;
+  /** Adds a file or folder found by Everything. */
+  addFoundToCatalog(path: string): Promise<CatalogEntry>;
+  saveCatalogEntry(
+    input: Partial<CatalogEntryInput>,
+    id: string,
+  ): Promise<CatalogEntry>;
+  /** Removes it from the Catalog; the file or folder stays. */
+  removeCatalogEntry(id: string): Promise<CatalogEntry>;
+  restoreCatalogEntry(entry: CatalogEntry): Promise<CatalogEntry>;
+  /** Opens it: starts an app in its own folder, opens a file or folder. */
+  openCatalogEntry(id: string): Promise<CatalogEntry>;
+  /** Shows it in Explorer (Finder on a Mac). */
+  revealCatalogEntry(id: string): Promise<void>;
+  /** Searches files on this PC with Everything (Windows). */
+  searchEverything(query: string, limit?: number): Promise<EverythingAnswer>;
+  everythingStatus(): Promise<EverythingState>;
+  /** Opens, or shows in Explorer, a path Everything found in this session. */
+  openFound(path: string, reveal: boolean): Promise<void>;
+  /** Closes the quick-search box. */
+  hideQuickSearch(): Promise<void>;
+
   /** Called whenever linked files change state. Returns a function that stops listening. */
   onSourcesChanged(listener: (sources: SourceFile[]) => void): () => void;
   /** Called when something outside the window asks to show a page, such as a reminder being clicked. */
@@ -288,7 +322,10 @@ export interface WorkSyncApi {
 }
 
 /** What a reminder, the tray or the shortcut asks the window to show. */
-export type OpenTarget = { page: 'myTasks'; id?: string };
+export type OpenTarget =
+  | { page: 'myTasks'; id?: string }
+  | { page: 'catalog' }
+  | { page: 'quickShown' };
 
 /** Sent by the main process when linked files change state. */
 export const SOURCES_EVENT = 'worksync:sources-changed';
@@ -308,6 +345,18 @@ export const API_METHODS = [
   'deleteNote',
   'restoreNote',
   'openNoteLink',
+  'listCatalog',
+  'addToCatalog',
+  'addFoundToCatalog',
+  'saveCatalogEntry',
+  'removeCatalogEntry',
+  'restoreCatalogEntry',
+  'openCatalogEntry',
+  'revealCatalogEntry',
+  'searchEverything',
+  'everythingStatus',
+  'openFound',
+  'hideQuickSearch',
   'start',
   'updateSettings',
   'storageInfo',

@@ -83,3 +83,47 @@ describe('Notes', () => {
     expect(mine.restoreNote(gone).body).toBe('two');
   });
 });
+
+describe('Catalog', () => {
+  const there = new Set(['D:\\Work\\WBS.xlsx', 'D:\\Minutes']);
+  const exists = (p: string) => there.has(p);
+  it('adds a path once, names it after the file, and marks one that is gone', () => {
+    const a = mine.saveEntry(
+      { path: 'D:\\Work\\WBS.xlsx', kind: 'file', tags: ['#customer'] },
+      exists,
+    );
+    expect(a).toMatchObject({
+      name: 'WBS.xlsx',
+      tags: ['customer'],
+      missing: false,
+    });
+    expect(() =>
+      mine.saveEntry({ path: 'd:/work/wbs.xlsx/', kind: 'file' }, exists),
+    ).toThrow(/already in the Catalog/);
+    const b = mine.saveEntry(
+      { path: 'D:\\Old\\estimate.xlsx', kind: 'file' },
+      exists,
+    );
+    expect(b.missing).toBe(true);
+    const c = mine.saveEntry(
+      { name: 'Estimate v3', note: 'Moved?' },
+      exists,
+      b.id,
+    );
+    expect(c).toMatchObject({
+      name: 'Estimate v3',
+      path: 'D:\\Old\\estimate.xlsx',
+      note: 'Moved?',
+    });
+  });
+  it('removes an entry with Undo, and remembers when it was opened', () => {
+    const a = mine.saveEntry({ path: 'D:\\Minutes', kind: 'folder' }, exists);
+    mine.markOpened(a.id);
+    expect(mine.getEntry(a.id, exists).lastOpened).toBe(
+      '2026-11-06T01:00:00.000Z',
+    );
+    const gone = mine.deleteEntry(a.id, exists);
+    expect(mine.listCatalog(exists)).toHaveLength(0);
+    expect(mine.restoreEntry(gone, exists).kind).toBe('folder');
+  });
+});

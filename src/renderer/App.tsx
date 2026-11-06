@@ -44,11 +44,13 @@ import type { SourceFile } from '../shared/sources';
 import type { MyTask } from '../shared/myTasks';
 import { MyTasksView } from './mine';
 import { NotesView } from './notes';
+import { CatalogView } from './catalog';
+import type { CatalogEntry } from '../shared/catalog';
 import type { Note } from '../shared/notes';
 
 type Route =
   | { view: 'focus'; scope: 'all' | string }
-  | { view: 'mine'; page: 'tasks' | 'notes' }
+  | { view: 'mine'; page: 'tasks' | 'notes' | 'catalog' }
   | { view: 'projectNotes'; projectId: string }
   | {
       view:
@@ -151,6 +153,11 @@ function Shell({
     [],
   );
   const [myFocus, setMyFocus] = useState<string | null>(null);
+  const [catalog, setCatalogState] = useState<CatalogEntry[]>([]);
+  const setCatalog = useCallback(
+    (f: (list: CatalogEntry[]) => CatalogEntry[]) => setCatalogState(f),
+    [],
+  );
   const [notes, setNotesState] = useState<Note[]>([]);
   const setNotes = useCallback(
     (f: (list: Note[]) => Note[]) => setNotesState(f),
@@ -159,6 +166,7 @@ function Shell({
   useEffect(() => {
     void window.worksync.listMyTasks().then(setMyTasksState, () => {});
     void window.worksync.listNotes().then(setNotesState, () => {});
+    void window.worksync.listCatalog().then(setCatalogState, () => {});
   }, []);
   // A deleted project leaves its notes without a project.
   useEffect(() => {
@@ -223,6 +231,8 @@ function Shell({
   useEffect(
     () =>
       window.worksync.onOpen((target) => {
+        if (target.page === 'catalog')
+          setRoute({ view: 'mine', page: 'catalog' });
         if (target.page === 'myTasks') {
           setRoute({ view: 'mine', page: 'tasks' });
           setMyFocus(target.id ?? null);
@@ -315,6 +325,13 @@ function Shell({
         notes={notes}
         setNotes={setNotes}
         projectId={route.projectId}
+        query={query}
+        head={headEl}
+      />
+    ) : route.view === 'mine' && route.page === 'catalog' ? (
+      <CatalogView
+        entries={catalog}
+        setEntries={setCatalog}
         query={query}
         head={headEl}
       />
@@ -457,6 +474,19 @@ function Shell({
                 <Icon name="note" />
                 <span className="grow">Notes</span>
                 <span className="count">{notes.length}</span>
+              </button>
+              <button
+                className="nav-item"
+                aria-current={
+                  route.view === 'mine' && route.page === 'catalog'
+                    ? 'page'
+                    : undefined
+                }
+                onClick={() => go({ view: 'mine', page: 'catalog' })}
+              >
+                <Icon name="grid" />
+                <span className="grow">Catalog</span>
+                <span className="count">{catalog.length}</span>
               </button>
             </div>
           </div>
@@ -649,9 +679,11 @@ function Shell({
                 placeholder={
                   route.view === 'mine' && route.page === 'tasks'
                     ? 'Search my tasks'
-                    : mine
-                      ? 'Search notes: title, text or tags'
-                      : 'Search by number, label, title or person'
+                    : route.view === 'mine' && route.page === 'catalog'
+                      ? 'Search the Catalog: name, path, tags or note'
+                      : mine
+                        ? 'Search notes: title, text or tags'
+                        : 'Search by number, label, title or person'
                 }
                 autoComplete="off"
                 value={query}

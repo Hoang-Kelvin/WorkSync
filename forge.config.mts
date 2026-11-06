@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import { MakerDeb } from '@electron-forge/maker-deb';
@@ -8,7 +10,8 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
 const config: ForgeConfig = {
   packagerConfig: {
-    asar: true,
+    // Native files can't load from inside the archive.
+    asar: { unpack: '**/*.node' },
     name: 'WorkSync',
     executableName: 'worksync',
     appBundleId: 'com.worksync.desktop',
@@ -17,6 +20,25 @@ const config: ForgeConfig = {
     // via `osxSign`, `osxNotarize` and the Windows signing options.
   },
   rebuildConfig: {},
+  hooks: {
+    // Vite bundles the JavaScript, but koffi (used to call Everything's DLL)
+    // carries a native binary, so it is copied into the app with the one for
+    // this system. Everything itself ships with the Windows build only.
+    packageAfterCopy: async (_config, buildPath, _electron, platform, arch) => {
+      const copy = (from: string, to: string) =>
+        fs.cpSync(from, to, { recursive: true, dereference: true });
+      const modules = path.join(buildPath, 'node_modules');
+      copy('node_modules/koffi', path.join(modules, 'koffi'));
+      const native = `node_modules/@koromix/koffi-${platform}-${arch}`;
+      if (fs.existsSync(native))
+        copy(
+          native,
+          path.join(modules, '@koromix', `koffi-${platform}-${arch}`),
+        );
+      if (platform === 'win32')
+        copy('vendor/everything', path.join(buildPath, '..', 'everything'));
+    },
+  },
   makers: [
     // Windows and macOS: a zip that runs without installing. On Windows the
     // owner unzips it and runs worksync.exe, with no administrator rights.

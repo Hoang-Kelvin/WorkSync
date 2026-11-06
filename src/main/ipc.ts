@@ -29,6 +29,10 @@ import { assigneeText, linkKind, toIsoDate } from '../shared/model';
 import { OPEN_EVENT, SOURCES_EVENT, type OpenTarget } from '../shared/ipc';
 import { reminderKey, reminderText } from '../shared/myTasks';
 import { noteLinks } from '../shared/notes';
+import { isApp, pathKey, type EntryKind } from '../shared/catalog';
+import { everythingStatus, searchEverything } from './everything';
+import { hideQuickSearch, setQuickSearchKey } from './quickSearch';
+import { spawn } from 'node:child_process';
 import { Mine } from './mine';
 import { dataFolderPath, isNetworkPath } from './dataFolder';
 import { writeTargetProblem } from './fileLinks';
@@ -261,6 +265,86 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged' | 'onOpen'> = {
   viewNote: async (id) => needMine().viewNote(id),
   deleteNote: async (id) => needMine().deleteNote(id),
   restoreNote: async (n) => needMine().restoreNote(n),
+  listCatalog: async () => needMine().listCatalog(exists),
+  addToCatalog: async (kind) => {
+    let paths: string[];
+    if (process.env.WORKSYNC_TEST_CATALOG_PATHS)
+      paths = JSON.parse(process.env.WORKSYNC_TEST_CATALOG_PATHS) as string[];
+    else {
+      const win = getMainWindow() ?? BrowserWindow.getAllWindows()[0];
+      const r = await dialog.showOpenDialog(win, {
+        title:
+          kind === 'folder'
+            ? 'Add folders to the Catalog'
+            : 'Add apps or files to the Catalog',
+        properties:
+          kind === 'folder'
+            ? ['openDirectory', 'multiSelections']
+            : ['openFile', 'multiSelections'],
+      });
+      if (r.canceled) return null;
+      paths = r.filePaths;
+    }
+    const m = needMine();
+    const added = [];
+    let skipped = 0;
+    for (const p of paths) {
+      if (m.findEntry(p)) {
+        skipped++;
+        continue;
+      }
+      added.push(m.saveEntry({ path: p, kind: kindOf(p, kind) }, exists));
+    }
+    return { added, skipped };
+  },
+  addFoundToCatalog: async (p) => {
+    if (!found.has(pathKey(p))) throw new Error('Search for it again first.');
+    return needMine().saveEntry({ path: p, kind: kindOf(p, 'file') }, exists);
+  },
+  saveCatalogEntry: async (input, id) =>
+    needMine().saveEntry(input, exists, id),
+  removeCatalogEntry: async (id) => needMine().deleteEntry(id, exists),
+  restoreCatalogEntry: async (e) => needMine().restoreEntry(e, exists),
+  openCatalogEntry: async (id) => {
+    const m = needMine();
+    const e = m.getEntry(id, exists);
+    await openPath(e.path, e.kind);
+    m.markOpened(id);
+    hideQuickSearch();
+    return m.getEntry(id, exists);
+  },
+  revealCatalogEntry: async (id) => {
+    const e = needMine().getEntry(id, exists);
+    if (e.missing)
+      throw new Error(
+        `${e.path} was not found. It may have been moved or deleted.`,
+      );
+    shell.showItemInFolder(e.path);
+    hideQuickSearch();
+  },
+  searchEverything: async (query, limit) => {
+    const m = needMine();
+    const saved = new Set(
+      m.listCatalog(() => true).map((e) => pathKey(e.path)),
+    );
+    const r = await searchEverything(
+      query,
+      need().getSettings().everything,
+      (p) => saved.has(pathKey(p)),
+      limit,
+    );
+    for (const x of r.results) found.add(pathKey(x.path));
+    return r;
+  },
+  everythingStatus: async () =>
+    everythingStatus(need().getSettings().everything),
+  openFound: async (p, reveal) => {
+    if (!found.has(pathKey(p))) throw new Error('Search for it again first.');
+    if (reveal) shell.showItemInFolder(p);
+    else await openPath(p, kindOf(p, 'file'));
+    hideQuickSearch();
+  },
+  hideQuickSearch: async () => hideQuickSearch(),
   openNoteLink: async (noteId, url) => {
     // Only a web address written in that note opens, and only in the browser.
     if (!noteLinks(needMine().getNote(noteId).body).includes(url))
@@ -346,6 +430,13 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged' | 'onOpen'> = {
       // Never inside Box or beside a linked customer file (spec 06).
       if (problem) throw new Error(problem);
     }
+    if (
+      patch.quickSearchKey !== undefined &&
+      !setQuickSearchKey(patch.quickSearchKey)
+    )
+      throw new Error(
+        'That shortcut is used by another app or by Windows. Choose another one.',
+      );
     const saved = need().updateSettings(patch);
     applyAppSettings(saved);
     return saved;
@@ -913,6 +1004,42 @@ export function backupTick(): void {
 }
 
 const shownNotes = new Set<Notification>();
+
+/** Paths Everything found in this session; only these open from a search. */
+const found = new Set<string>();
+const exists = (p: string) => {
+  try {
+    return fs.existsSync(p);
+  } catch {
+    return false;
+  }
+};
+const kindOf = (p: string, fallback: EntryKind): EntryKind => {
+  try {
+    return fs.statSync(p).isDirectory() ? 'folder' : 'file';
+  } catch {
+    return fallback;
+  }
+};
+
+/**
+ * Opens a Catalog path. An app starts in its own folder, as FileManagement
+ * does; anything else opens with its usual program.
+ */
+async function openPath(p: string, kind: EntryKind): Promise<void> {
+  if (!exists(p))
+    throw new Error(`${p} was not found. It may have been moved or deleted.`);
+  if (kind === 'file' && process.platform === 'win32' && /\.exe$/i.test(p)) {
+    spawn(p, [], {
+      cwd: path.dirname(p),
+      detached: true,
+      stdio: 'ignore',
+    }).unref();
+    return;
+  }
+  const err = await shell.openPath(p);
+  if (err) throw new Error(err);
+}
 
 /** Asks the window to show a page, bringing it to the front. */
 export function openInWindow(target: OpenTarget): void {
