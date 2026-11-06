@@ -85,7 +85,7 @@ server and no account. Your data stays on your PC.
 ## Download and run
 
 Get the latest version from the
-[Releases page](https://github.com/Hoang-Kelvin/WorkSync/releases).
+[Releases page](https://github.com/KelvinNguyen97/WorkSync/releases).
 
 ### Windows
 
@@ -183,7 +183,7 @@ WorkSync.
 You need [Node.js](https://nodejs.org/) 22.13 or newer.
 
 ```bash
-git clone https://github.com/Hoang-Kelvin/WorkSync.git
+git clone https://github.com/KelvinNguyen97/WorkSync.git
 ```
 
 ```bash

@@ -6,6 +6,12 @@
   "description": "Desktop task tracker for project managers whose customers send task lists as Excel files in another language",
   "keywords": [],
   "license": "Apache-2.0",
+  "homepage": "https://github.com/KelvinNguyen97/WorkSync",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KelvinNguyen97/WorkSync.git"
+  },
+  "bugs": "https://github.com/KelvinNguyen97/WorkSync/issues",
   "author": "Hoang-Kelvin",
   "main": ".vite/build/main.cjs",
   "scripts": {
