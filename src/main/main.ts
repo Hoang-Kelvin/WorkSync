@@ -1,6 +1,7 @@
 import { app, BrowserWindow, nativeTheme, session } from 'electron';
 import path from 'node:path';
 import {
+  addTrayItem,
   applyAppSettings,
   attachMainWindow,
   inTray,
@@ -12,8 +13,10 @@ import {
   backupTick,
   checkLinkedFiles,
   closeStore,
+  openInWindow,
   publishOnClose,
   registerIpcHandlers,
+  remindMyTasks,
 } from './ipc';
 
 /** Linked files are checked at start, when the window comes to the front, and every few minutes (spec 04). */
@@ -59,6 +62,9 @@ const createWindow = (): void => {
 
 // One WorkSync at a time: a second start brings the running one to the front,
 // so two copies never write the same database.
+// Windows shows notifications under this name, and needs it to show them at all.
+if (process.platform === 'win32') app.setAppUserModelId('com.worksync.desktop');
+
 const primary = app.requestSingleInstanceLock();
 if (!primary) app.quit();
 app.on('second-instance', showMainWindow);
@@ -76,6 +82,13 @@ app.whenReady().then(() => {
   applyAppSettings(appSettings());
   createWindow();
   setInterval(checkLinkedFiles, CHECK_EVERY_MS);
+  // My tasks reminders: every 5 minutes, and shortly after start.
+  setTimeout(() => remindMyTasks(), 20 * 1000);
+  setInterval(() => remindMyTasks(), 5 * 60 * 1000);
+  addTrayItem({
+    label: 'My tasks',
+    click: () => openInWindow({ page: 'myTasks' }),
+  });
   // The day's backup, taken once the date changes while the app runs.
   setInterval(backupTick, 60 * 60 * 1000);
   app.on('browser-window-focus', () => checkLinkedFiles());

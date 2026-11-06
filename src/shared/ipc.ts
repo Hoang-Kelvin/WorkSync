@@ -27,6 +27,7 @@ import type { OwnerAnswer, OwnerBatch, OwnerTranslation } from './ownerBatch';
 import type { Batch, ReadAnswer } from './aiBatch';
 import type { PendingChange, WritePlan, WriteResult } from './writes';
 import type { ReportOptions } from './reports';
+import type { MyTask, MyTaskInput } from './myTasks';
 import type {
   AiResult,
   GlossaryTerm,
@@ -258,16 +259,36 @@ export interface WorkSyncApi {
     options: ReportOptions,
   ): Promise<{ file: string; tasks: number } | null>;
 
+  /** My tasks: the owner's own to-dos. */
+  listMyTasks(): Promise<MyTask[]>;
+  /** Adds a task, or changes the one with this id. */
+  saveMyTask(input: Partial<MyTaskInput>, id?: string): Promise<MyTask>;
+  /** Completing deletes the task; it comes back for Undo. */
+  completeMyTask(id: string): Promise<MyTask>;
+  /** Puts back a task completed a moment ago. */
+  restoreMyTask(task: MyTask): Promise<MyTask>;
+
   /** Called whenever linked files change state. Returns a function that stops listening. */
   onSourcesChanged(listener: (sources: SourceFile[]) => void): () => void;
+  /** Called when something outside the window asks to show a page, such as a reminder being clicked. */
+  onOpen(listener: (target: OpenTarget) => void): () => void;
 }
+
+/** What a reminder, the tray or the shortcut asks the window to show. */
+export type OpenTarget = { page: 'myTasks'; id?: string };
 
 /** Sent by the main process when linked files change state. */
 export const SOURCES_EVENT = 'worksync:sources-changed';
+/** Sent by the main process to show a page in the window. */
+export const OPEN_EVENT = 'worksync:open';
 
 /** Every method of the API. Each is sent on the channel `worksync:<name>`. */
 export const API_METHODS = [
   'getAppInfo',
+  'listMyTasks',
+  'saveMyTask',
+  'completeMyTask',
+  'restoreMyTask',
   'start',
   'updateSettings',
   'storageInfo',
@@ -348,7 +369,10 @@ export const API_METHODS = [
   'writeCopy',
   'openCopy',
   'makeReport',
-] as const satisfies readonly Exclude<keyof WorkSyncApi, 'onSourcesChanged'>[];
+] as const satisfies readonly Exclude<
+  keyof WorkSyncApi,
+  'onSourcesChanged' | 'onOpen'
+>[];
 
 export const channel = (method: (typeof API_METHODS)[number]): string =>
   `worksync:${method}`;

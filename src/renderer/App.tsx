@@ -41,9 +41,12 @@ import { PeopleDialog } from './people';
 import { LinkWizard } from './LinkWizard';
 import { AiDialog, GlossaryDialog, type AiSession } from './ai';
 import type { SourceFile } from '../shared/sources';
+import type { MyTask } from '../shared/myTasks';
+import { MyTasksView } from './mine';
 
 type Route =
   | { view: 'focus'; scope: 'all' | string }
+  | { view: 'mine'; page: 'tasks' }
   | {
       view:
         | 'board'
@@ -139,6 +142,15 @@ function Shell({
   const search = useRef<HTMLInputElement>(null);
   const viewRef = useRef<HTMLElement>(null);
   const [headEl, setHeadEl] = useState<HTMLDivElement | null>(null);
+  const [myTasks, setMyTasksState] = useState<MyTask[]>([]);
+  const setMyTasks = useCallback(
+    (f: (list: MyTask[]) => MyTask[]) => setMyTasksState(f),
+    [],
+  );
+  const [myFocus, setMyFocus] = useState<string | null>(null);
+  useEffect(() => {
+    void window.worksync.listMyTasks().then(setMyTasksState, () => {});
+  }, []);
   const [aiSession, setAiSession] = useState<AiSession | null>(null);
   const [dataWarning, setDataWarning] = useState(warning);
   const [filter, setFilterState] = useState<ViewFilter>(() => {
@@ -163,7 +175,11 @@ function Shell({
 
   // Keep the route valid when a view is turned off or a project changes.
   useEffect(() => {
-    if (route.view !== 'focus' && !project(route.projectId)?.views[route.view])
+    if (
+      route.view !== 'focus' &&
+      route.view !== 'mine' &&
+      !project(route.projectId)?.views[route.view]
+    )
       setRoute({ view: 'focus', scope: route.projectId });
   }, [route, project]);
 
@@ -187,6 +203,19 @@ function Shell({
     if (viewRef.current) viewRef.current.scrollTop = 0;
     setScrolled(false);
   };
+
+  // A reminder or the tray asks for a page.
+  useEffect(
+    () =>
+      window.worksync.onOpen((target) => {
+        if (target.page === 'myTasks') {
+          setRoute({ view: 'mine', page: 'tasks' });
+          setMyFocus(target.id ?? null);
+          void window.worksync.listMyTasks().then(setMyTasksState, () => {});
+        }
+      }),
+    [],
+  );
 
   const openMenu = useCallback(
     (task: Task, opener: HTMLElement, at?: { x: number; y: number }) =>
@@ -253,66 +282,82 @@ function Shell({
     }
   };
 
+  const mine = route.view === 'mine';
   const currentProjectId =
-    route.view !== 'focus'
-      ? route.projectId
-      : route.scope !== 'all'
-        ? route.scope
-        : active;
-  const body = !projects.length ? (
-    <Welcome
-      onNew={() => setDialog({ kind: 'newProject' })}
-      onSample={() => void addSample()}
-    />
-  ) : route.view === 'board' ? (
-    <BoardView projectId={route.projectId} props={props} />
-  ) : route.view === 'tasks' ? (
-    <TasksView
-      projectId={route.projectId}
-      props={props}
-      onCopyForAi={(ids) =>
-        setDialog({
-          kind: 'ai',
-          projectId: route.projectId,
-          startAt: 'choose',
-          preselect: ids,
-        })
-      }
-      onReport={(ids) =>
-        setDialog({ kind: 'report', projectId: route.projectId, taskIds: ids })
-      }
-    />
-  ) : route.view === 'timeline' ? (
-    <TimelineView projectId={route.projectId} props={props} />
-  ) : route.view === 'calendar' ? (
-    <CalendarView projectId={route.projectId} props={props} />
-  ) : route.view === 'dashboard' ? (
-    <DashboardView projectId={route.projectId} props={props} />
-  ) : route.view === 'published' ? (
-    <PublishedView
-      projectId={route.projectId}
-      props={props}
-      onPublish={() =>
-        setDialog({ kind: 'publish', projectId: route.projectId })
-      }
-    />
-  ) : route.view === 'files' ? (
-    <FilesView
-      projectId={route.projectId}
-      props={props}
-      onLink={() => setDialog({ kind: 'link', projectId: route.projectId })}
-      onReview={(source) => setDialog({ kind: 'review', source })}
-    />
-  ) : (
-    <FocusView
-      scope={route.view === 'focus' ? route.scope : route.projectId}
-      props={props}
-      onNewTask={() =>
-        currentProjectId &&
-        setDialog({ kind: 'newTask', projectId: currentProjectId })
-      }
-    />
-  );
+    route.view === 'mine'
+      ? active
+      : route.view !== 'focus'
+        ? route.projectId
+        : route.scope !== 'all'
+          ? route.scope
+          : active;
+  const body =
+    route.view === 'mine' ? (
+      <MyTasksView
+        tasks={myTasks}
+        setTasks={setMyTasks}
+        query={query}
+        head={headEl}
+        focusId={myFocus}
+      />
+    ) : !projects.length ? (
+      <Welcome
+        onNew={() => setDialog({ kind: 'newProject' })}
+        onSample={() => void addSample()}
+      />
+    ) : route.view === 'board' ? (
+      <BoardView projectId={route.projectId} props={props} />
+    ) : route.view === 'tasks' ? (
+      <TasksView
+        projectId={route.projectId}
+        props={props}
+        onCopyForAi={(ids) =>
+          setDialog({
+            kind: 'ai',
+            projectId: route.projectId,
+            startAt: 'choose',
+            preselect: ids,
+          })
+        }
+        onReport={(ids) =>
+          setDialog({
+            kind: 'report',
+            projectId: route.projectId,
+            taskIds: ids,
+          })
+        }
+      />
+    ) : route.view === 'timeline' ? (
+      <TimelineView projectId={route.projectId} props={props} />
+    ) : route.view === 'calendar' ? (
+      <CalendarView projectId={route.projectId} props={props} />
+    ) : route.view === 'dashboard' ? (
+      <DashboardView projectId={route.projectId} props={props} />
+    ) : route.view === 'published' ? (
+      <PublishedView
+        projectId={route.projectId}
+        props={props}
+        onPublish={() =>
+          setDialog({ kind: 'publish', projectId: route.projectId })
+        }
+      />
+    ) : route.view === 'files' ? (
+      <FilesView
+        projectId={route.projectId}
+        props={props}
+        onLink={() => setDialog({ kind: 'link', projectId: route.projectId })}
+        onReview={(source) => setDialog({ kind: 'review', source })}
+      />
+    ) : (
+      <FocusView
+        scope={route.view === 'focus' ? route.scope : route.projectId}
+        props={props}
+        onNewTask={() =>
+          currentProjectId &&
+          setDialog({ kind: 'newTask', projectId: currentProjectId })
+        }
+      />
+    );
 
   const changedSources = sources.filter((s) => s.state === 'changed');
   const [pubStatus] = usePublishStatus(currentProjectId);
@@ -348,6 +393,24 @@ function Shell({
                 <Icon name="focus" />
                 <span className="grow">Focus, all projects</span>
                 <span className="count">{focusCount('all')}</span>
+              </button>
+            </div>
+          </div>
+          <div>
+            <div className="nav-label">Mine</div>
+            <div className="nav">
+              <button
+                className="nav-item"
+                aria-current={
+                  route.view === 'mine' && route.page === 'tasks'
+                    ? 'page'
+                    : undefined
+                }
+                onClick={() => go({ view: 'mine', page: 'tasks' })}
+              >
+                <Icon name="todo" />
+                <span className="grow">My tasks</span>
+                <span className="count">{myTasks.length}</span>
               </button>
             </div>
           </div>
@@ -398,7 +461,7 @@ function Shell({
                                   : {
                                       view: k as Exclude<
                                         Route['view'],
-                                        'focus'
+                                        'focus' | 'mine'
                                       >,
                                       projectId: p.id,
                                     },
@@ -518,134 +581,144 @@ function Shell({
                 id="q"
                 ref={search}
                 type="search"
-                placeholder="Search by number, label, title or person"
+                placeholder={
+                  mine
+                    ? 'Search my tasks'
+                    : 'Search by number, label, title or person'
+                }
                 autoComplete="off"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
               <span className="kbd">Ctrl K</span>
             </label>
-            <FilterButton
-              filter={filter}
-              setFilter={setFilter}
-              tasks={tasks.filter(
-                (t) =>
-                  t.fileState !== 'removed' &&
-                  (!currentProjectId || t.projectId === currentProjectId),
-              )}
-              open={filterOpen}
-              setOpen={setFilterOpen}
-            />
-            <button
-              className="btn compact"
-              aria-pressed={originalFirst}
-              aria-label="Original first"
-              title="Show the customer’s original text first, for meetings"
-              onClick={() => setOriginalFirst(!originalFirst)}
-            >
-              <Icon name="swap" />
-              <span className="lbl">Original first</span>
-            </button>
-            <button
-              aria-label="Copy for AI"
-              className="btn"
-              disabled={!currentProjectId}
-              title="Build a request for the Gemini web app"
-              onClick={() =>
-                currentProjectId &&
-                setDialog({
-                  kind: 'ai',
-                  projectId:
-                    aiSession?.projectId === currentProjectId
-                      ? aiSession.projectId
-                      : currentProjectId,
-                  startAt: 'choose',
-                })
-              }
-            >
-              <Icon name="spark" />
-              <span className="lbl">Copy for AI</span>
-            </button>
-            <button
-              className="btn compact"
-              aria-label="Paste from AI"
-              disabled={!aiSession}
-              title={
-                aiSession ? 'Paste Gemini’s answer' : 'Use Copy for AI first'
-              }
-              onClick={() =>
-                aiSession &&
-                setDialog({
-                  kind: 'ai',
-                  projectId: aiSession.projectId,
-                  startAt: 'paste',
-                })
-              }
-            >
-              <Icon name="copy" />
-              <span className="lbl">Paste from AI</span>
-              {aiSession &&
-                aiSession.batches.length - aiSession.done.length > 0 && (
-                  <span className="badge">
-                    {aiSession.batches.length - aiSession.done.length}
-                  </span>
+            {!mine && (
+              <>
+                <FilterButton
+                  filter={filter}
+                  setFilter={setFilter}
+                  tasks={tasks.filter(
+                    (t) =>
+                      t.fileState !== 'removed' &&
+                      (!currentProjectId || t.projectId === currentProjectId),
+                  )}
+                  open={filterOpen}
+                  setOpen={setFilterOpen}
+                />
+                <button
+                  className="btn compact"
+                  aria-pressed={originalFirst}
+                  aria-label="Original first"
+                  title="Show the customer’s original text first, for meetings"
+                  onClick={() => setOriginalFirst(!originalFirst)}
+                >
+                  <Icon name="swap" />
+                  <span className="lbl">Original first</span>
+                </button>
+                <button
+                  aria-label="Copy for AI"
+                  className="btn"
+                  disabled={!currentProjectId}
+                  title="Build a request for the Gemini web app"
+                  onClick={() =>
+                    currentProjectId &&
+                    setDialog({
+                      kind: 'ai',
+                      projectId:
+                        aiSession?.projectId === currentProjectId
+                          ? aiSession.projectId
+                          : currentProjectId,
+                      startAt: 'choose',
+                    })
+                  }
+                >
+                  <Icon name="spark" />
+                  <span className="lbl">Copy for AI</span>
+                </button>
+                <button
+                  className="btn compact"
+                  aria-label="Paste from AI"
+                  disabled={!aiSession}
+                  title={
+                    aiSession
+                      ? 'Paste Gemini’s answer'
+                      : 'Use Copy for AI first'
+                  }
+                  onClick={() =>
+                    aiSession &&
+                    setDialog({
+                      kind: 'ai',
+                      projectId: aiSession.projectId,
+                      startAt: 'paste',
+                    })
+                  }
+                >
+                  <Icon name="copy" />
+                  <span className="lbl">Paste from AI</span>
+                  {aiSession &&
+                    aiSession.batches.length - aiSession.done.length > 0 && (
+                      <span className="badge">
+                        {aiSession.batches.length - aiSession.done.length}
+                      </span>
+                    )}
+                </button>
+                {sources.length > 0 && (
+                  <button
+                    aria-label="Write to copy"
+                    className="btn"
+                    title={
+                      pendingWrites
+                        ? `${pendingWrites} changes not yet written to your copy`
+                        : 'Write changes to your copy of a customer file'
+                    }
+                    onClick={() => setDialog({ kind: 'write' })}
+                  >
+                    <Icon name="save" />
+                    <span className="lbl">Write to copy</span>
+                    {pendingWrites > 0 && (
+                      <span className="badge">{pendingWrites}</span>
+                    )}
+                  </button>
                 )}
-            </button>
-            {sources.length > 0 && (
-              <button
-                aria-label="Write to copy"
-                className="btn"
-                title={
-                  pendingWrites
-                    ? `${pendingWrites} changes not yet written to your copy`
-                    : 'Write changes to your copy of a customer file'
-                }
-                onClick={() => setDialog({ kind: 'write' })}
-              >
-                <Icon name="save" />
-                <span className="lbl">Write to copy</span>
-                {pendingWrites > 0 && (
-                  <span className="badge">{pendingWrites}</span>
-                )}
-              </button>
+                <button
+                  aria-label="Publish"
+                  className="btn"
+                  disabled={!currentProjectId}
+                  title={
+                    pubStatus?.unpublished
+                      ? `${pubStatus.unpublished} changes not published yet`
+                      : 'Publish to the shared folder'
+                  }
+                  onClick={() =>
+                    currentProjectId &&
+                    setDialog({ kind: 'publish', projectId: currentProjectId })
+                  }
+                >
+                  <Icon name="upload" />
+                  <span className="lbl">Publish</span>
+                  {pubStatus?.folder && pubStatus.unpublished > 0 && (
+                    <span className="badge">{pubStatus.unpublished}</span>
+                  )}
+                </button>
+                <button
+                  aria-label="New task"
+                  className="btn primary"
+                  disabled={!currentProjectId}
+                  title={
+                    currentProjectId
+                      ? `Add a task to ${project(currentProjectId)?.name}`
+                      : 'Create a project first'
+                  }
+                  onClick={() =>
+                    currentProjectId &&
+                    setDialog({ kind: 'newTask', projectId: currentProjectId })
+                  }
+                >
+                  <Icon name="plus" />
+                  <span className="lbl">New task</span>
+                </button>
+              </>
             )}
-            <button
-              aria-label="Publish"
-              className="btn"
-              disabled={!currentProjectId}
-              title={
-                pubStatus?.unpublished
-                  ? `${pubStatus.unpublished} changes not published yet`
-                  : 'Publish to the shared folder'
-              }
-              onClick={() =>
-                currentProjectId &&
-                setDialog({ kind: 'publish', projectId: currentProjectId })
-              }
-            >
-              <Icon name="upload" />
-              <span className="lbl">Publish</span>
-              {pubStatus?.folder && pubStatus.unpublished > 0 && (
-                <span className="badge">{pubStatus.unpublished}</span>
-              )}
-            </button>
-            <button
-              aria-label="New task"
-              className="btn primary"
-              disabled={!currentProjectId}
-              title={
-                currentProjectId
-                  ? `Add a task to ${project(currentProjectId)?.name}`
-                  : 'Create a project first'
-              }
-              onClick={() =>
-                currentProjectId &&
-                setDialog({ kind: 'newTask', projectId: currentProjectId })
-              }
-            >
-              <Icon name="plus" />
-              <span className="lbl">New task</span>
-            </button>
           </header>
           <div className="notices">
             <FilterNotice
@@ -725,7 +798,7 @@ function Shell({
             ref={setHeadEl}
           />
           <main
-            className="view"
+            className={`view ${mine ? 'fill' : ''}`}
             ref={viewRef}
             tabIndex={-1}
             onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}

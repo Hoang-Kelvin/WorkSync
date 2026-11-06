@@ -215,6 +215,21 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (source_id, customer_id, title)
   );
   `,
+  // 17: My tasks, the owner's own to-dos with reminders, not tied to a project
+  `
+  CREATE TABLE my_tasks (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'todo',
+    priority TEXT NOT NULL DEFAULT 'N',
+    due_date TEXT,
+    reminders INTEGER NOT NULL DEFAULT 1,
+    last_reminder_key TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

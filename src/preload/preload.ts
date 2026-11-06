@@ -1,7 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import {
   API_METHODS,
+  OPEN_EVENT,
   SOURCES_EVENT,
+  type OpenTarget,
   channel,
   type WorkSyncApi,
 } from '../shared/ipc';
@@ -35,6 +37,13 @@ api.onSourcesChanged = (listener) => {
     listener(list);
   ipcRenderer.on(SOURCES_EVENT, handler);
   return () => ipcRenderer.removeListener(SOURCES_EVENT, handler);
+};
+
+api.onOpen = (listener) => {
+  const handler = (_e: Electron.IpcRendererEvent, target: OpenTarget) =>
+    listener(target);
+  ipcRenderer.on(OPEN_EVENT, handler);
+  return () => ipcRenderer.removeListener(OPEN_EVENT, handler);
 };
 
 contextBridge.exposeInMainWorld('worksync', api);

@@ -4,6 +4,7 @@ import {
   clipboard,
   dialog,
   ipcMain,
+  Notification,
   shell,
 } from 'electron';
 import { buildBatches, readAnswer } from '../shared/aiBatch';
@@ -25,7 +26,9 @@ import {
   type WorkSyncApi,
 } from '../shared/ipc';
 import { assigneeText, linkKind, toIsoDate } from '../shared/model';
-import { SOURCES_EVENT } from '../shared/ipc';
+import { OPEN_EVENT, SOURCES_EVENT, type OpenTarget } from '../shared/ipc';
+import { reminderKey, reminderText } from '../shared/myTasks';
+import { Mine } from './mine';
 import { dataFolderPath, isNetworkPath } from './dataFolder';
 import { writeTargetProblem } from './fileLinks';
 import { SCHEMA_VERSION, migrate, openDatabase } from './db';
@@ -45,7 +48,7 @@ import {
   type AppSettings,
   type StorageInfo,
 } from '../shared/settings';
-import { applyAppSettings, getMainWindow } from './appShell';
+import { applyAppSettings, getMainWindow, showMainWindow } from './appShell';
 import { addSampleProject } from './sample';
 import { FileLinks } from './fileLinks';
 import { CopyWriter } from './copyWriter';
@@ -59,6 +62,7 @@ import { UnreadableFileError } from './workbook';
 let db: DatabaseSync | null = null;
 let store: Store | null = null;
 let sources: Sources | null = null;
+let mine: Mine | null = null;
 let links: FileLinks | null = null;
 let publisher: Publisher | null = null;
 let writer: CopyWriter | null = null;
@@ -139,6 +143,7 @@ function open(): Startup {
     }
     store = new Store(db);
     sources = new Sources(db, store);
+    mine = new Mine(db);
     links = new FileLinks(sources, path.join(dataFolder, 'snapshots'));
     publisher = new Publisher(store, sources, path.join(dataFolder, 'preview'));
     writer = new CopyWriter(
@@ -178,6 +183,11 @@ const need = (): Store => {
   if (!store)
     throw new Error('The data could not be opened. Restart WorkSync.');
   return store;
+};
+
+const needMine = (): Mine => {
+  if (!mine) throw new Error('The data could not be opened. Restart WorkSync.');
+  return mine;
 };
 
 const needLinks = (): { sources: Sources; links: FileLinks } => {
@@ -240,7 +250,11 @@ export function checkLinkedFiles(): void {
   }
 }
 
-const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
+const handlers: Omit<WorkSyncApi, 'onSourcesChanged' | 'onOpen'> = {
+  listMyTasks: async () => needMine().listMyTasks(),
+  saveMyTask: async (input, id) => needMine().saveMyTask(input, id),
+  completeMyTask: async (id) => needMine().deleteMyTask(id),
+  restoreMyTask: async (t) => needMine().restoreMyTask(t),
   getAppInfo: async (): Promise<AppInfo> => ({
     name: app.getName(),
     version: app.getVersion(),
@@ -884,6 +898,42 @@ export function backupTick(): void {
   } catch (error) {
     log('warn', `Daily backup failed: ${String(error)}`);
   }
+}
+
+const shownNotes = new Set<Notification>();
+
+/** Asks the window to show a page, bringing it to the front. */
+export function openInWindow(target: OpenTarget): void {
+  showMainWindow();
+  getMainWindow()?.webContents.send(OPEN_EVENT, target);
+}
+
+/**
+ * Shows the reminders of My tasks that are due now, each slot once (the rules
+ * are in shared/myTasks). Runs every few minutes while WorkSync runs.
+ */
+export function remindMyTasks(now = new Date()): number {
+  if (!mine || !store || !store.getSettings().reminders) return 0;
+  if (!Notification.isSupported()) return 0;
+  let shown = 0;
+  for (const t of mine.listMyTasks()) {
+    const key = reminderKey(t, now);
+    if (!key || key === t.lastReminderKey) continue;
+    const text = reminderText(t, toIsoDate(now));
+    const n = new Notification({ title: text.title, body: text.body });
+    // Kept until it is closed, so its click still reaches the window.
+    shownNotes.add(n);
+    n.on('click', () => {
+      shownNotes.delete(n);
+      openInWindow({ page: 'myTasks', id: t.id });
+    });
+    n.on('close', () => shownNotes.delete(n));
+    n.show();
+    mine.setReminderKey(t.id, key);
+    shown++;
+  }
+  if (shown) log('info', `Showed ${shown} reminder${shown === 1 ? '' : 's'}`);
+  return shown;
 }
 
 /** The app-wide settings, opening the data on first use; defaults if it can't open. */
