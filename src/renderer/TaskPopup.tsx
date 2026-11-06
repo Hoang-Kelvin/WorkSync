@@ -34,6 +34,7 @@ import { translationMap } from '../shared/ownerBatch';
 import { useApp } from './appState';
 import { Icon } from './Icon';
 import {
+  Modal,
   DeadlineChip,
   Glossed,
   StatusChip,
@@ -723,10 +724,80 @@ const HISTORY_GROUPS: { name: string; kinds: string[] }[] = [
 const groupOf = (kind: string) =>
   HISTORY_GROUPS.find((g) => g.kinds.includes(kind))?.name ?? 'Edits';
 
+/** The type filter and the timeline, shared by the side list and the History window. */
+function HistoryList({
+  entries,
+  show,
+  setShow,
+  full,
+}: {
+  entries: ActivityEntry[];
+  show: string | null;
+  setShow: (s: string | null) => void;
+  /** In the History window: every entry in full. */
+  full?: boolean;
+}) {
+  return (
+    <>
+      {(full || entries.length > 3) && (
+        <div className="hist-filter" role="group" aria-label="Show in history">
+          <button
+            className="fb-opt"
+            aria-pressed={show === null}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShow(null);
+            }}
+          >
+            All {entries.length}
+          </button>
+          {HISTORY_GROUPS.map((g) => {
+            const n = entries.filter((h) => groupOf(h.kind) === g.name).length;
+            return (
+              n > 0 && (
+                <button
+                  key={g.name}
+                  className="fb-opt"
+                  aria-pressed={show === g.name}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShow(show === g.name ? null : g.name);
+                  }}
+                >
+                  {g.name} {n}
+                </button>
+              )
+            );
+          })}
+        </div>
+      )}
+      <ul className={`hist ${full ? 'full' : ''}`}>
+        {entries
+          .filter((h) => !show || groupOf(h.kind) === show)
+          .map((h) => (
+            <li
+              key={h.id}
+              className={h.kind === 'Situation update' ? 'situation' : ''}
+            >
+              <span className="when">
+                {fileDate(h.at.slice(0, 10))}{' '}
+                {new Date(h.at).toTimeString().slice(0, 5)}
+              </span>
+              <span className="kind">{h.kind}</span>
+              <div className="hist-text">{h.text}</div>
+            </li>
+          ))}
+      </ul>
+    </>
+  );
+}
+
 function History({ task }: { task: Task }) {
   const { attempt } = useApp();
+  const label = useTaskLabel();
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
   const [show, setShow] = useState<string | null>(null);
+  const [wide, setWide] = useState(false);
   const [note, setNote] = useState('');
   const [adding, setAdding] = useState(false);
   useEffect(() => {
@@ -783,49 +854,38 @@ function History({ task }: { task: Task }) {
           </div>
         </form>
       )}
-      {entries.length > 3 && (
-        <div className="hist-filter" role="group" aria-label="Show in history">
-          <button
-            className="fb-opt"
-            aria-pressed={show === null}
-            onClick={() => setShow(null)}
-          >
-            All {entries.length}
-          </button>
-          {HISTORY_GROUPS.map((g) => {
-            const n = entries.filter((h) => groupOf(h.kind) === g.name).length;
-            return (
-              n > 0 && (
-                <button
-                  key={g.name}
-                  className="fb-opt"
-                  aria-pressed={show === g.name}
-                  onClick={() => setShow(show === g.name ? null : g.name)}
-                >
-                  {g.name} {n}
-                </button>
-              )
-            );
-          })}
+      {entries.length > 0 && (
+        <div
+          className="hist-open"
+          role="button"
+          tabIndex={0}
+          title="Open the whole history in a larger window"
+          aria-label="Open the whole history"
+          onClick={() => setWide(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setWide(true);
+            }
+          }}
+        >
+          <HistoryList entries={entries} show={show} setShow={setShow} />
+          <span className="hist-more">
+            <Icon name="clock" /> Open the whole history
+          </span>
         </div>
       )}
-      <ul className="hist">
-        {entries
-          .filter((h) => !show || groupOf(h.kind) === show)
-          .map((h) => (
-            <li
-              key={h.id}
-              className={h.kind === 'Situation update' ? 'situation' : ''}
-            >
-              <span className="when">
-                {fileDate(h.at.slice(0, 10))}{' '}
-                {new Date(h.at).toTimeString().slice(0, 5)}
-              </span>
-              <span className="kind">{h.kind}</span>
-              <div>{h.text}</div>
-            </li>
-          ))}
-      </ul>
+      {wide && (
+        <Modal
+          title="History"
+          subtitle={`${label(task)} · ${task.titleTranslation || task.titleOriginal}`}
+          onClose={() => setWide(false)}
+        >
+          <div className="hist-wide">
+            <HistoryList entries={entries} show={show} setShow={setShow} full />
+          </div>
+        </Modal>
+      )}
     </section>
   );
 }
