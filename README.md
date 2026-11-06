@@ -70,9 +70,23 @@ server and no account. Your data stays on your PC.
 - Export a whole project as a `.worksync` file for another WorkSync user to
   import.
 
+**Your own things, next to the projects**
+
+- **My tasks**: personal to-dos that belong to no project, with Windows
+  reminders by status and priority (urgent ones every 3 hours, others in the
+  morning or afternoon). Completing one removes it, with Undo.
+- **Notes**: notes on their own or attached to a project, with tags,
+  favorites, search and clickable links. They save as you type.
+- **Catalog**: the apps, files and folders you open often. On Windows it also
+  finds files on your PC with [Everything](https://www.voidtools.com/), and a
+  shortcut (Ctrl+Shift+F by default) opens a quick-search box from any app.
+
 **Everyday comforts**
 
-- Light and dark mode, following your system.
+- English or Japanese screens, following your system or chosen in Settings.
+- Light and dark mode, following your system or chosen in Settings.
+- Keeps running in the tray when you close the window, for reminders and the
+  shortcut. It never starts with your computer.
 - Daily backups, with restore from Settings.
 - English, Japanese and Vietnamese as task languages.
 
