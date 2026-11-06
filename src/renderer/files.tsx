@@ -23,6 +23,7 @@ import { useApp } from './appState';
 import { Icon } from './Icon';
 import { Modal } from './parts';
 import type { ViewProps } from './views';
+import { tr } from './i18n';
 
 const STATE_CLASS = {
   ok: 'ok',
@@ -62,24 +63,26 @@ export function FilesView({
     const s = await attempt(() => window.worksync.checkSources());
     if (s) {
       setSources(s);
-      toast('Checked the linked files.');
+      toast(tr('Checked the linked files.'));
     }
   };
   return (
     <>
       {props.header(
-        'Files',
-        `${p.name} · files are linked by their path and only ever read`,
+        tr('Files'),
+        tr('{name} · files are linked by their path and only ever read', {
+          name: p.name,
+        }),
         <div style={{ display: 'flex', gap: 8 }}>
           {list.length > 0 && (
             <button className="btn" onClick={() => void check()}>
               <Icon name="refresh" />
-              <span className="lbl">Check now</span>
+              <span className="lbl">{tr('Check now')}</span>
             </button>
           )}
           <button className="btn primary" onClick={onLink}>
             <Icon name="link" />
-            <span className="lbl">Link a file</span>
+            <span className="lbl">{tr('Link a file')}</span>
           </button>
         </div>,
       )}
@@ -89,11 +92,11 @@ export function FilesView({
             <table>
               <thead>
                 <tr>
-                  <th>File</th>
-                  <th>State</th>
-                  <th>Last read</th>
-                  <th>Main language</th>
-                  <th>Tasks</th>
+                  <th>{tr('File')}</th>
+                  <th>{tr('State')}</th>
+                  <th>{tr('Last read')}</th>
+                  <th>{tr('Main language')}</th>
+                  <th>{tr('Tasks')}</th>
                   <th />
                 </tr>
               </thead>
@@ -108,7 +111,8 @@ export function FilesView({
                       </div>
                       <div className="path">{s.pattern ? s.path : s.path}</div>
                       <div className="muted" style={{ fontSize: 12 }}>
-                        Format {s.format.name} · sheet {s.format.sheet}
+                        {tr('Format')} {s.format.name} {tr('· sheet')}{' '}
+                        {s.format.sheet}
                       </div>
                     </td>
                     <td>
@@ -138,13 +142,15 @@ export function FilesView({
                             className="btn sm accent-outline"
                             onClick={() => onReview(s)}
                           >
-                            Review changes
+                            {tr('Review changes')}
                           </button>
                         )}
                         {s.state === 'missing' && (
                           <button
                             className="btn sm accent-outline"
-                            title="The file is not at its old place. Choose where it is now."
+                            title={tr(
+                              'The file is not at its old place. Choose where it is now.',
+                            )}
                             onClick={async () => {
                               const u = await attempt(() =>
                                 window.worksync.relinkSource(s.id),
@@ -158,33 +164,35 @@ export function FilesView({
                               );
                             }}
                           >
-                            Find the file
+                            {tr('Find the file')}
                           </button>
                         )}
                         <button
                           className="btn sm"
-                          title="Open in Excel"
+                          title={tr('Open in Excel')}
                           onClick={() =>
                             void attempt(() =>
                               window.worksync.openSourceFile(s.id),
                             )
                           }
                         >
-                          Open
+                          {tr('Open')}
                         </button>
                         <button
                           className="btn sm"
-                          title="Change which column holds the ID, the title and the other fields"
+                          title={tr(
+                            'Change which column holds the ID, the title and the other fields',
+                          )}
                           onClick={() => setColumnsOf(s)}
                         >
-                          Columns
+                          {tr('Columns')}
                         </button>
                         <button
                           className="btn sm"
-                          title="Stop following this file"
+                          title={tr('Stop following this file')}
                           onClick={() => setConfirm(s)}
                         >
-                          Unlink
+                          {tr('Unlink')}
                         </button>
                       </div>
                     </td>
@@ -197,20 +205,22 @@ export function FilesView({
       ) : (
         <div className="empty">
           <p style={{ margin: '0 0 12px' }}>
-            No files linked yet. Link the customer’s Excel file, for example the
-            WBS or the issue list in your Box Drive folder.
+            {tr(
+              'No files linked yet. Link the customer’s Excel file, for example the WBS or the issue list in your Box Drive folder.',
+            )}
           </p>
           <button className="btn primary" onClick={onLink}>
             <Icon name="link" />
-            Link a file
+            {tr('Link a file')}
           </button>
         </div>
       )}
       <div className="legend">
         <span>
           <Icon name="shield" />
-          WorkSync copies each version into its own data folder and reads the
-          copy, so the customer’s file is never changed or kept open.
+          {tr(
+            'WorkSync copies each version into its own data folder and reads the copy, so the customer’s file is never changed or kept open.',
+          )}
         </span>
       </div>
       {columnsOf && (
@@ -226,13 +236,15 @@ export function FilesView({
       {confirm && (
         <Modal
           title={`Unlink ${name(confirm.currentFile)}?`}
-          subtitle="Its tasks stay, with their history, and are marked Removed from file. The file itself is not touched."
+          subtitle={tr(
+            'Its tasks stay, with their history, and are marked Removed from file. The file itself is not touched.',
+          )}
           onClose={() => setConfirm(null)}
           narrow
           footer={
             <>
               <button className="btn" onClick={() => setConfirm(null)}>
-                Keep it
+                {tr('Keep it')}
               </button>
               <button
                 className="btn danger"
@@ -242,11 +254,11 @@ export function FilesView({
                     setSources(await window.worksync.listSources());
                     await reloadTasks();
                     setConfirm(null);
-                    toast('Unlinked. The tasks are kept.');
+                    toast(tr('Unlinked. The tasks are kept.'));
                   })
                 }
               >
-                Unlink
+                {tr('Unlink')}
               </button>
             </>
           }
@@ -334,12 +346,12 @@ export function ReviewDialog({
   if (!review) {
     return (
       <Modal
-        title="Review the new version"
+        title={tr('Review the new version')}
         subtitle={name(source.currentFile)}
         onClose={onClose}
         narrow
       >
-        <p className="muted">Reading the file…</p>
+        <p className="muted">{tr('Reading the file…')}</p>
       </Modal>
     );
   }
@@ -417,13 +429,13 @@ export function ReviewDialog({
 
   return (
     <Modal
-      title="Review the new version"
+      title={tr('Review the new version')}
       subtitle={`${review.fileName} changed ${when(review.modifiedAt)}. Nothing changes until you apply it.`}
       onClose={onClose}
       footer={
         <>
           <button className="btn" onClick={onClose}>
-            Later
+            {tr('Later')}
           </button>
           <button
             className="btn primary"
@@ -433,21 +445,22 @@ export function ReviewDialog({
             <Icon name="check" />
             {count
               ? `Apply ${count} change${count === 1 ? '' : 's'}`
-              : 'Mark as reviewed'}
+              : tr('Mark as reviewed')}
           </button>
         </>
       }
     >
       {unmapped && (
         <div className="panel" style={{ padding: 12 }}>
-          <b>New values in the file</b>
+          <b>{tr('New values in the file')}</b>
           <p className="muted" style={{ margin: '4px 0 10px' }}>
-            Say what they mean once. The file format remembers them.
+            {tr('Say what they mean once. The file format remembers them.')}
           </p>
           <div className="map-grid">
             {review.unmappedStatus.map((v) => (
               <label key={`s${v}`}>
-                Status “{v}”
+                {tr('Status “')}
+                {v}”
                 <select
                   className="inp"
                   defaultValue=""
@@ -461,16 +474,19 @@ export function ReviewDialog({
                     })
                   }
                 >
-                  <option value="">Choose…</option>
+                  <option value="">{tr('Choose…')}</option>
                   {STATUSES.map((s) => (
-                    <option key={s}>{s}</option>
+                    <option key={s} value={s}>
+                      {tr(s)}
+                    </option>
                   ))}
                 </select>
               </label>
             ))}
             {review.unmappedPriority.map((v) => (
               <label key={`p${v}`}>
-                Priority “{v}”
+                {tr('Priority “')}
+                {v}”
                 <select
                   className="inp"
                   defaultValue=""
@@ -484,10 +500,10 @@ export function ReviewDialog({
                     })
                   }
                 >
-                  <option value="">Choose…</option>
+                  <option value="">{tr('Choose…')}</option>
                   {LEVELS.map((l) => (
                     <option key={l} value={l}>
-                      {LEVEL_NAME[l]}
+                      {tr(LEVEL_NAME[l])}
                     </option>
                   ))}
                 </select>
@@ -503,7 +519,7 @@ export function ReviewDialog({
             }
             onClick={() => void load(byTitle, format)}
           >
-            Save and continue
+            {tr('Save and continue')}
           </button>
         </div>
       )}
@@ -511,8 +527,9 @@ export function ReviewDialog({
         <div className="keepnote">
           <Icon name="alert" />
           <span>
-            Many IDs changed while the titles stayed the same, so the file seems
-            to be renumbered.{' '}
+            {tr(
+              'Many IDs changed while the titles stayed the same, so the file seems to be renumbered.',
+            )}{' '}
             <button
               className="linkbtn"
               onClick={() => {
@@ -520,7 +537,7 @@ export function ReviewDialog({
                 void load(true);
               }}
             >
-              Match by title instead
+              {tr('Match by title instead')}
             </button>
           </span>
         </div>
@@ -557,7 +574,7 @@ export function ReviewDialog({
                 />
                 <div>
                   <span className="tid">
-                    No. {r.customerId || '–'} · row {r.row}
+                    {tr('No.')} {r.customerId || '–'} {tr('· row')} {r.row}
                   </span>
                   <div
                     className="title"
@@ -568,26 +585,31 @@ export function ReviewDialog({
                   </div>
                   <div className="chg">
                     {joins[r.row]
-                      ? 'Joined to the task chosen below; it keeps its summary, situation and history'
+                      ? tr(
+                          'Joined to the task chosen below; it keeps its summary, situation and history',
+                        )
                       : review.deletedRows.includes(r.row)
-                        ? 'You deleted this task, but it is still in the file. Tick it to bring it back.'
+                        ? tr(
+                            'You deleted this task, but it is still in the file. Tick it to bring it back.',
+                          )
                         : `New row · added as Not translated · ${r.status}`}
                   </div>
                   {joinable.length > 0 && (
                     <label className="join-row">
-                      Same task as
+                      {tr('Same task as')}
                       <select
                         className="inp sm"
                         value={joins[r.row] ?? ''}
                         onChange={(e) => join(r.row, e.target.value)}
                       >
-                        <option value="">None, it is a new task</option>
+                        <option value="">{tr('None, it is a new task')}</option>
                         {joinable.map((x) => (
                           <option key={x.taskId} value={x.taskId}>
-                            No. {x.customerId || '–'} · {x.title.slice(0, 40)}
+                            {tr('No.')} {x.customerId || '–'} ·{' '}
+                            {x.title.slice(0, 40)}
                             {x.already
-                              ? ' (removed earlier)'
-                              : ' (leaving the file)'}
+                              ? tr(' (removed earlier)')
+                              : tr(' (leaving the file)')}
                           </option>
                         ))}
                       </select>
@@ -597,7 +619,7 @@ export function ReviewDialog({
               </div>
             ))
           ) : (
-            <p className="muted">No new rows.</p>
+            <p className="muted">{tr('No new rows.')}</p>
           ))}
         {tab === 'changed' &&
           (review.changed.length ? (
@@ -610,19 +632,21 @@ export function ReviewDialog({
                   aria-label={`Apply changes to No. ${c.customerId}`}
                 />
                 <div>
-                  <span className="tid">No. {c.customerId}</span>
+                  <span className="tid">
+                    {tr('No.')} {c.customerId}
+                  </span>
                   <div className="title" style={{ fontSize: 14 }}>
                     {c.title}
                   </div>
                   {c.changes.map((x) => (
                     <div key={x.field} className="chg">
                       <span>{label(x.field)}</span>:{' '}
-                      <span className="old">{x.from || '(empty)'}</span>
+                      <span className="old">{x.from || tr('(empty)')}</span>
                       <span className="arrow">→</span>
-                      <span className="new">{x.to || '(empty)'}</span>
+                      <span className="new">{x.to || tr('(empty)')}</span>
                       {x.conflict && (
                         <div className="conflict">
-                          <b>You changed this too</b>
+                          <b>{tr('You changed this too')}</b>
                           <label>
                             <input
                               type="radio"
@@ -640,7 +664,7 @@ export function ReviewDialog({
                                 })
                               }
                             />{' '}
-                            Keep yours: {x.appValue || '(empty)'}
+                            {tr('Keep yours:')} {x.appValue || tr('(empty)')}
                           </label>
                           <label>
                             <input
@@ -658,7 +682,7 @@ export function ReviewDialog({
                                 })
                               }
                             />{' '}
-                            Use the file: {x.to || '(empty)'}
+                            {tr('Use the file:')} {x.to || tr('(empty)')}
                           </label>
                         </div>
                       )}
@@ -668,7 +692,7 @@ export function ReviewDialog({
               </div>
             ))
           ) : (
-            <p className="muted">No changed tasks.</p>
+            <p className="muted">{tr('No changed tasks.')}</p>
           ))}
         {tab === 'removed' &&
           (review.removed.length ? (
@@ -680,39 +704,46 @@ export function ReviewDialog({
                   onChange={() => toggle(remove, r.taskId, setRemove)}
                 />
                 <div>
-                  <span className="tid">No. {r.customerId}</span>
+                  <span className="tid">
+                    {tr('No.')} {r.customerId}
+                  </span>
                   <div className="title" style={{ fontSize: 14 }}>
                     {r.title}
                   </div>
                   <div className="chg">
-                    No longer in the file. The task is kept with its history and
-                    marked Removed from file.
+                    {tr(
+                      'No longer in the file. The task is kept with its history and marked Removed from file.',
+                    )}
                   </div>
                 </div>
               </label>
             ))
           ) : (
-            <p className="muted">No removed rows.</p>
+            <p className="muted">{tr('No removed rows.')}</p>
           ))}
       </div>
       {review.skipped.length > 0 && (
         <details className="skipped">
           <summary>
-            {review.skipped.length} rows were skipped, such as blank rows,
-            totals and section titles
+            {review.skipped.length}{' '}
+            {tr(
+              'rows were skipped, such as blank rows, totals and section titles',
+            )}
           </summary>
           <ul>
             {review.skipped.slice(0, 50).map((s) => (
               <li key={s.row}>
-                <span className="mono">Row {s.row}</span> ·{' '}
-                {s.text.slice(0, 80)}
+                <span className="mono">
+                  {tr('Row')} {s.row}
+                </span>{' '}
+                · {s.text.slice(0, 80)}
               </li>
             ))}
           </ul>
         </details>
       )}
       <p className="muted" style={{ fontSize: 12 }}>
-        Columns:{' '}
+        {tr('Columns:')}{' '}
         {Object.entries(source.format.columns)
           .map(
             ([f, c]) =>
@@ -775,13 +806,13 @@ function ColumnsDialog({
   };
   return (
     <Modal
-      title="Columns"
+      title={tr('Columns')}
       subtitle={`${source.format.name} · sheet ${source.format.sheet}`}
       onClose={onClose}
       footer={
         <>
           <button className="btn" onClick={onClose}>
-            Cancel
+            {tr('Cancel')}
           </button>
           <button
             className="btn primary"
@@ -789,7 +820,7 @@ function ColumnsDialog({
             onClick={() => void save()}
           >
             <Icon name="check" />
-            Save and review the changes
+            {tr('Save and review the changes')}
           </button>
         </>
       }
@@ -797,9 +828,9 @@ function ColumnsDialog({
       {rows ? (
         <>
           <p className="muted step-help">
-            After saving, the review shows what changes in your tasks, such as
-            new titles. Nothing changes until you apply it. Your summaries,
-            situations and notes stay.
+            {tr(
+              'After saving, the review shows what changes in your tasks, such as new titles. Nothing changes until you apply it. Your summaries, situations and notes stay.',
+            )}
           </p>
           <ColumnMap
             columns={columns}
@@ -808,21 +839,25 @@ function ColumnsDialog({
             sample={sample}
           />
           <label className="check" style={{ marginTop: 12 }}>
-            Dates such as 3/11 mean
+            {tr('Dates such as 3/11 mean')}
             <select
               className="inp sm"
               style={{ marginLeft: 8 }}
               value={dayFirst ? 'day' : 'month'}
               onChange={(e) => setDayFirst(e.target.value === 'day')}
-              aria-label="Order of month and day"
+              aria-label={tr('Order of month and day')}
             >
-              <option value="month">11 March, month first (Japan, US)</option>
-              <option value="day">3 November, day first (Vietnam, UK)</option>
+              <option value="month">
+                {tr('11 March, month first (Japan, US)')}
+              </option>
+              <option value="day">
+                {tr('3 November, day first (Vietnam, UK)')}
+              </option>
             </select>
           </label>
         </>
       ) : (
-        <p className="muted">Reading the file…</p>
+        <p className="muted">{tr('Reading the file…')}</p>
       )}
     </Modal>
   );

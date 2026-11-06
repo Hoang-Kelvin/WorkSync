@@ -18,6 +18,7 @@ import {
 import { useApp } from './appState';
 import { Icon, type IconName } from './Icon';
 import { Modal, useTaskLabel } from './parts';
+import { tr } from './i18n';
 
 const CODES = Object.keys(LANGUAGES) as LanguageCode[];
 
@@ -85,14 +86,16 @@ export function ProjectDialog({
     );
   return (
     <Modal
-      title={project ? 'Project settings' : 'New project'}
-      subtitle="Languages are set per project, so projects in different languages sit side by side."
+      title={project ? tr('Project settings') : tr('New project')}
+      subtitle={tr(
+        'Languages are set per project, so projects in different languages sit side by side.',
+      )}
       onClose={onClose}
       narrow
       footer={
         <>
           <button className="btn" onClick={onClose}>
-            Cancel
+            {tr('Cancel')}
           </button>
           <button
             className="btn primary"
@@ -101,31 +104,31 @@ export function ProjectDialog({
             disabled={!name.trim() || !orig.length}
             title={
               !orig.length
-                ? 'Choose at least one original language.'
+                ? tr('Choose at least one original language.')
                 : !name.trim()
-                  ? 'A project needs a name.'
+                  ? tr('A project needs a name.')
                   : undefined
             }
           >
             <Icon name="check" />
-            {project ? 'Save' : 'Create project'}
+            {project ? tr('Save') : tr('Create project')}
           </button>
         </>
       }
     >
       <form id="projectForm" className="form" onSubmit={save}>
         <label>
-          Name
+          {tr('Name')}
           <input
             className="inp"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            placeholder="Such as Logistics Portal Renewal"
+            placeholder={tr('Such as Logistics Portal Renewal')}
           />
         </label>
         <label>
-          Customer
+          {tr('Customer')}
           <input
             className="inp"
             value={customer}
@@ -133,7 +136,9 @@ export function ProjectDialog({
           />
         </label>
         <fieldset>
-          <legend>Original languages, the ones the customer writes in</legend>
+          <legend>
+            {tr('Original languages, the ones the customer writes in')}
+          </legend>
           <div className="checks">
             {CODES.map((c) => (
               <label key={c} className="check">
@@ -155,7 +160,7 @@ export function ProjectDialog({
         </fieldset>
         <div className="two">
           <label>
-            Your working language
+            {tr('Your working language')}
             <select
               className="inp"
               value={work}
@@ -170,7 +175,7 @@ export function ProjectDialog({
           </label>
           {project && (
             <label>
-              Due soon, in days
+              {tr('Due soon, in days')}
               <input
                 className="inp"
                 type="number"
@@ -184,7 +189,7 @@ export function ProjectDialog({
         </div>
         {project && (
           <label>
-            Dates in reports
+            {tr('Dates in reports')}
             <select
               className="inp"
               value={dateFormat}
@@ -205,10 +210,11 @@ export function ProjectDialog({
               checked={showNumbers}
               onChange={(e) => setShowNumbers(e.target.checked)}
             />{' '}
-            Show task numbers (No.) in the views
+            {tr('Show task numbers (No.) in the views')}
             <span className="hint-text" style={{ display: 'block' }}>
-              Each task keeps its number as its identity, and search still finds
-              it. Reviews, copies and reports always show it.
+              {tr(
+                'Each task keeps its number as its identity, and search still finds it. Reviews, copies and reports always show it.',
+              )}
             </span>
           </label>
         )}
@@ -216,10 +222,11 @@ export function ProjectDialog({
         {project && onDeleted && (
           <div className="danger-zone">
             <span>
-              <b>Delete this project</b>
+              <b>{tr('Delete this project')}</b>
               <small>
-                Removes its tasks, history, glossary and people from WorkSync.
-                Files on your PC and the shared drive stay.
+                {tr(
+                  'Removes its tasks, history, glossary and people from WorkSync. Files on your PC and the shared drive stay.',
+                )}
               </small>
             </span>
             <button
@@ -228,7 +235,7 @@ export function ProjectDialog({
               onClick={() => setDeleting(true)}
             >
               <Icon name="trash" />
-              Delete project…
+              {tr('Delete project…')}
             </button>
           </div>
         )}
@@ -269,14 +276,14 @@ function DeleteProject({
   };
   return (
     <Modal
-      title="Delete this project?"
+      title={tr('Delete this project?')}
       subtitle={project.name}
       onClose={onCancel}
       narrow
       footer={
         <>
           <button className="btn" onClick={onCancel}>
-            Cancel
+            {tr('Cancel')}
           </button>
           <button
             className="btn danger"
@@ -284,7 +291,7 @@ function DeleteProject({
             onClick={() => void del()}
           >
             <Icon name="trash" />
-            {busy ? 'Deleting…' : 'Delete project'}
+            {busy ? tr('Deleting…') : tr('Delete project')}
           </button>
         </>
       }
@@ -297,28 +304,28 @@ function DeleteProject({
         }}
       >
         <p>
-          This deletes{' '}
+          {tr('This deletes')}{' '}
           <b>
             {tasks} task{tasks === 1 ? '' : 's'}
           </b>{' '}
-          with their summaries, situations, history and notes, and the project’s
-          glossary, people, linked files and Tasks table settings.
+          {tr(
+            'with their summaries, situations, history and notes, and the project’s glossary, people, linked files and Tasks table settings.',
+          )}
         </p>
         <p className="muted">
-          The project’s notes stay, under “No project” in Notes. The customer’s
-          files, your written copies, reports and the published page stay where
-          they are. WorkSync backs up your data first, so you can restore it
-          from Settings.
+          {tr(
+            'The project’s notes stay, under “No project” in Notes. The customer’s files, your written copies, reports and the published page stay where they are. WorkSync backs up your data first, so you can restore it from Settings.',
+          )}
         </p>
         <label>
-          Type the project name to confirm
+          {tr('Type the project name to confirm')}
           <input
             className="inp"
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
             placeholder={project.name}
             autoFocus
-            aria-label="Project name"
+            aria-label={tr('Project name')}
           />
         </label>
       </form>
@@ -421,7 +428,7 @@ export function TaskDialog({
 
   return (
     <Modal
-      title={task ? `Edit ${label(task)}` : 'New task'}
+      title={task ? `Edit ${label(task)}` : tr('New task')}
       subtitle={
         task
           ? p.name
@@ -431,11 +438,11 @@ export function TaskDialog({
       footer={
         <>
           <button className="btn" onClick={onClose}>
-            Cancel
+            {tr('Cancel')}
           </button>
           <button className="btn primary" form="taskForm" type="submit">
             <Icon name="check" />
-            {task ? 'Save' : 'Add task'}
+            {task ? tr('Save') : tr('Add task')}
           </button>
         </>
       }
@@ -443,7 +450,7 @@ export function TaskDialog({
       <form id="taskForm" className="form" onSubmit={save}>
         <div className="two narrow-first">
           <label>
-            No.
+            {tr('No.')}
             <input
               className="inp mono"
               value={v.customerId}
@@ -451,26 +458,30 @@ export function TaskDialog({
               readOnly={fromFile}
               title={
                 fromFile
-                  ? 'From the customer’s file, which matches the task by it. It changes when the file does.'
+                  ? tr(
+                      'From the customer’s file, which matches the task by it. It changes when the file does.',
+                    )
                   : undefined
               }
-              placeholder="Next number"
+              placeholder={tr('Next number')}
             />
           </label>
           <label>
             <span>
-              Original title
+              {tr('Original title')}
               <select
                 className="lang-pick"
-                aria-label="Language of the title and description"
-                title="Detected from the characters. Choose it when the guess is wrong."
+                aria-label={tr('Language of the title and description')}
+                title={tr(
+                  'Detected from the characters. Choose it when the guess is wrong.',
+                )}
                 value={langChoice ?? ''}
                 onChange={(e) =>
                   setLangChoice((e.target.value || null) as LanguageCode | null)
                 }
               >
                 <option value="">
-                  {detected ? `${LANGUAGES[detected]}, detected` : 'Detect'}
+                  {detected ? `${LANGUAGES[detected]}, detected` : tr('Detect')}
                 </option>
                 {langOptions.map((l) => (
                   <option key={l} value={l}>
@@ -485,46 +496,50 @@ export function TaskDialog({
               onChange={set('titleOriginal')}
               title={
                 fromFile
-                  ? 'From the customer’s file. You can change it here; if the file changes it too, the review asks which to keep.'
+                  ? tr(
+                      'From the customer’s file. You can change it here; if the file changes it too, the review asks which to keep.',
+                    )
                   : undefined
               }
               required
-              placeholder="As written by the customer"
+              placeholder={tr('As written by the customer')}
             />
           </label>
         </div>
         {needsTranslation && (
           <label>
-            Title in {LANGUAGES[p.workingLanguage]}
+            {tr('Title in')} {LANGUAGES[p.workingLanguage]}
             <input
               className="inp"
               value={v.titleTranslation}
               onChange={set('titleTranslation')}
-              placeholder="Leave empty if not translated yet"
+              placeholder={tr('Leave empty if not translated yet')}
             />
           </label>
         )}
         <label>
-          Summary, in your own words
+          {tr('Summary, in your own words')}
           <textarea
             className="inp"
             rows={2}
             value={v.summary}
             onChange={set('summary')}
-            placeholder="What is this task really about?"
+            placeholder={tr('What is this task really about?')}
           />
         </label>
         <div className="three">
           <label>
-            Status
+            {tr('Status')}
             <select className="inp" value={v.status} onChange={set('status')}>
               {STATUSES.map((s) => (
-                <option key={s}>{s}</option>
+                <option key={s} value={s}>
+                  {tr(s)}
+                </option>
               ))}
             </select>
           </label>
           <label>
-            Priority
+            {tr('Priority')}
             <select
               className="inp"
               value={v.priority}
@@ -532,24 +547,24 @@ export function TaskDialog({
             >
               {LEVELS.map((l) => (
                 <option key={l} value={l}>
-                  {LEVEL_NAME[l]}
+                  {tr(LEVEL_NAME[l])}
                 </option>
               ))}
             </select>
           </label>
           <label>
-            Labels
+            {tr('Labels')}
             <input
               className="inp"
               value={labels}
               onChange={(e) => setLabels(e.target.value)}
-              placeholder="Auth, Release 2.1"
+              placeholder={tr('Auth, Release 2.1')}
             />
           </label>
         </div>
         <div className="four">
           <label>
-            Planned start
+            {tr('Planned start')}
             <input
               className="inp"
               type="date"
@@ -558,7 +573,7 @@ export function TaskDialog({
             />
           </label>
           <label>
-            Planned end
+            {tr('Planned end')}
             <input
               className="inp"
               type="date"
@@ -567,7 +582,7 @@ export function TaskDialog({
             />
           </label>
           <label>
-            Actual start
+            {tr('Actual start')}
             <input
               className="inp"
               type="date"
@@ -576,7 +591,7 @@ export function TaskDialog({
             />
           </label>
           <label>
-            Actual end
+            {tr('Actual end')}
             <input
               className="inp"
               type="date"
@@ -587,7 +602,7 @@ export function TaskDialog({
         </div>
         <div className="three">
           <label>
-            Assignee
+            {tr('Assignee')}
             <input
               className="inp"
               value={v.assignee}
@@ -595,16 +610,16 @@ export function TaskDialog({
             />
           </label>
           <label>
-            Category
+            {tr('Category')}
             <input
               className="inp"
               value={v.category}
               onChange={set('category')}
-              placeholder="Bug, request, question"
+              placeholder={tr('Bug, request, question')}
             />
           </label>
           <label>
-            Remarks
+            {tr('Remarks')}
             <input
               className="inp"
               value={v.remarks}
@@ -613,42 +628,46 @@ export function TaskDialog({
           </label>
         </div>
         <label>
-          Original description
+          {tr('Original description')}
           <textarea
             className="inp"
             rows={4}
             value={v.descriptionOriginal}
             onChange={set('descriptionOriginal')}
             readOnly={fromFile}
-            placeholder="Paste the customer’s text. Blank lines separate paragraphs."
+            placeholder={tr(
+              'Paste the customer’s text. Blank lines separate paragraphs.',
+            )}
           />
         </label>
         {needsTranslation && (
           <label>
-            Description in {LANGUAGES[p.workingLanguage]}
+            {tr('Description in')} {LANGUAGES[p.workingLanguage]}
             <textarea
               className="inp"
               rows={4}
               value={v.descriptionTranslation}
               onChange={set('descriptionTranslation')}
-              placeholder="Keep the same paragraphs, so they line up side by side."
+              placeholder={tr(
+                'Keep the same paragraphs, so they line up side by side.',
+              )}
             />
           </label>
         )}
         <fieldset>
-          <legend>Only for you</legend>
+          <legend>{tr('Only for you')}</legend>
           <div className="two">
             <label>
-              Next action
+              {tr('Next action')}
               <input
                 className="inp"
                 value={v.nextAction}
                 onChange={set('nextAction')}
-                placeholder="Your own to-do for this task"
+                placeholder={tr('Your own to-do for this task')}
               />
             </label>
             <label>
-              By
+              {tr('By')}
               <input
                 className="inp"
                 type="date"
@@ -658,13 +677,15 @@ export function TaskDialog({
             </label>
           </div>
           <label>
-            Notes
+            {tr('Notes')}
             <textarea
               className="inp"
               rows={3}
               value={v.notes}
               onChange={set('notes')}
-              placeholder="Background: technical context, decisions and links"
+              placeholder={tr(
+                'Background: technical context, decisions and links',
+              )}
             />
           </label>
         </fieldset>
@@ -721,7 +742,7 @@ const VIEW_INFO: Record<
     desc: 'Linked Excel files and their state.',
   },
 };
-export const viewName = (k: ViewKey) => VIEW_INFO[k].name;
+export const viewName = (k: ViewKey) => tr(VIEW_INFO[k].name);
 export const viewIcon = (k: ViewKey) => VIEW_INFO[k].icon;
 
 export function ViewsDialog({
@@ -748,13 +769,13 @@ export function ViewsDialog({
   };
   return (
     <Modal
-      title="Choose views"
+      title={tr('Choose views')}
       subtitle={`Pick the views ${project.name} needs. Each project keeps its own choice.`}
       onClose={onClose}
       narrow
       footer={
         <button className="btn primary" onClick={onClose}>
-          Done
+          {tr('Done')}
         </button>
       }
     >
@@ -774,8 +795,8 @@ export function ViewsDialog({
                 <b>{VIEW_INFO[k].name}</b>
                 <small>
                   {built
-                    ? VIEW_INFO[k].desc
-                    : `${VIEW_INFO[k].desc} Comes in a later build.`}
+                    ? tr(VIEW_INFO[k].desc)
+                    : `${tr(VIEW_INFO[k].desc)} Comes in a later build.`}
                 </small>
               </span>
               <button
@@ -795,8 +816,9 @@ export function ViewsDialog({
       <div className="keepnote">
         <Icon name="shield" />
         <span>
-          Turning a view off only hides it from this project. Tasks, dates,
-          situations and history stay exactly as they are.
+          {tr(
+            'Turning a view off only hides it from this project. Tasks, dates, situations and history stay exactly as they are.',
+          )}
         </span>
       </div>
     </Modal>
@@ -828,17 +850,19 @@ export function ConfirmDelete({
   return (
     <Modal
       title={`Delete ${label(task)}?`}
-      subtitle="The task, its situation updates and its history are deleted. This cannot be undone."
+      subtitle={tr(
+        'The task, its situation updates and its history are deleted. This cannot be undone.',
+      )}
       onClose={onClose}
       narrow
       footer={
         <>
           <button className="btn" onClick={onClose}>
-            Keep it
+            {tr('Keep it')}
           </button>
           <button className="btn danger" onClick={() => void del()}>
             <Icon name="trash" />
-            Delete task
+            {tr('Delete task')}
           </button>
         </>
       }
@@ -848,9 +872,9 @@ export function ConfirmDelete({
       </div>
       {task.source === 'file' && task.fileState === 'in_file' && (
         <p className="muted step-help">
-          The row stays in the customer’s file. WorkSync remembers that you
-          deleted it, so the next review lists it unticked and it stays deleted
-          unless you tick it.
+          {tr(
+            'The row stays in the customer’s file. WorkSync remembers that you deleted it, so the next review lists it unticked and it stays deleted unless you tick it.',
+          )}
         </p>
       )}
     </Modal>
@@ -879,10 +903,11 @@ function ExportCopy({ project }: { project: Project }) {
   return (
     <div className="danger-zone export-zone">
       <span>
-        <b>Give a copy to someone</b>
+        <b>{tr('Give a copy to someone')}</b>
         <small>
-          A .worksync file with the tasks, situations, history, glossary, people
-          and Board. Their copy is their own: changes do not come back here.
+          {tr(
+            'A .worksync file with the tasks, situations, history, glossary, people and Board. Their copy is their own: changes do not come back here.',
+          )}
         </small>
         <label className="check" style={{ marginTop: 6 }}>
           <input
@@ -890,7 +915,7 @@ function ExportCopy({ project }: { project: Project }) {
             checked={notes}
             onChange={(e) => setNotes(e.target.checked)}
           />{' '}
-          Include my notes, next actions and the project’s notes
+          {tr('Include my notes, next actions and the project’s notes')}
         </label>
       </span>
       <button
@@ -900,7 +925,7 @@ function ExportCopy({ project }: { project: Project }) {
         onClick={() => void save()}
       >
         <Icon name="save" />
-        {busy ? 'Saving…' : 'Export a copy…'}
+        {busy ? tr('Saving…') : tr('Export a copy…')}
       </button>
     </div>
   );

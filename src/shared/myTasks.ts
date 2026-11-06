@@ -129,20 +129,23 @@ export function sortMyTasks(list: MyTask[]): MyTask[] {
   );
 }
 
-/** The notification for a task. */
+/** The notification for a task, in the app language (tr translates). */
 export function reminderText(
   t: Pick<MyTask, 'title' | 'status' | 'priority' | 'dueDate'>,
   today: string,
+  tr: (s: string, vars?: Record<string, string>) => string = (s, v) =>
+    v ? s.replace(/\{(\w+)\}/g, (_, k: string) => v[k] ?? '') : s,
 ): { title: string; body: string } {
+  const day = (t.dueDate ?? '').replaceAll('-', '/');
   const due = !t.dueDate
-    ? 'no due date'
+    ? tr('no due date')
     : t.dueDate < today
-      ? `overdue since ${t.dueDate.replaceAll('-', '/')}`
+      ? tr('overdue since {day}', { day })
       : t.dueDate === today
-        ? 'due today'
-        : `due ${t.dueDate.replaceAll('-', '/')}`;
+        ? tr('due today')
+        : tr('due {day}', { day });
   return {
     title: t.title,
-    body: `${MY_PRIORITY_NAME[t.priority]} · ${MY_STATUS_NAME[t.status]} · ${due}`,
+    body: `${tr(MY_PRIORITY_NAME[t.priority])} · ${tr(MY_STATUS_NAME[t.status])} · ${due}`,
   };
 }

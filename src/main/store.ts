@@ -127,6 +127,11 @@ export class Store {
       !['system', 'light', 'dark'].includes(patch.theme)
     )
       throw new Error('Choose System, Light or Dark.');
+    if (
+      patch.uiLanguage !== undefined &&
+      !['system', 'en', 'ja'].includes(patch.uiLanguage)
+    )
+      throw new Error('Choose the app language from the list.');
     this.tx(() => {
       const put = this.db.prepare(
         'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',

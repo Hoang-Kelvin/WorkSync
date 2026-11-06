@@ -18,6 +18,7 @@ import { useApp } from './appState';
 import { Icon } from './Icon';
 import { PriorityTag } from './parts';
 import type { ViewProps } from './views';
+import { tr } from './i18n';
 
 const MON = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
 const dow = (iso: string) => new Date(`${iso}T00:00:00Z`).getUTCDay();
@@ -103,7 +104,7 @@ export function TimelineView({
       const d = addDays(first, w * 7);
       head.push(
         <span key={d} style={{ left: w * 7 * dw, width: 7 * dw }}>
-          {zoom === 'days' ? 'Week of ' : ''}
+          {zoom === 'days' ? tr('Week of ') : ''}
           {shortDate(d)}
         </span>,
       );
@@ -130,7 +131,7 @@ export function TimelineView({
   }
 
   const zoomCtl = (
-    <div className="seg-ctl" role="group" aria-label="Zoom">
+    <div className="seg-ctl" role="group" aria-label={tr('Zoom')}>
       {(['days', 'weeks', 'months'] as const).map((z) => (
         <button key={z} aria-pressed={zoom === z} onClick={() => setZoom(z)}>
           {z[0].toUpperCase() + z.slice(1)}
@@ -142,8 +143,12 @@ export function TimelineView({
   return (
     <>
       {props.header(
-        'Timeline',
-        `${p.name} · planned and actual dates · ${shortDate(first)} to ${shortDate(addDays(first, days - 1))}`,
+        tr('Timeline'),
+        tr('{name} · planned and actual dates · {from} to {to}', {
+          name: p.name,
+          from: shortDate(first),
+          to: shortDate(addDays(first, days - 1)),
+        }),
         zoomCtl,
       )}
       {dated.length ? (
@@ -158,7 +163,7 @@ export function TimelineView({
           >
             <div className="tl-head">
               <div className="tl-row">
-                <div className="tl-label">Task</div>
+                <div className="tl-label">{tr('Task')}</div>
                 <div className="tl-weeks">{head}</div>
               </div>
               {zoom !== 'months' && (
@@ -189,7 +194,7 @@ export function TimelineView({
                     }
                   : null;
                 const level = shownPriority(t);
-                const tip = `No. ${t.customerId} ${title(t, false)} · ${LEVEL_NAME[level]}${t.priorityOverride ? ' (your override)' : ''} · ${t.status} · Planned ${fileDate(t.plannedStart) || '…'} to ${fileDate(t.plannedEnd) || '…'}${t.actualStart ? ` · Actual from ${fileDate(t.actualStart)}${t.actualEnd ? ` to ${fileDate(t.actualEnd)}` : ''}` : ''}`;
+                const tip = `No. ${t.customerId} ${title(t, false)} · ${tr(LEVEL_NAME[level])}${t.priorityOverride ? ' (your override)' : ''} · ${t.status} · Planned ${fileDate(t.plannedStart) || '…'} to ${fileDate(t.plannedEnd) || '…'}${t.actualStart ? ` · Actual from ${fileDate(t.actualStart)}${t.actualEnd ? ` to ${fileDate(t.actualEnd)}` : ''}` : ''}`;
                 return (
                   <div className="tl-row" key={t.id}>
                     <button
@@ -200,7 +205,10 @@ export function TimelineView({
                       <span className="stripe" />
                       {showNo(t) && <span className="tid">{t.customerId}</span>}
                       {t.priorityOverride && (
-                        <span className="ovr-i" title="Your priority override">
+                        <span
+                          className="ovr-i"
+                          title={tr('Your priority override')}
+                        >
                           <Icon name="user" />
                         </span>
                       )}
@@ -240,7 +248,7 @@ export function TimelineView({
                             className="overrun-label"
                             style={{ left: bx + bw + ow + 8 }}
                           >
-                            Overdue
+                            {tr('Overdue')}
                           </span>
                         </>
                       )}
@@ -259,40 +267,42 @@ export function TimelineView({
         </div>
       ) : (
         <div className="empty">
-          No tasks with dates{props.query ? ' match the search' : ' yet'}. Add
-          planned dates to a task to see it here.
+          {tr('No tasks with dates')}
+          {props.query ? tr(' match the search') : tr(' yet')}. Add planned
+          dates to a task to see it here.
         </div>
       )}
       <div className="legend">
         <span>
           <i className="sw u" />
-          Urgent
+          {tr('Urgent')}
         </span>
         <span>
           <i className="sw h" />
-          High
+          {tr('High')}
         </span>
         <span>
           <i className="sw" />
-          Normal
+          {tr('Normal')}
         </span>
         <span>
           <i className="sw act" />
-          Actual
+          {tr('Actual')}
         </span>
         <span>
           <i className="sw over" />
-          Past the planned end
+          {tr('Past the planned end')}
         </span>
         <span>
           <i className="sw now" />
-          Today
+          {tr('Today')}
         </span>
       </div>
       {undated.length > 0 && (
         <details className="skipped undated">
           <summary>
-            {undated.length} task{undated.length === 1 ? '' : 's'} without dates
+            {undated.length} task{undated.length === 1 ? '' : 's'}{' '}
+            {tr('without dates')}
           </summary>
           <ul>
             {undated.map((t) => (
@@ -406,20 +416,20 @@ export function CalendarView({
           checked={showSteps}
           onChange={(e) => setShowSteps(e.target.checked)}
         />{' '}
-        Next steps and actions
+        {tr('Next steps and actions')}
       </label>
-      <div className="seg-ctl" role="group" aria-label="Calendar view">
+      <div className="seg-ctl" role="group" aria-label={tr('Calendar view')}>
         {(['month', 'week'] as const).map((k) => (
           <button key={k} aria-pressed={mode === k} onClick={() => setMode(k)}>
-            {k === 'month' ? 'Month' : 'Week'}
+            {k === 'month' ? tr('Month') : tr('Week')}
           </button>
         ))}
       </div>
-      <div className="seg-ctl" role="group" aria-label="Move">
+      <div className="seg-ctl" role="group" aria-label={tr('Move')}>
         <button onClick={() => shift(-1)} aria-label={`Previous ${mode}`}>
           ‹
         </button>
-        <button onClick={() => setAnchor(today)}>Today</button>
+        <button onClick={() => setAnchor(today)}>{tr('Today')}</button>
         <button onClick={() => shift(1)} aria-label={`Next ${mode}`}>
           ›
         </button>
@@ -431,15 +441,18 @@ export function CalendarView({
   return (
     <>
       {props.header(
-        'Calendar',
-        `${p.name} · tasks on their due date · ${label}`,
+        tr('Calendar'),
+        tr('{name} · tasks on their due date · {label}', {
+          name: p.name,
+          label,
+        }),
         controls,
       )}
       <div className="cal-wrap">
         <div className={`cal ${mode === 'week' ? 'week' : ''}`}>
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
             <div key={d} className="cal-dow">
-              {d}
+              {tr(d)}
             </div>
           ))}
           {Array.from({ length: count }, (_, i) => {
@@ -508,11 +521,11 @@ export function CalendarView({
         <div className="legend">
           <span>
             <Icon name="ball" />
-            Next step date
+            {tr('Next step date')}
           </span>
           <span>
             <Icon name="check" />
-            Your next action
+            {tr('Your next action')}
           </span>
         </div>
       )}
@@ -584,7 +597,7 @@ export function DashboardView({
     <div className="tile">
       <span className="lab">
         <Icon name={icon} />
-        {label}
+        {tr(label)}
       </span>
       <span className="val">{value}</span>
       <span className="note">{note}</span>
@@ -607,13 +620,17 @@ export function DashboardView({
             }
           >
             <div className="tc-top">
-              {showNo(t) && <span className="tid">No. {t.customerId}</span>}
+              {showNo(t) && (
+                <span className="tid">
+                  {tr('No.')} {t.customerId}
+                </span>
+              )}
               <span className="sp" />
               <PriorityTag task={t} />
             </div>
             <div className="title">{t.titleTranslation || t.titleOriginal}</div>
             <div className="nx">
-              {t.situation.nextStep || 'No next step yet'}
+              {t.situation.nextStep || tr('No next step yet')}
               {t.situation.nextDate
                 ? ` · by ${shortDate(t.situation.nextDate)}`
                 : ''}
@@ -632,8 +649,8 @@ export function DashboardView({
   return (
     <>
       {props.header(
-        'Dashboard',
-        `${p.name}${p.customer ? ` · ${p.customer}` : ''} · as of ${shortDate(today)} ${today.slice(0, 4)}`,
+        tr('Dashboard'),
+        `${p.name}${p.customer ? ` · ${p.customer}` : ''} · ${tr('as of {date}', { date: `${shortDate(today)} ${today.slice(0, 4)}` })}`,
       )}
       <div className="tiles">
         {tile(
@@ -659,13 +676,13 @@ export function DashboardView({
       <div className="panels">
         <section className="panel">
           <div className="panel-h">
-            <h2>Tasks by status</h2>
+            <h2>{tr('Tasks by status')}</h2>
             <button
               className="btn sm"
               aria-pressed={asTable}
               onClick={() => setAsTable(!asTable)}
             >
-              {asTable ? 'Hide table' : 'View as table'}
+              {asTable ? tr('Hide table') : tr('View as table')}
             </button>
           </div>
           {all.length ? (
@@ -702,16 +719,16 @@ export function DashboardView({
               </div>
             </>
           ) : (
-            <div className="hint">No tasks yet.</div>
+            <div className="hint">{tr('No tasks yet.')}</div>
           )}
           {asTable && (
             <div className="tbl-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Status</th>
-                    <th className="num">Tasks</th>
-                    <th className="num">Share</th>
+                    <th>{tr('Status')}</th>
+                    <th className="num">{tr('Tasks')}</th>
+                    <th className="num">{tr('Share')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -729,12 +746,12 @@ export function DashboardView({
             </div>
           )}
           <div className="panel-h" style={{ marginTop: 22 }}>
-            <h2>Open tasks by priority</h2>
+            <h2>{tr('Open tasks by priority')}</h2>
           </div>
           <div className="pbars">
             {levelCounts.map((x) => (
               <div className="pbar" key={x.k}>
-                <span>{LEVEL_NAME[x.k]}</span>
+                <span>{tr(LEVEL_NAME[x.k])}</span>
                 <span className="trk">
                   <i
                     style={{
@@ -749,7 +766,7 @@ export function DashboardView({
             ))}
           </div>
           <div className="panel-h" style={{ marginTop: 24 }}>
-            <h2>Last import</h2>
+            <h2>{tr('Last import')}</h2>
             {lastImport && (
               <span className="hint">
                 {new Date(lastImport.at).toLocaleString('en-GB', {
@@ -768,23 +785,25 @@ export function DashboardView({
               <span className="chip">{lastImport.removed} removed</span>
             </div>
           ) : (
-            <div className="hint">No linked file has been imported yet.</div>
+            <div className="hint">
+              {tr('No linked file has been imported yet.')}
+            </div>
           )}
         </section>
         <section className="panel">
           <div className="panel-h">
-            <h2>Overdue</h2>
+            <h2>{tr('Overdue')}</h2>
           </div>
           {miniList(overdue.sort(byPriority), 'Nothing is overdue.')}
           <div className="panel-h" style={{ marginTop: 22 }}>
-            <h2>Due soon</h2>
+            <h2>{tr('Due soon')}</h2>
           </div>
           {miniList(
             thisWeek.sort(byPriority),
             `Nothing is due in the next ${days} day${days === 1 ? '' : 's'}.`,
           )}
           <div className="panel-h" style={{ marginTop: 22 }}>
-            <h2>Open difficulties</h2>
+            <h2>{tr('Open difficulties')}</h2>
           </div>
           {miniList(withDiff.sort(byPriority), 'No open difficulties.')}
         </section>

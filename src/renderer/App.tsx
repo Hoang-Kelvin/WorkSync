@@ -47,6 +47,7 @@ import { NotesView } from './notes';
 import { CatalogView } from './catalog';
 import type { CatalogEntry } from '../shared/catalog';
 import type { Note } from '../shared/notes';
+import { tr } from './i18n';
 
 type Route =
   | { view: 'focus'; scope: 'all' | string }
@@ -97,14 +98,16 @@ export function App() {
   useEffect(() => {
     void window.worksync.start().then(setStartup);
   }, []);
-  if (!startup) return <div className="boot">Opening WorkSync…</div>;
+  if (!startup) return <div className="boot">{tr('Opening WorkSync…')}</div>;
   if (!startup.ok) {
     return (
       <div className="boot">
         <div className="panel boot-error">
-          <h1>WorkSync could not open its data</h1>
+          <h1>{tr('WorkSync could not open its data')}</h1>
           <p>{startup.message}</p>
-          <p className="muted">Data folder: {startup.dataFolder}</p>
+          <p className="muted">
+            {tr('Data folder:')} {startup.dataFolder}
+          </p>
         </div>
       </div>
     );
@@ -303,7 +306,7 @@ function Shell({
       await reloadAll();
       setActive(id);
       go({ view: 'focus', scope: id });
-      toast('Added the sample project. Delete or keep it as you like.');
+      toast(tr('Added the sample project. Delete or keep it as you like.'));
     }
   };
 
@@ -426,10 +429,10 @@ function Shell({
       <div className="shell">
         <nav
           className={`sidebar ${sideOpen ? 'on' : ''}`}
-          aria-label="Projects and views"
+          aria-label={tr('Projects and views')}
         >
           <div>
-            <div className="nav-label">Today</div>
+            <div className="nav-label">{tr('Today')}</div>
             <div className="nav">
               <button
                 className="nav-item"
@@ -441,13 +444,13 @@ function Shell({
                 onClick={() => go({ view: 'focus', scope: 'all' })}
               >
                 <Icon name="focus" />
-                <span className="grow">Focus, all projects</span>
+                <span className="grow">{tr('Focus, all projects')}</span>
                 <span className="count">{focusCount('all')}</span>
               </button>
             </div>
           </div>
           <div>
-            <div className="nav-label">Mine</div>
+            <div className="nav-label">{tr('Mine')}</div>
             <div className="nav">
               <button
                 className="nav-item"
@@ -459,7 +462,7 @@ function Shell({
                 onClick={() => go({ view: 'mine', page: 'tasks' })}
               >
                 <Icon name="todo" />
-                <span className="grow">My tasks</span>
+                <span className="grow">{tr('My tasks')}</span>
                 <span className="count">{myTasks.length}</span>
               </button>
               <button
@@ -472,7 +475,7 @@ function Shell({
                 onClick={() => go({ view: 'mine', page: 'notes' })}
               >
                 <Icon name="note" />
-                <span className="grow">Notes</span>
+                <span className="grow">{tr('Notes')}</span>
                 <span className="count">{notes.length}</span>
               </button>
               <button
@@ -485,13 +488,13 @@ function Shell({
                 onClick={() => go({ view: 'mine', page: 'catalog' })}
               >
                 <Icon name="grid" />
-                <span className="grow">Catalog</span>
+                <span className="grow">{tr('Catalog')}</span>
                 <span className="count">{catalog.length}</span>
               </button>
             </div>
           </div>
           <div>
-            <div className="nav-label">Projects</div>
+            <div className="nav-label">{tr('Projects')}</div>
             <div className="nav">
               {projects.map((p) => {
                 const isActive = p.id === active;
@@ -561,7 +564,7 @@ function Shell({
                           }
                         >
                           <Icon name="note" />
-                          <span className="grow">Notes</span>
+                          <span className="grow">{tr('Notes')}</span>
                           <span className="count">
                             {notes.filter((n) => n.projectId === p.id).length ||
                               ''}
@@ -574,7 +577,7 @@ function Shell({
                           }
                         >
                           <Icon name="plus" />
-                          <span className="grow">New task</span>
+                          <span className="grow">{tr('New task')}</span>
                         </button>
                         <button
                           className="nav-item custom"
@@ -583,7 +586,7 @@ function Shell({
                           }
                         >
                           <Icon name="sliders" />
-                          <span className="grow">Choose views</span>
+                          <span className="grow">{tr('Choose views')}</span>
                         </button>
                         <button
                           className="nav-item custom"
@@ -592,7 +595,7 @@ function Shell({
                           }
                         >
                           <Icon name="user" />
-                          <span className="grow">People</span>
+                          <span className="grow">{tr('People')}</span>
                         </button>
                         <button
                           className="nav-item custom"
@@ -601,7 +604,7 @@ function Shell({
                           }
                         >
                           <Icon name="note" />
-                          <span className="grow">Glossary</span>
+                          <span className="grow">{tr('Glossary')}</span>
                         </button>
                         <button
                           className="nav-item custom"
@@ -610,7 +613,7 @@ function Shell({
                           }
                         >
                           <Icon name="file" />
-                          <span className="grow">Make a report</span>
+                          <span className="grow">{tr('Make a report')}</span>
                         </button>
                         <button
                           className="nav-item custom"
@@ -619,7 +622,7 @@ function Shell({
                           }
                         >
                           <Icon name="edit" />
-                          <span className="grow">Project settings</span>
+                          <span className="grow">{tr('Project settings')}</span>
                         </button>
                       </div>
                     )}
@@ -631,15 +634,17 @@ function Shell({
                 onClick={() => setDialog({ kind: 'newProject' })}
               >
                 <Icon name="plus" />
-                <span className="grow">New project</span>
+                <span className="grow">{tr('New project')}</span>
               </button>
               <button
                 className="nav-item custom"
-                title="Add a project from a .worksync file someone gave you"
+                title={tr(
+                  'Add a project from a .worksync file someone gave you',
+                )}
                 onClick={() => void importCopy()}
               >
                 <Icon name="upload" />
-                <span className="grow">Import a project</span>
+                <span className="grow">{tr('Import a project')}</span>
               </button>
             </div>
           </div>
@@ -648,12 +653,12 @@ function Shell({
             onClick={() => setDialog({ kind: 'settings' })}
           >
             <Icon name="sliders" />
-            <span className="grow">Settings</span>
+            <span className="grow">{tr('Settings')}</span>
           </button>
           <div className="side-foot">
             <span>
               <Icon name="lock" />
-              Data stays on this PC
+              {tr('Data stays on this PC')}
             </span>
             <span className="path" title={dataFolder}>
               <Icon name="folder" />
@@ -665,7 +670,7 @@ function Shell({
           <header className="topbar">
             <button
               className="icon-btn menu-btn"
-              aria-label="Open the sidebar"
+              aria-label={tr('Open the sidebar')}
               onClick={() => setSideOpen(true)}
             >
               <Icon name="menu" />
@@ -678,18 +683,18 @@ function Shell({
                 type="search"
                 placeholder={
                   route.view === 'mine' && route.page === 'tasks'
-                    ? 'Search my tasks'
+                    ? tr('Search my tasks')
                     : route.view === 'mine' && route.page === 'catalog'
-                      ? 'Search the Catalog: name, path, tags or note'
+                      ? tr('Search the Catalog: name, path, tags or note')
                       : mine
-                        ? 'Search notes: title, text or tags'
-                        : 'Search by number, label, title or person'
+                        ? tr('Search notes: title, text or tags')
+                        : tr('Search by number, label, title or person')
                 }
                 autoComplete="off"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
-              <span className="kbd">Ctrl K</span>
+              <span className="kbd">{tr('Ctrl K')}</span>
             </label>
             {!mine && (
               <>
@@ -707,18 +712,20 @@ function Shell({
                 <button
                   className="btn compact"
                   aria-pressed={originalFirst}
-                  aria-label="Original first"
-                  title="Show the customer’s original text first, for meetings"
+                  aria-label={tr('Original first')}
+                  title={tr(
+                    'Show the customer’s original text first, for meetings',
+                  )}
                   onClick={() => setOriginalFirst(!originalFirst)}
                 >
                   <Icon name="swap" />
-                  <span className="lbl">Original first</span>
+                  <span className="lbl">{tr('Original first')}</span>
                 </button>
                 <button
-                  aria-label="Copy for AI"
+                  aria-label={tr('Copy for AI')}
                   className="btn"
                   disabled={!currentProjectId}
-                  title="Build a request for the Gemini web app"
+                  title={tr('Build a request for the Gemini web app')}
                   onClick={() =>
                     currentProjectId &&
                     setDialog({
@@ -732,16 +739,16 @@ function Shell({
                   }
                 >
                   <Icon name="spark" />
-                  <span className="lbl">Copy for AI</span>
+                  <span className="lbl">{tr('Copy for AI')}</span>
                 </button>
                 <button
                   className="btn compact"
-                  aria-label="Paste from AI"
+                  aria-label={tr('Paste from AI')}
                   disabled={!aiSession}
                   title={
                     aiSession
-                      ? 'Paste Gemini’s answer'
-                      : 'Use Copy for AI first'
+                      ? tr('Paste Gemini’s answer')
+                      : tr('Use Copy for AI first')
                   }
                   onClick={() =>
                     aiSession &&
@@ -753,7 +760,7 @@ function Shell({
                   }
                 >
                   <Icon name="copy" />
-                  <span className="lbl">Paste from AI</span>
+                  <span className="lbl">{tr('Paste from AI')}</span>
                   {aiSession &&
                     aiSession.batches.length - aiSession.done.length > 0 && (
                       <span className="badge">
@@ -763,30 +770,30 @@ function Shell({
                 </button>
                 {sources.length > 0 && (
                   <button
-                    aria-label="Write to copy"
+                    aria-label={tr('Write to copy')}
                     className="btn"
                     title={
                       pendingWrites
                         ? `${pendingWrites} changes not yet written to your copy`
-                        : 'Write changes to your copy of a customer file'
+                        : tr('Write changes to your copy of a customer file')
                     }
                     onClick={() => setDialog({ kind: 'write' })}
                   >
                     <Icon name="save" />
-                    <span className="lbl">Write to copy</span>
+                    <span className="lbl">{tr('Write to copy')}</span>
                     {pendingWrites > 0 && (
                       <span className="badge">{pendingWrites}</span>
                     )}
                   </button>
                 )}
                 <button
-                  aria-label="Publish"
+                  aria-label={tr('Publish')}
                   className="btn"
                   disabled={!currentProjectId}
                   title={
                     pubStatus?.unpublished
                       ? `${pubStatus.unpublished} changes not published yet`
-                      : 'Publish to the shared folder'
+                      : tr('Publish to the shared folder')
                   }
                   onClick={() =>
                     currentProjectId &&
@@ -794,19 +801,19 @@ function Shell({
                   }
                 >
                   <Icon name="upload" />
-                  <span className="lbl">Publish</span>
+                  <span className="lbl">{tr('Publish')}</span>
                   {pubStatus?.folder && pubStatus.unpublished > 0 && (
                     <span className="badge">{pubStatus.unpublished}</span>
                   )}
                 </button>
                 <button
-                  aria-label="New task"
+                  aria-label={tr('New task')}
                   className="btn primary"
                   disabled={!currentProjectId}
                   title={
                     currentProjectId
                       ? `Add a task to ${project(currentProjectId)?.name}`
-                      : 'Create a project first'
+                      : tr('Create a project first')
                   }
                   onClick={() =>
                     currentProjectId &&
@@ -814,7 +821,7 @@ function Shell({
                   }
                 >
                   <Icon name="plus" />
-                  <span className="lbl">New task</span>
+                  <span className="lbl">{tr('New task')}</span>
                 </button>
               </>
             )}
@@ -834,7 +841,7 @@ function Shell({
                     className="btn sm"
                     onClick={() => setDataWarning(null)}
                   >
-                    Not now
+                    {tr('Not now')}
                   </button>
                 </span>
               </div>
@@ -844,10 +851,12 @@ function Shell({
                 <Icon name="alert" />
                 <span className="notice-text">
                   <b>
-                    The published {pubStatus.tampered.join(' and ')} changed
+                    {tr('The published')} {pubStatus.tampered.join(' and ')}{' '}
+                    changed
                   </b>{' '}
-                  · someone edited or deleted it in the shared folder after you
-                  published
+                  {tr(
+                    '· someone edited or deleted it in the shared folder after you published',
+                  )}
                 </span>
                 <span className="notice-actions">
                   <button
@@ -859,7 +868,7 @@ function Shell({
                       })
                     }
                   >
-                    Publish again
+                    {tr('Publish again')}
                   </button>
                 </span>
               </div>
@@ -886,7 +895,7 @@ function Shell({
                       setDialog({ kind: 'review', source: changedSources[0] })
                     }
                   >
-                    Review changes
+                    {tr('Review changes')}
                   </button>
                 </span>
               </div>
@@ -1064,10 +1073,11 @@ function Welcome({
 }) {
   return (
     <div className="welcome">
-      <h1>Welcome to WorkSync</h1>
+      <h1>{tr('Welcome to WorkSync')}</h1>
       <p>
-        Start with a project for one customer. Link the customer’s Excel file to
-        bring in its tasks, or add tasks by hand.
+        {tr(
+          'Start with a project for one customer. Link the customer’s Excel file to bring in its tasks, or add tasks by hand.',
+        )}
       </p>
       <div
         style={{
@@ -1079,11 +1089,11 @@ function Welcome({
       >
         <button className="btn primary" onClick={onNew}>
           <Icon name="plus" />
-          New project
+          {tr('New project')}
         </button>
         <button className="btn" onClick={onSample}>
           <Icon name="spark" />
-          Try the sample project
+          {tr('Try the sample project')}
         </button>
       </div>
     </div>
@@ -1127,13 +1137,15 @@ function ImportClash({
   return (
     <Modal
       title={`A project called ${info.name} already exists`}
-      subtitle="Keep both, or replace yours with the one you are importing."
+      subtitle={tr(
+        'Keep both, or replace yours with the one you are importing.',
+      )}
       onClose={onClose}
       narrow
       footer={
         <>
           <button className="btn" onClick={onClose}>
-            Cancel
+            {tr('Cancel')}
           </button>
           <button
             className="btn"
@@ -1143,7 +1155,7 @@ function ImportClash({
               onCopy();
             }}
           >
-            Import as a copy
+            {tr('Import as a copy')}
           </button>
           <button
             className="btn danger"
@@ -1153,7 +1165,7 @@ function ImportClash({
               onReplace(old.id);
             }}
           >
-            Replace {old.name}
+            {tr('Replace')} {old.name}
           </button>
         </>
       }
@@ -1161,13 +1173,13 @@ function ImportClash({
       <div className="form">
         <div className="clash">
           <div>
-            <small>Here now</small>
+            <small>{tr('Here now')}</small>
             {info.sameName.length > 1 ? (
               <select
                 className="inp sm"
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
-                aria-label="Project to replace"
+                aria-label={tr('Project to replace')}
               >
                 {info.sameName.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -1183,7 +1195,7 @@ function ImportClash({
             </span>
           </div>
           <div>
-            <small>In the file</small>
+            <small>{tr('In the file')}</small>
             <b>{info.name}</b>
             <span>
               {info.tasks} task{info.tasks === 1 ? '' : 's'}
@@ -1192,13 +1204,16 @@ function ImportClash({
           </div>
         </div>
         <p className="muted step-help">
-          <b>Import as a copy</b> adds it as {copyName}, and yours stays as it
-          is.
+          <b>{tr('Import as a copy')}</b> {tr('adds it as')} {copyName}
+          {tr(', and yours stays as it is.')}
         </p>
         <p className="muted step-help">
-          <b>Replace {old.name}</b> deletes yours, with its tasks, notes and
-          history, and puts the imported one in its place. WorkSync backs up
-          first, so you can get yours back from Settings.
+          <b>
+            {tr('Replace')} {old.name}
+          </b>{' '}
+          {tr(
+            'deletes yours, with its tasks, notes and history, and puts the imported one in its place. WorkSync backs up first, so you can get yours back from Settings.',
+          )}
         </p>
       </div>
     </Modal>

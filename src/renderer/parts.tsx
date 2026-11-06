@@ -12,6 +12,7 @@ import {
 } from '../shared/model';
 import { useApp } from './appState';
 import { Icon } from './Icon';
+import { tr, trDeadline } from './i18n';
 
 const STATUS_CLASS: Record<Status, string> = {
   'Not started': 'st-ns',
@@ -23,7 +24,7 @@ const STATUS_CLASS: Record<Status, string> = {
 };
 
 export const StatusChip = ({ status }: { status: Status }) => (
-  <span className={`st ${STATUS_CLASS[status]}`}>{status}</span>
+  <span className={`st ${STATUS_CLASS[status]}`}>{tr(status)}</span>
 );
 
 /** The class that gives a card its priority color. Closed tasks lose it. */
@@ -37,16 +38,16 @@ export function PriorityTag({ task }: { task: Task }) {
     return (
       <span
         className={`ptag ${level} ovr`}
-        title={`Your priority. The task's own level is ${LEVEL_NAME[task.priority]}.`}
+        title={`Your priority. The task's own level is ${tr(LEVEL_NAME[task.priority])}.`}
       >
         <Icon name="user" />
-        {LEVEL_NAME[level]}
-        <span className="sr">, your override</span>
+        {tr(LEVEL_NAME[level])}
+        <span className="sr">{tr(', your override')}</span>
       </span>
     );
   }
   if ((level !== 'U' && level !== 'H') || isClosed(task)) return null;
-  return <span className={`ptag ${level}`}>{LEVEL_NAME[level]}</span>;
+  return <span className={`ptag ${level}`}>{tr(LEVEL_NAME[level])}</span>;
 }
 
 /** The task's No., unless the project hides numbers in its views. */
@@ -55,7 +56,7 @@ export function TaskNumber({ task }: { task: Task }) {
   if (project(task.projectId)?.showNumbers === false) return null;
   return (
     <span className="tc-id">
-      <small>No.</small>
+      <small>{tr('No.')}</small>
       {task.customerId}
     </span>
   );
@@ -131,7 +132,7 @@ export function Titles({ task, big }: { task: Task; big?: boolean }) {
   const subClass = big ? 'tm-orig' : 'orig clamp1';
   const review =
     task.translationState === 'Needs review' ? (
-      <span className="tag-review">Needs review</span>
+      <span className="tag-review">{tr('Needs review')}</span>
     ) : null;
   const idProps = big ? { id: 'tmTitle', tabIndex: -1 } : {};
   if (task.translationState === 'Not needed' || !task.titleTranslation) {
@@ -140,7 +141,7 @@ export function Titles({ task, big }: { task: Task; big?: boolean }) {
         <Main className={mainClass} lang={task.language} {...idProps}>
           <Glossed text={task.titleOriginal} projectId={task.projectId} />
           {task.translationState === 'Not translated' && (
-            <span className="tag-review">Not translated</span>
+            <span className="tag-review">{tr('Not translated')}</span>
           )}
         </Main>
       </>
@@ -184,10 +185,11 @@ export function DeadlineChip({
   const { today } = useApp();
   const d = deadline(task, today, dueSoonDays);
   if (!d) return null;
+  const text = trDeadline(d.text);
   return (
     <span className={`chip ${d.tone}`}>
       <Icon name="clock" />
-      {d.text}
+      {text}
     </span>
   );
 }
@@ -209,7 +211,7 @@ export function MetaChips({
       {f.openDifficulties > 0 && (
         <span className="chip">
           <Icon name="alert" />
-          {f.openDifficulties} open
+          {tr('{n} open', { n: f.openDifficulties })}
         </span>
       )}
     </>
@@ -272,7 +274,7 @@ export function Modal({
           <button
             className="icon-btn"
             data-close
-            aria-label="Close"
+            aria-label={tr('Close')}
             onClick={onClose}
           >
             <Icon name="x" />

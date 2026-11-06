@@ -43,6 +43,7 @@ import {
   useTaskLabel,
   priorityClass,
 } from './parts';
+import { tr } from './i18n';
 
 /** Splits text into paragraphs on blank lines, or on single lines when there are none. */
 const paragraphs = (text: string): string[] => {
@@ -59,14 +60,14 @@ function Description({ task }: { task: Task }) {
   const [mode, setMode] = useState<'both' | 'translation' | 'original'>('both');
   const [open, setOpen] = useState(false);
   const orig = paragraphs(task.descriptionOriginal);
-  const tr = paragraphs(task.descriptionTranslation);
+  const trans = paragraphs(task.descriptionTranslation);
   // Nothing to show: the section is left out.
-  if (!orig.length && !tr.length) return null;
+  if (!orig.length && !trans.length) return null;
   const langName = LANGUAGES[task.language];
-  const same = task.translationState === 'Not needed' || !tr.length;
+  const same = task.translationState === 'Not needed' || !trans.length;
   const long =
-    Math.max(orig.length, tr.length) > 2 ||
-    (orig.join(' ') + tr.join(' ')).length > 700;
+    Math.max(orig.length, trans.length) > 2 ||
+    (orig.join(' ') + trans.join(' ')).length > 700;
   let body;
   if (same || mode === 'original') {
     body = (
@@ -81,23 +82,23 @@ function Description({ task }: { task: Task }) {
   } else if (mode === 'translation') {
     body = (
       <div className="single">
-        {tr.map((p, i) => (
+        {trans.map((p, i) => (
           <p key={i}>{p}</p>
         ))}
       </div>
     );
   } else {
-    const left = originalFirst ? orig : tr;
-    const right = originalFirst ? tr : orig;
+    const left = originalFirst ? orig : trans;
+    const right = originalFirst ? trans : orig;
     const n = Math.max(left.length, right.length);
     body = (
       <div className="pairs">
         <div className="ph">
           <span>
-            {originalFirst ? `Original · ${langName}` : 'Translation'}
+            {originalFirst ? `Original · ${langName}` : tr('Translation')}
           </span>
           <span>
-            {originalFirst ? 'Translation' : `Original · ${langName}`}
+            {originalFirst ? tr('Translation') : `Original · ${langName}`}
           </span>
         </div>
         {Array.from({ length: n }, (_, i) => (
@@ -125,24 +126,24 @@ function Description({ task }: { task: Task }) {
     <section className="sec sec-desc">
       <div className="desc-h">
         <h3>
-          Description
+          {tr('Description')}
           {long && (
             <span className="fresh">
-              · {Math.max(orig.length, tr.length)} paragraphs
+              · {Math.max(orig.length, trans.length)} paragraphs
             </span>
           )}
         </h3>
         {same ? (
           <span className="muted" style={{ fontSize: 12.5 }}>
             {task.translationState === 'Not needed'
-              ? 'Already in the working language'
-              : 'Not translated yet'}
+              ? tr('Already in the working language')
+              : tr('Not translated yet')}
           </span>
         ) : (
           <div
             className="seg-ctl"
             role="group"
-            aria-label="Description language"
+            aria-label={tr('Description language')}
           >
             {(
               [
@@ -156,7 +157,7 @@ function Description({ task }: { task: Task }) {
                 aria-pressed={mode === k}
                 onClick={() => setMode(k)}
               >
-                {l}
+                {tr(l)}
               </button>
             ))}
           </div>
@@ -177,7 +178,7 @@ function Description({ task }: { task: Task }) {
             onClick={() => setOpen(!open)}
           >
             <Icon name="chev" />
-            {open ? 'Show less' : 'Show the full description'}
+            {open ? tr('Show less') : tr('Show the full description')}
           </button>
         </div>
       )}
@@ -249,24 +250,27 @@ function SituationForm({
       {fix && (
         <p className="fix-note">
           <Icon name="edit" />
-          Fixing a mistake: this changes the situation as you last recorded it.
-          As of stays {task.situation.asOf ? fileDate(task.situation.asOf) : ''}
-          , and no new update is added. To record new progress, use Update
-          situation.
+          {tr(
+            'Fixing a mistake: this changes the situation as you last recorded it. As of stays',
+          )}{' '}
+          {task.situation.asOf ? fileDate(task.situation.asOf) : ''}
+          {tr(
+            ', and no new update is added. To record new progress, use Update situation.',
+          )}
         </p>
       )}
       <label>
-        Handled by
+        {tr('Handled by')}
         <input
           className="inp"
           value={v.handledBy}
           onChange={set('handledBy')}
-          placeholder="Who is working on it now"
+          placeholder={tr('Who is working on it now')}
           autoFocus
         />
       </label>
       <label>
-        Doing now
+        {tr('Doing now')}
         <textarea
           className="inp"
           rows={2}
@@ -276,7 +280,7 @@ function SituationForm({
       </label>
       <div className="two">
         <label>
-          Next step
+          {tr('Next step')}
           <input
             className="inp"
             value={v.nextStep}
@@ -284,7 +288,7 @@ function SituationForm({
           />
         </label>
         <label>
-          Expected date
+          {tr('Expected date')}
           <input
             className="inp"
             type="date"
@@ -296,16 +300,16 @@ function SituationForm({
       {!fix && (
         <div className="two">
           <label>
-            New difficulty (optional)
+            {tr('New difficulty (optional)')}
             <input
               className="inp"
               value={v.difficulty}
               onChange={set('difficulty')}
-              placeholder="What is slowing the work down?"
+              placeholder={tr('What is slowing the work down?')}
             />
           </label>
           <label>
-            Who can resolve it
+            {tr('Who can resolve it')}
             <input
               className="inp"
               value={v.resolver}
@@ -316,11 +320,11 @@ function SituationForm({
       )}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn" onClick={onDone}>
-          Cancel
+          {tr('Cancel')}
         </button>
         <button className="btn primary" type="submit">
           <Icon name="check" />
-          {fix ? 'Save correction' : 'Save update'}
+          {fix ? tr('Save correction') : tr('Save update')}
         </button>
       </div>
     </form>
@@ -374,15 +378,15 @@ function DifficultyRow({
         >
           <input
             className="inp"
-            aria-label="Difficulty"
+            aria-label={tr('Difficulty')}
             value={text}
             onChange={(e) => setText(e.target.value)}
             autoFocus
           />
           <input
             className="inp"
-            aria-label="Who can resolve it"
-            placeholder="Who can resolve it"
+            aria-label={tr('Who can resolve it')}
+            placeholder={tr('Who can resolve it')}
             value={resolver}
             onChange={(e) => setResolver(e.target.value)}
           />
@@ -392,10 +396,10 @@ function DifficultyRow({
               className="btn sm"
               onClick={() => setEditing(false)}
             >
-              Cancel
+              {tr('Cancel')}
             </button>
             <button className="btn sm primary" type="submit">
-              Save
+              {tr('Save')}
             </button>
           </div>
         </form>
@@ -409,7 +413,7 @@ function DifficultyRow({
         <br />
         <span className="by">
           {d.resolver ? `${d.resolver} · ` : ''}since {shortDate(d.raisedOn)}
-          {d.open ? '' : ' · resolved'} ·{' '}
+          {d.open ? '' : tr(' · resolved')} ·{' '}
           <button
             className="linkbtn"
             onClick={() =>
@@ -418,7 +422,7 @@ function DifficultyRow({
               )
             }
           >
-            {d.open ? 'Mark resolved' : 'Reopen'}
+            {d.open ? tr('Mark resolved') : tr('Reopen')}
           </button>{' '}
           ·{' '}
           <button
@@ -429,7 +433,7 @@ function DifficultyRow({
               setEditing(true);
             }}
           >
-            Edit
+            {tr('Edit')}
           </button>{' '}
           ·{' '}
           <button
@@ -446,7 +450,7 @@ function DifficultyRow({
                 );
             }}
           >
-            Delete
+            {tr('Delete')}
           </button>
         </span>
       </span>
@@ -472,11 +476,11 @@ function AddFields({ names }: { names: string[] }) {
   if (!shown.length) return null;
   return (
     <div className="add-fields">
-      <span className="muted">Add</span>
+      <span className="muted">{tr('Add')}</span>
       {shown.map((n) => (
         <button key={n} className="add-chip" onClick={() => setAdding(n)}>
           <Icon name="plus" />
-          {n}
+          {tr(n)}
         </button>
       ))}
     </div>
@@ -560,12 +564,12 @@ function EditField({
       className={`field editable ${wide ? 'wide' : ''} ${pend ? 'pending' : ''} ${draft ? 'editing' : ''}`}
     >
       <div className="k">
-        {k}
+        {typeof k === 'string' ? tr(k) : k}
         {!draft && (
           <button
             className="fix-btn"
-            title={label ? `Edit ${label.toLowerCase()}` : 'Edit'}
-            aria-label={label ? `Edit ${label.toLowerCase()}` : 'Edit'}
+            title={label ? `Edit ${label.toLowerCase()}` : tr('Edit')}
+            aria-label={label ? `Edit ${label.toLowerCase()}` : tr('Edit')}
             onClick={() => setDraft(start())}
           >
             <Icon name="edit" />
@@ -576,16 +580,18 @@ function EditField({
         <form className="inline-edit" onSubmit={save} onKeyDown={keys}>
           {editor(draft, set)}
           <div className="ie-foot">
-            <span className="muted">Ctrl+Enter saves · Esc cancels</span>
+            <span className="muted">
+              {tr('Ctrl+Enter saves · Esc cancels')}
+            </span>
             <button
               type="button"
               className="btn sm"
               onClick={() => setDraft(null)}
             >
-              Cancel
+              {tr('Cancel')}
             </button>
             <button className="btn sm primary" type="submit">
-              Save
+              {tr('Save')}
             </button>
           </div>
         </form>
@@ -593,7 +599,7 @@ function EditField({
         <div
           className="v"
           onDoubleClick={() => setDraft(start())}
-          title="Double-click to edit"
+          title={tr('Double-click to edit')}
         >
           {v}
         </div>
@@ -631,7 +637,9 @@ function Links({ task }: { task: Task }) {
     if (!target.trim()) return;
     if (!linkKind(target)) {
       toast(
-        'Use a web address such as https://… or a file path such as \\\\server\\share\\spec.xlsx or D:\\Docs\\spec.pdf.',
+        tr(
+          'Use a web address such as https://… or a file path such as \\\\server\\share\\spec.xlsx or D:\\Docs\\spec.pdf.',
+        ),
       );
       return;
     }
@@ -646,13 +654,13 @@ function Links({ task }: { task: Task }) {
     <div className="field links-field">
       <div className="k">
         <Icon name="link" />
-        Links
+        {tr('Links')}
         <button
           className="linkbtn"
           style={{ marginLeft: 'auto' }}
           onClick={() => setAdding(!adding)}
         >
-          {adding ? 'Cancel' : 'Add a link'}
+          {adding ? tr('Cancel') : tr('Add a link')}
         </button>
       </div>
       <div className="v">
@@ -692,18 +700,18 @@ function Links({ task }: { task: Task }) {
               value={target}
               onChange={(e) => setTarget(e.target.value)}
               placeholder="https://… or \\server\share\spec.xlsx"
-              aria-label="Web address or file path"
+              aria-label={tr('Web address or file path')}
               autoFocus
             />
             <input
               className="inp"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Name (optional), such as Spec v2"
-              aria-label="Link name"
+              placeholder={tr('Name (optional), such as Spec v2')}
+              aria-label={tr('Link name')}
             />
             <button className="btn sm primary" type="submit">
-              Add
+              {tr('Add')}
             </button>
           </form>
         )}
@@ -740,7 +748,11 @@ function HistoryList({
   return (
     <>
       {(full || entries.length > 3) && (
-        <div className="hist-filter" role="group" aria-label="Show in history">
+        <div
+          className="hist-filter"
+          role="group"
+          aria-label={tr('Show in history')}
+        >
           <button
             className="fb-opt"
             aria-pressed={show === null}
@@ -749,7 +761,7 @@ function HistoryList({
               setShow(null);
             }}
           >
-            All {entries.length}
+            {tr('All')} {entries.length}
           </button>
           {HISTORY_GROUPS.map((g) => {
             const n = entries.filter((h) => groupOf(h.kind) === g.name).length;
@@ -764,7 +776,7 @@ function HistoryList({
                     setShow(show === g.name ? null : g.name);
                   }}
                 >
-                  {g.name} {n}
+                  {tr(g.name)} {n}
                 </button>
               )
             );
@@ -783,7 +795,7 @@ function HistoryList({
                 {fileDate(h.at.slice(0, 10))}{' '}
                 {new Date(h.at).toTimeString().slice(0, 5)}
               </span>
-              <span className="kind">{h.kind}</span>
+              <span className="kind">{tr(h.kind)}</span>
               <div className="hist-text">{h.text}</div>
             </li>
           ))}
@@ -814,7 +826,7 @@ function History({ task }: { task: Task }) {
   return (
     <section className="sec">
       <h3>
-        History
+        {tr('History')}
         <button
           className="linkbtn"
           style={{
@@ -824,19 +836,21 @@ function History({ task }: { task: Task }) {
           }}
           onClick={() => setAdding(!adding)}
         >
-          Add an entry
+          {tr('Add an entry')}
         </button>
       </h3>
       {adding && (
         <form className="update" onSubmit={add} style={{ marginBottom: 12 }}>
           <label>
-            What happened
+            {tr('What happened')}
             <textarea
               className="inp"
               rows={2}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="For example, a decision made in a meeting with the customer"
+              placeholder={tr(
+                'For example, a decision made in a meeting with the customer',
+              )}
               autoFocus
             />
           </label>
@@ -846,10 +860,10 @@ function History({ task }: { task: Task }) {
               className="btn sm"
               onClick={() => setAdding(false)}
             >
-              Cancel
+              {tr('Cancel')}
             </button>
             <button className="btn sm primary" type="submit">
-              Add
+              {tr('Add')}
             </button>
           </div>
         </form>
@@ -859,8 +873,8 @@ function History({ task }: { task: Task }) {
           className="hist-open"
           role="button"
           tabIndex={0}
-          title="Open the whole history in a larger window"
-          aria-label="Open the whole history"
+          title={tr('Open the whole history in a larger window')}
+          aria-label={tr('Open the whole history')}
           onClick={() => setWide(true)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -871,13 +885,13 @@ function History({ task }: { task: Task }) {
         >
           <HistoryList entries={entries} show={show} setShow={setShow} />
           <span className="hist-more">
-            <Icon name="clock" /> Open the whole history
+            <Icon name="clock" /> {tr('Open the whole history')}
           </span>
         </div>
       )}
       {wide && (
         <Modal
-          title="History"
+          title={tr('History')}
           subtitle={`${label(task)} · ${task.titleTranslation || task.titleOriginal}`}
           onClose={() => setWide(false)}
         >
@@ -941,10 +955,15 @@ export function TaskPopup({
   const asOfDays = s.asOf ? daysBetween(s.asOf, today) : null;
   const fresh =
     asOfDays === null
-      ? 'never confirmed'
+      ? tr('never confirmed')
       : asOfDays === 0
-        ? 'confirmed today'
-        : `confirmed ${asOfDays} day${asOfDays > 1 ? 's' : ''} ago`;
+        ? tr('confirmed today')
+        : tr(
+            asOfDays > 1 ? 'confirmed {n} days ago' : 'confirmed {n} day ago',
+            {
+              n: asOfDays,
+            },
+          );
   const level = shownPriority(task);
   const flagChips = [
     f.nextStepOverdue && 'Next step overdue',
@@ -978,15 +997,15 @@ export function TaskPopup({
           : `Brief copied in ${LANGUAGES[task.language]}.`,
       );
     } catch {
-      toast('Copying was blocked. Try again with the window in front.');
+      toast(tr('Copying was blocked. Try again with the window in front.'));
     }
   };
   const copyBrief = async () => {
     try {
       await navigator.clipboard.writeText(brief(task).text);
-      toast('Brief copied. Paste it into chat or email.');
+      toast(tr('Brief copied. Paste it into chat or email.'));
     } catch {
-      toast('Copying was blocked. Try again with the window in front.');
+      toast(tr('Copying was blocked. Try again with the window in front.'));
     }
   };
   const pin = async () => {
@@ -1032,13 +1051,13 @@ export function TaskPopup({
               <button
                 className={`pri-btn ${level} ${task.priorityOverride ? 'ovr' : ''}`}
                 aria-haspopup="dialog"
-                title="Change priority"
+                title={tr('Change priority')}
                 onClick={(e) => openMenu(task, e.currentTarget)}
               >
                 {task.priorityOverride && <Icon name="user" />}
-                {LEVEL_NAME[level]}
+                {tr(LEVEL_NAME[level])}
                 {task.priorityOverride && (
-                  <span className="sr">, your override</span>
+                  <span className="sr">{tr(', your override')}</span>
                 )}
                 <Icon name="chev" />
               </button>
@@ -1046,8 +1065,8 @@ export function TaskPopup({
               <span className="sp" />
               <button
                 className="icon-btn"
-                title="Edit task"
-                aria-label="Edit task"
+                title={tr('Edit task')}
+                aria-label={tr('Edit task')}
                 onClick={() => onEdit(task)}
               >
                 <Icon name="edit" />
@@ -1057,8 +1076,8 @@ export function TaskPopup({
                 aria-pressed={task.pinned}
                 title={
                   task.pinned
-                    ? 'Unpin from the focus list'
-                    : 'Pin to the focus list'
+                    ? tr('Unpin from the focus list')
+                    : tr('Pin to the focus list')
                 }
                 onClick={() => void pin()}
               >
@@ -1066,13 +1085,17 @@ export function TaskPopup({
               </button>
               <button
                 className="icon-btn"
-                title="Delete task"
-                aria-label="Delete task"
+                title={tr('Delete task')}
+                aria-label={tr('Delete task')}
                 onClick={() => onDelete(task)}
               >
                 <Icon name="trash" />
               </button>
-              <button className="icon-btn" aria-label="Close" onClick={onClose}>
+              <button
+                className="icon-btn"
+                aria-label={tr('Close')}
+                onClick={onClose}
+              >
                 <Icon name="x" />
               </button>
             </div>
@@ -1095,7 +1118,7 @@ export function TaskPopup({
               <span className="sp" />
               <button className="btn" onClick={() => void copyBrief()}>
                 <Icon name="copy" />
-                Copy brief
+                {tr('Copy brief')}
               </button>
               {canCopyInFile && (
                 <button
@@ -1114,7 +1137,7 @@ export function TaskPopup({
                 onClick={() => setUpdating('update')}
               >
                 <Icon name="edit" />
-                Update situation
+                {tr('Update situation')}
               </button>
             </div>
           </header>
@@ -1125,13 +1148,13 @@ export function TaskPopup({
                   task={task}
                   wide
                   name="Summary"
-                  k={<h3>Summary</h3>}
+                  k={<h3>{tr('Summary')}</h3>}
                   start={() => ({ summary: task.summary })}
                   editor={(d, set) => (
                     <textarea
                       className="inp"
                       rows={3}
-                      aria-label="Summary"
+                      aria-label={tr('Summary')}
                       value={d.summary}
                       onChange={set('summary')}
                       autoFocus
@@ -1144,7 +1167,9 @@ export function TaskPopup({
                     ) : (
                       <div className="summary missing">
                         <span>
-                          No summary yet, so this task’s brief is incomplete.
+                          {tr(
+                            'No summary yet, so this task’s brief is incomplete.',
+                          )}
                         </span>
                       </div>
                     )
@@ -1153,14 +1178,16 @@ export function TaskPopup({
               </section>
               <section className="sec">
                 <h3>
-                  Situation <span className="fresh">· {fresh}</span>
+                  {tr('Situation')} <span className="fresh">· {fresh}</span>
                   {s.asOf && !updating && (
                     <button
                       className="linkbtn"
-                      title="Change what you last recorded, without making a new update"
+                      title={tr(
+                        'Change what you last recorded, without making a new update',
+                      )}
                       onClick={() => setUpdating('fix')}
                     >
-                      Fix a mistake
+                      {tr('Fix a mistake')}
                     </button>
                   )}
                 </h3>
@@ -1181,19 +1208,19 @@ export function TaskPopup({
                     <dl className="kv">
                       {s.handledBy && (
                         <>
-                          <dt>Handled by</dt>
+                          <dt>{tr('Handled by')}</dt>
                           <dd>{s.handledBy}</dd>
                         </>
                       )}
                       {s.doingNow && (
                         <>
-                          <dt>Doing now</dt>
+                          <dt>{tr('Doing now')}</dt>
                           <dd>{s.doingNow}</dd>
                         </>
                       )}
                       {task.difficulties.length > 0 && (
                         <>
-                          <dt>Difficulties</dt>
+                          <dt>{tr('Difficulties')}</dt>
                           <dd>
                             <ul className="diffs">
                               {task.difficulties.map((d) => (
@@ -1205,7 +1232,7 @@ export function TaskPopup({
                       )}
                       {s.nextStep && (
                         <>
-                          <dt>Next step</dt>
+                          <dt>{tr('Next step')}</dt>
                           <dd>
                             <b>{s.nextStep}</b>
                             {s.nextDate && (
@@ -1219,15 +1246,16 @@ export function TaskPopup({
                       )}
                       {s.asOf && (
                         <>
-                          <dt>As of</dt>
+                          <dt>{tr('As of')}</dt>
                           <dd className="mono">{fileDate(s.asOf)}</dd>
                         </>
                       )}
                     </dl>
                   ) : (
                     <div className="muted">
-                      No situation recorded yet. Use Update situation to add
-                      one.
+                      {tr(
+                        'No situation recorded yet. Use Update situation to add one.',
+                      )}
                     </div>
                   )}
                 </div>
@@ -1236,7 +1264,7 @@ export function TaskPopup({
             </div>
             <aside className="tm-side">
               <section className="sec sec-fields">
-                <h3>Task fields</h3>
+                <h3>{tr('Task fields')}</h3>
                 <div className="fields">
                   <EditField
                     task={task}
@@ -1248,7 +1276,7 @@ export function TaskPopup({
                       <>
                         <input
                           className="inp"
-                          aria-label="Assignee"
+                          aria-label={tr('Assignee')}
                           list="tmPeople"
                           value={d.assignee}
                           onChange={set('assignee')}
@@ -1266,7 +1294,7 @@ export function TaskPopup({
                       task.assignee ? (
                         assigneeText(people, task, 'both')
                       ) : (
-                        <span className="muted">Not set</span>
+                        <span className="muted">{tr('Not set')}</span>
                       )
                     }
                   />
@@ -1278,18 +1306,20 @@ export function TaskPopup({
                     editor={(d, set) => (
                       <select
                         className="inp"
-                        aria-label="Status"
+                        aria-label={tr('Status')}
                         value={d.status}
                         onChange={set('status')}
                         autoFocus
                       >
                         {STATUSES.map((x) => (
-                          <option key={x}>{x}</option>
+                          <option key={x} value={x}>
+                            {tr(x)}
+                          </option>
                         ))}
                       </select>
                     )}
                     patch={(d) => ({ status: d.status as Status })}
-                    v={task.status}
+                    v={tr(task.status)}
                   />
                   <EditField
                     task={task}
@@ -1303,7 +1333,7 @@ export function TaskPopup({
                     editor={(d, set) => (
                       <div className="two">
                         <label>
-                          Start
+                          {tr('Start')}
                           <input
                             className="inp"
                             type="date"
@@ -1312,7 +1342,7 @@ export function TaskPopup({
                           />
                         </label>
                         <label>
-                          End
+                          {tr('End')}
                           <input
                             className="inp"
                             type="date"
@@ -1333,7 +1363,7 @@ export function TaskPopup({
                           {fileDate(task.plannedEnd) || '…'}
                         </span>
                       ) : (
-                        <span className="muted">No dates</span>
+                        <span className="muted">{tr('No dates')}</span>
                       )
                     }
                   />
@@ -1349,7 +1379,7 @@ export function TaskPopup({
                     editor={(d, set) => (
                       <div className="two">
                         <label>
-                          Start
+                          {tr('Start')}
                           <input
                             className="inp"
                             type="date"
@@ -1358,7 +1388,7 @@ export function TaskPopup({
                           />
                         </label>
                         <label>
-                          End
+                          {tr('End')}
                           <input
                             className="inp"
                             type="date"
@@ -1380,14 +1410,14 @@ export function TaskPopup({
                           {task.actualEnd
                             ? fileDate(task.actualEnd)
                             : isClosed(task)
-                              ? 'no end date'
-                              : 'ongoing'}
+                              ? tr('no end date')
+                              : tr('ongoing')}
                         </span>
                       ) : (
                         <span className="muted">
                           {task.status === 'Not started'
-                            ? 'Not started'
-                            : 'No dates recorded'}
+                            ? tr('Not started')
+                            : tr('No dates recorded')}
                         </span>
                       )
                     }
@@ -1397,12 +1427,12 @@ export function TaskPopup({
                     pend={pend('priority')}
                     v={
                       <>
-                        {LEVEL_NAME[task.priority]}{' '}
+                        {tr(LEVEL_NAME[task.priority])}{' '}
                         <button
                           className="linkbtn"
                           onClick={(e) => openMenu(task, e.currentTarget)}
                         >
-                          Change
+                          {tr('Change')}
                         </button>
                       </>
                     }
@@ -1416,14 +1446,18 @@ export function TaskPopup({
                     editor={(d, set) => (
                       <input
                         className="inp"
-                        aria-label="Category"
+                        aria-label={tr('Category')}
                         value={d.category}
                         onChange={set('category')}
                         autoFocus
                       />
                     )}
                     patch={(d) => ({ category: d.category })}
-                    v={task.category || <span className="muted">Not set</span>}
+                    v={
+                      task.category || (
+                        <span className="muted">{tr('Not set')}</span>
+                      )
+                    }
                   />
                   <EditField
                     task={task}
@@ -1435,7 +1469,7 @@ export function TaskPopup({
                       <textarea
                         className="inp"
                         rows={3}
-                        aria-label="Remarks"
+                        aria-label={tr('Remarks')}
                         lang={task.language}
                         value={d.remarks}
                         onChange={set('remarks')}
@@ -1447,7 +1481,7 @@ export function TaskPopup({
                       task.remarks ? (
                         <span lang={task.language}>{task.remarks}</span>
                       ) : (
-                        <span className="muted">Empty</span>
+                        <span className="muted">{tr('Empty')}</span>
                       )
                     }
                   />
@@ -1463,14 +1497,14 @@ export function TaskPopup({
                 />
               </section>
               <section className="sec">
-                <h3>Only for you</h3>
+                <h3>{tr('Only for you')}</h3>
                 <div className="fields">
                   <EditField
                     task={task}
                     k={
                       <>
                         <Icon name="check" />
-                        Next action
+                        {tr('Next action')}
                       </>
                     }
                     name="Next action"
@@ -1483,7 +1517,7 @@ export function TaskPopup({
                       <>
                         <input
                           className="inp"
-                          aria-label="Next action"
+                          aria-label={tr('Next action')}
                           value={d.nextAction}
                           onChange={set('nextAction')}
                           autoFocus
@@ -1491,7 +1525,7 @@ export function TaskPopup({
                         <input
                           className="inp"
                           type="date"
-                          aria-label="Next action date"
+                          aria-label={tr('Next action date')}
                           value={d.nextActionDate}
                           onChange={set('nextActionDate')}
                         />
@@ -1513,7 +1547,7 @@ export function TaskPopup({
                           )}
                         </>
                       ) : (
-                        <span className="muted">None</span>
+                        <span className="muted">{tr('None')}</span>
                       )
                     }
                   />
@@ -1526,7 +1560,7 @@ export function TaskPopup({
                       <textarea
                         className="inp"
                         rows={4}
-                        aria-label="Notes"
+                        aria-label={tr('Notes')}
                         value={d.notes}
                         onChange={set('notes')}
                         autoFocus
@@ -1539,7 +1573,7 @@ export function TaskPopup({
                           {task.notes}
                         </span>
                       ) : (
-                        <span className="muted">None</span>
+                        <span className="muted">{tr('None')}</span>
                       )
                     }
                   />
@@ -1573,7 +1607,7 @@ const Field = ({
   pend?: string;
 }) => (
   <div className={`field ${pend ? 'pending' : ''}`}>
-    <div className="k">{k}</div>
+    <div className="k">{typeof k === 'string' ? tr(k) : k}</div>
     <div className="v">{v}</div>
     {pend && (
       <div className="pend">
@@ -1589,10 +1623,10 @@ function SourceSection({ task }: { task: Task }) {
   if (task.source !== 'file') {
     return (
       <section className="sec">
-        <h3>Source</h3>
+        <h3>{tr('Source')}</h3>
         <div className="field">
           <div className="v">
-            Added by hand in WorkSync · {LANGUAGES[task.language]}
+            {tr('Added by hand in WorkSync ·')} {LANGUAGES[task.language]}
           </div>
         </div>
       </section>
@@ -1602,7 +1636,7 @@ function SourceSection({ task }: { task: Task }) {
   const extra = Object.entries(task.extra);
   return (
     <section className="sec">
-      <h3>From the file</h3>
+      <h3>{tr('From the file')}</h3>
       <div className="fields">
         {extra.map(([k, v]) => (
           <Field
@@ -1616,12 +1650,14 @@ function SourceSection({ task }: { task: Task }) {
             <Icon name="file" />{' '}
             {src
               ? (src.currentFile.split(/[\\/]/).pop() ?? src.currentFile)
-              : 'Unlinked file'}
+              : tr('Unlinked file')}
             <br />
             <span className="muted">
               {src ? `sheet ${src.format.sheet} · ` : ''}row{' '}
               {task.sheetRow ?? '–'}
-              {task.fileState === 'removed' ? ' · no longer in the file' : ''}
+              {task.fileState === 'removed'
+                ? tr(' · no longer in the file')
+                : ''}
             </span>
           </div>
           {src && (
@@ -1632,7 +1668,7 @@ function SourceSection({ task }: { task: Task }) {
                 void attempt(() => window.worksync.openSourceFile(src.id))
               }
             >
-              Open in Excel
+              {tr('Open in Excel')}
             </button>
           )}
         </div>

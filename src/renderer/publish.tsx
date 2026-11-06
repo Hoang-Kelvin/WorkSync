@@ -4,6 +4,7 @@ import { useApp } from './appState';
 import { Icon } from './Icon';
 import { Modal } from './parts';
 import type { ViewProps } from './views';
+import { tr } from './i18n';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString('en-GB', {
@@ -38,24 +39,24 @@ function StatusLines({ status }: { status: PublishStatus }) {
       <div className="field">
         <div className="k">
           <Icon name="folder" />
-          Publish folder
+          {tr('Publish folder')}
         </div>
-        <div className="v path">{status.folder ?? 'Not chosen yet'}</div>
+        <div className="v path">{status.folder ?? tr('Not chosen yet')}</div>
       </div>
       <div className="field">
         <div className="k">
           <Icon name="upload" />
-          Last published
+          {tr('Last published')}
         </div>
         <div className="v">
-          {status.lastAt ? when(status.lastAt) : 'Never'}
+          {status.lastAt ? when(status.lastAt) : tr('Never')}
           {status.lastAt && (
             <span className="muted">
               {' '}
               ·{' '}
               {status.unpublished
                 ? `${status.unpublished} task${status.unpublished === 1 ? '' : 's'} changed since`
-                : 'nothing changed since'}
+                : tr('nothing changed since')}
             </span>
           )}
         </div>
@@ -64,10 +65,11 @@ function StatusLines({ status }: { status: PublishStatus }) {
         <div className="keepnote warn">
           <Icon name="alert" />
           <span>
-            Someone changed or deleted the published{' '}
-            {status.tampered.join(' and ')} after the last publish. Viewers may
-            be seeing the changed copy. Publishing again replaces it. Your own
-            data is not affected.
+            {tr('Someone changed or deleted the published')}{' '}
+            {status.tampered.join(' and ')}{' '}
+            {tr(
+              'after the last publish. Viewers may be seeing the changed copy. Publishing again replaces it. Your own data is not affected.',
+            )}
           </span>
         </div>
       )}
@@ -113,15 +115,19 @@ export function PublishDialog({
     setBusy(false);
     if (!s) return;
     await reload();
-    toast('Published to the shared folder: the page and the Excel export.', {
-      label: 'Open the page',
-      run: () => void attempt(() => window.worksync.openPublished(project.id)),
-    });
+    toast(
+      tr('Published to the shared folder: the page and the Excel export.'),
+      {
+        label: 'Open the page',
+        run: () =>
+          void attempt(() => window.worksync.openPublished(project.id)),
+      },
+    );
     onClose();
   };
   return (
     <Modal
-      title="Publish"
+      title={tr('Publish')}
       subtitle={`${project.name} · a read-only copy your manager opens from the shared folder`}
       onClose={onClose}
       narrow
@@ -134,7 +140,7 @@ export function PublishDialog({
             }
           >
             <Icon name="globe" />
-            Preview
+            {tr('Preview')}
           </button>
           <button
             className="btn primary"
@@ -142,7 +148,7 @@ export function PublishDialog({
             onClick={() => void publish()}
           >
             <Icon name="upload" />
-            Publish
+            {tr('Publish')}
           </button>
         </>
       }
@@ -158,7 +164,7 @@ export function PublishDialog({
       >
         <button className="btn sm" onClick={() => void choose()}>
           <Icon name="folder" />
-          {status?.folder ? 'Change the folder' : 'Choose the folder'}
+          {status?.folder ? tr('Change the folder') : tr('Choose the folder')}
         </button>
         <label className="check pub-notes">
           <input
@@ -166,7 +172,7 @@ export function PublishDialog({
             checked={project.publishNotes}
             onChange={(e) => void notes(e.target.checked)}
           />{' '}
-          Include my notes
+          {tr('Include my notes')}
         </label>
         <label className="check pub-notes">
           <input
@@ -179,15 +185,13 @@ export function PublishDialog({
               if (p) putProject(p);
             }}
           />{' '}
-          Publish when WorkSync closes
+          {tr('Publish when WorkSync closes')}
         </label>
       </div>
       <p className="muted" style={{ margin: 0, fontSize: 12.5 }}>
-        WorkSync writes index.html, tasks.xlsx and a fingerprint file to the
-        folder. Your next actions are never included, and notes only if you tick
-        the box. Anyone who can open the shared folder can read these files, so
-        publish only what the customer’s confidentiality rules allow inside the
-        company.
+        {tr(
+          'WorkSync writes index.html, tasks.xlsx and a fingerprint file to the folder. Your next actions are never included, and notes only if you tick the box. Anyone who can open the shared folder can read these files, so publish only what the customer’s confidentiality rules allow inside the company.',
+        )}
       </p>
     </Modal>
   );
@@ -209,8 +213,11 @@ export function PublishedView({
   return (
     <>
       {props.header(
-        'Published page',
-        `${p.name} · what your manager sees in the shared folder, read-only and opening in any browser`,
+        tr('Published page'),
+        tr(
+          '{name} · what your manager sees in the shared folder, read-only and opening in any browser',
+          { name: p.name },
+        ),
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             className="btn"
@@ -219,11 +226,11 @@ export function PublishedView({
             }
           >
             <Icon name="globe" />
-            <span className="lbl">Preview</span>
+            <span className="lbl">{tr('Preview')}</span>
           </button>
           <button className="btn primary" onClick={onPublish}>
             <Icon name="upload" />
-            <span className="lbl">Publish</span>
+            <span className="lbl">{tr('Publish')}</span>
           </button>
         </div>,
       )}
@@ -231,7 +238,7 @@ export function PublishedView({
         {status ? (
           <StatusLines status={status} />
         ) : (
-          <p className="muted">Reading…</p>
+          <p className="muted">{tr('Reading…')}</p>
         )}
         {status?.lastAt && (
           <button
@@ -241,16 +248,16 @@ export function PublishedView({
               void attempt(() => window.worksync.openPublished(projectId))
             }
           >
-            Open the published page
+            {tr('Open the published page')}
           </button>
         )}
       </div>
       <div className="legend">
         <span>
           <Icon name="shield" />
-          The page shows each task’s brief, with search by number, label or
-          title, and the dashboard. It leaves out your next actions and, unless
-          you choose, your notes.
+          {tr(
+            'The page shows each task’s brief, with search by number, label or title, and the dashboard. It leaves out your next actions and, unless you choose, your notes.',
+          )}
         </span>
       </div>
     </>

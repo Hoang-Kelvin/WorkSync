@@ -10,6 +10,7 @@ import {
 import type { GlossaryTerm, Person, Project, Task } from '../shared/model';
 import type { SourceFile } from '../shared/sources';
 import type { AppSettings } from '../shared/settings';
+import { setUiLanguage } from './i18n';
 import { useEffect } from 'react';
 
 export interface ToastMessage {
@@ -96,6 +97,9 @@ export function AppProvider({
       m.action ? 6000 : 4200,
     );
   }, []);
+
+  // The app language applies before anything renders with it.
+  setUiLanguage(settings.uiLanguage);
 
   const value = useMemo<AppState>(
     () => ({

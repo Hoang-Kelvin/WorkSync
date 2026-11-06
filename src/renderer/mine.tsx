@@ -14,6 +14,7 @@ import {
 } from '../shared/myTasks';
 import { useApp } from './appState';
 import { Icon } from './Icon';
+import { tr } from './i18n';
 
 /** The fixed area above a page, where its title goes. */
 export type HeaderSlot = HTMLElement | null;
@@ -31,12 +32,17 @@ function useNow(): Date {
 }
 
 const dueText = (d: string | null, today: string) => {
-  if (!d) return { text: 'No date', tone: '' };
+  if (!d) return { text: tr('No date'), tone: '' };
   const n = daysBetween(today, d);
   if (n < 0)
-    return { text: `Overdue by ${-n} day${n === -1 ? '' : 's'}`, tone: 'over' };
-  if (n === 0) return { text: 'Today', tone: 'today' };
-  if (n === 1) return { text: 'Tomorrow', tone: '' };
+    return {
+      text: tr(n === -1 ? 'Overdue by {n} day' : 'Overdue by {n} days', {
+        n: -n,
+      }),
+      tone: 'over',
+    };
+  if (n === 0) return { text: tr('Today'), tone: 'today' };
+  if (n === 1) return { text: tr('Tomorrow'), tone: '' };
   return { text: shortDate(d), tone: '' };
 };
 
@@ -129,13 +135,18 @@ export function MyTasksView({
     if (!gone) return;
     setTasks((list) => list.filter((x) => x.id !== t.id));
     if (sel === t.id) setSel(null);
-    toast(`${word} “${t.title}”.`, {
-      label: 'Undo',
-      run: () =>
-        void attempt(() => window.worksync.restoreMyTask(gone)).then(
-          (back) => back && put(back),
-        ),
-    });
+    toast(
+      tr(word === 'Completed' ? 'Completed “{title}”.' : 'Deleted “{title}”.', {
+        title: t.title,
+      }),
+      {
+        label: tr('Undo'),
+        run: () =>
+          void attempt(() => window.worksync.restoreMyTask(gone)).then(
+            (back) => back && put(back),
+          ),
+      },
+    );
   };
 
   const toggleBell = async (t: MyTask) => {
@@ -159,14 +170,16 @@ export function MyTasksView({
         createPortal(
           <div className="vh">
             <div>
-              <h1>My tasks</h1>
+              <h1>{tr('My tasks')}</h1>
               <div className="sub">
-                Your own to-dos, not tied to a project.{' '}
+                {tr('Your own to-dos, not tied to a project.')}{' '}
                 {settings.reminders
                   ? settings.keepInTray
-                    ? 'Reminders appear while WorkSync runs, also from the tray.'
-                    : 'Reminders appear while WorkSync is open.'
-                  : 'Reminders are off in Settings.'}
+                    ? tr(
+                        'Reminders appear while WorkSync runs, also from the tray.',
+                      )
+                    : tr('Reminders appear while WorkSync is open.')
+                  : tr('Reminders are off in Settings.')}
               </div>
             </div>
           </div>,
@@ -176,36 +189,36 @@ export function MyTasksView({
         <input
           ref={addRef}
           className="inp grow"
-          aria-label="New task"
-          placeholder="Add a task, then press Enter"
+          aria-label={tr('New task')}
+          placeholder={tr('Add a task, then press Enter')}
           value={draft.title}
           onChange={(e) => setDraft({ ...draft, title: e.target.value })}
         />
         <input
           className="inp"
           type="date"
-          aria-label="Due date"
+          aria-label={tr('Due date')}
           value={draft.dueDate}
           onChange={(e) => setDraft({ ...draft, dueDate: e.target.value })}
         />
         <select
           className="inp"
-          aria-label="Priority"
+          aria-label={tr('Priority')}
           value={draft.priority}
           onChange={(e) =>
             setDraft({ ...draft, priority: e.target.value as MyPriority })
           }
         >
-          <option value="U">Urgent</option>
-          <option value="N">Normal</option>
-          <option value="L">Low</option>
+          <option value="U">{tr('Urgent')}</option>
+          <option value="N">{tr('Normal')}</option>
+          <option value="L">{tr('Low')}</option>
         </select>
         <button className="btn primary" type="submit">
           <Icon name="plus" />
-          Add task
+          {tr('Add task')}
         </button>
       </form>
-      <div className="mt-chips" role="group" aria-label="Show">
+      <div className="mt-chips" role="group" aria-label={tr('Show')}>
         {chips.map(([k, l]) => (
           <button
             key={k}
@@ -213,21 +226,23 @@ export function MyTasksView({
             aria-pressed={filter === k}
             onClick={() => setFilter(k)}
           >
-            {l} <b>{counts[k]}</b>
+            {tr(l)} <b>{counts[k]}</b>
           </button>
         ))}
         <span className="grow" />
-        <span className="muted mt-sort">Sorted by due date, then priority</span>
+        <span className="muted mt-sort">
+          {tr('Sorted by due date, then priority')}
+        </span>
       </div>
       <div className="mt-body">
-        <div className="mt-list" role="list" aria-label="My tasks">
+        <div className="mt-list" role="list" aria-label={tr('My tasks')}>
           <div className="mt-row mt-headrow" aria-hidden="true">
             <span />
-            <span>Task</span>
-            <span>Status</span>
-            <span>Priority</span>
-            <span>Due</span>
-            <span>Reminder</span>
+            <span>{tr('Task')}</span>
+            <span>{tr('Status')}</span>
+            <span>{tr('Priority')}</span>
+            <span>{tr('Due')}</span>
+            <span>{tr('Reminder')}</span>
             <span />
           </div>
           {shown.map((t) => {
@@ -242,7 +257,7 @@ export function MyTasksView({
                 <button
                   className="mt-done"
                   aria-label={`Complete ${t.title}`}
-                  title="Complete (removes the task)"
+                  title={tr('Complete (removes the task)')}
                   onClick={(e) => {
                     e.stopPropagation();
                     void complete(t, 'Completed');
@@ -260,24 +275,26 @@ export function MyTasksView({
                 </button>
                 <span>
                   <span className={`mt-status ${t.status}`}>
-                    {MY_STATUS_NAME[t.status]}
+                    {tr(MY_STATUS_NAME[t.status])}
                   </span>
                 </span>
                 <span>
                   <span className={`mt-pri ${t.priority}`}>
-                    {MY_PRIORITY_NAME[t.priority]}
+                    {tr(MY_PRIORITY_NAME[t.priority])}
                   </span>
                 </span>
                 <span className={`mt-due ${due.tone}`}>{due.text}</span>
                 <span className="mono mt-next">
-                  {settings.reminders ? nextReminder(t, now) : '—'}
+                  {settings.reminders ? tr(nextReminder(t, now)) : '—'}
                 </span>
                 <span className="mt-acts">
                   <button
                     className={`icon-btn ${t.reminders ? 'on' : ''}`}
                     aria-pressed={t.reminders}
                     aria-label={`Reminders for ${t.title}`}
-                    title={t.reminders ? 'Reminders on' : 'Reminders off'}
+                    title={
+                      t.reminders ? tr('Reminders on') : tr('Reminders off')
+                    }
                     onClick={(e) => {
                       e.stopPropagation();
                       void toggleBell(t);
@@ -288,7 +305,7 @@ export function MyTasksView({
                   <button
                     className="icon-btn"
                     aria-label={`Delete ${t.title}`}
-                    title="Delete"
+                    title={tr('Delete')}
                     onClick={(e) => {
                       e.stopPropagation();
                       void complete(t, 'Deleted');
@@ -303,12 +320,12 @@ export function MyTasksView({
           {!shown.length && (
             <div className="empty mt-empty">
               {tasks.length
-                ? 'No task matches. Try another filter.'
-                : 'Nothing to do. Add a task above.'}
+                ? tr('No task matches. Try another filter.')
+                : tr('Nothing to do. Add a task above.')}
             </div>
           )}
         </div>
-        <aside className="mt-side" aria-label="Edit task">
+        <aside className="mt-side" aria-label={tr('Edit task')}>
           {selected ? (
             <MyTaskEditor
               key={selected.id}
@@ -318,7 +335,7 @@ export function MyTasksView({
             />
           ) : (
             <div className="mt-help">
-              <b>Select a task to edit it.</b>
+              <b>{tr('Select a task to edit it.')}</b>
               <ReminderRules />
             </div>
           )}
@@ -351,7 +368,7 @@ function MyTaskEditor({
     const u = await attempt(() => window.worksync.saveMyTask(v, task.id));
     if (u) {
       onSaved(u);
-      toast('Saved.');
+      toast(tr('Saved.'));
     }
   };
   return (
@@ -366,18 +383,18 @@ function MyTaskEditor({
       }}
     >
       <div className="mt-edit-head">
-        <span className="k">Edit task</span>
+        <span className="k">{tr('Edit task')}</span>
         <button
           type="button"
           className="icon-btn"
-          aria-label="Close"
+          aria-label={tr('Close')}
           onClick={onClose}
         >
           <Icon name="x" />
         </button>
       </div>
       <label>
-        Title
+        {tr('Title')}
         <input
           className="inp"
           value={v.title}
@@ -385,7 +402,7 @@ function MyTaskEditor({
         />
       </label>
       <label>
-        Description
+        {tr('Description')}
         <textarea
           className="inp"
           rows={4}
@@ -395,18 +412,18 @@ function MyTaskEditor({
       </label>
       <div className="two">
         <label>
-          Status
+          {tr('Status')}
           <select
             className="inp"
             value={v.status}
             onChange={(e) => setV({ ...v, status: e.target.value as MyStatus })}
           >
-            <option value="todo">Todo</option>
-            <option value="ongoing">On-going</option>
+            <option value="todo">{tr('Todo')}</option>
+            <option value="ongoing">{tr('On-going')}</option>
           </select>
         </label>
         <label>
-          Priority
+          {tr('Priority')}
           <select
             className="inp"
             value={v.priority}
@@ -414,14 +431,14 @@ function MyTaskEditor({
               setV({ ...v, priority: e.target.value as MyPriority })
             }
           >
-            <option value="U">Urgent</option>
-            <option value="N">Normal</option>
-            <option value="L">Low</option>
+            <option value="U">{tr('Urgent')}</option>
+            <option value="N">{tr('Normal')}</option>
+            <option value="L">{tr('Low')}</option>
           </select>
         </label>
       </div>
       <label>
-        Due date
+        {tr('Due date')}
         <input
           className="inp"
           type="date"
@@ -435,31 +452,31 @@ function MyTaskEditor({
           className="switch"
           role="switch"
           aria-checked={v.reminders}
-          aria-label="Remind me"
+          aria-label={tr('Remind me')}
           onClick={() => setV({ ...v, reminders: !v.reminders })}
         >
           <span />
         </button>
         <span>
-          <b>Remind me</b>
+          <b>{tr('Remind me')}</b>
           <small>
             {v.reminders
               ? reminderRule(v.status, v.priority)
-              : 'No reminders for this task.'}
+              : tr('No reminders for this task.')}
           </small>
         </span>
       </div>
       <div className="mt-edit-foot">
         <button type="button" className="btn" onClick={onClose}>
-          Cancel
+          {tr('Cancel')}
         </button>
         <button className="btn primary" type="submit">
           <Icon name="check" />
-          Save
+          {tr('Save')}
         </button>
       </div>
       <details className="mt-rules">
-        <summary>When reminders appear</summary>
+        <summary>{tr('When reminders appear')}</summary>
         <ReminderRules />
       </details>
     </form>
@@ -471,21 +488,22 @@ function ReminderRules() {
     <>
       <div className="mt-rule-grid">
         <span />
-        <b>Urgent</b>
-        <b>Normal</b>
-        <b>Low</b>
-        <b>Todo</b>
-        <span>Every 3 hours</span>
-        <span>Morning, afternoon</span>
-        <span>Morning</span>
-        <b>On-going</b>
-        <span>Morning, afternoon</span>
-        <span>Morning</span>
-        <span>None</span>
+        <b>{tr('Urgent')}</b>
+        <b>{tr('Normal')}</b>
+        <b>{tr('Low')}</b>
+        <b>{tr('Todo')}</b>
+        <span>{tr('Every 3 hours')}</span>
+        <span>{tr('Morning, afternoon')}</span>
+        <span>{tr('Morning')}</span>
+        <b>{tr('On-going')}</b>
+        <span>{tr('Morning, afternoon')}</span>
+        <span>{tr('Morning')}</span>
+        <span>{tr('None')}</span>
       </div>
       <p className="muted">
-        Morning is from 05:00 to 12:00, afternoon from 12:00 to 18:00. Each
-        reminder appears once, while WorkSync runs.
+        {tr(
+          'Morning is from 05:00 to 12:00, afternoon from 12:00 to 18:00. Each reminder appears once, while WorkSync runs.',
+        )}
       </p>
     </>
   );

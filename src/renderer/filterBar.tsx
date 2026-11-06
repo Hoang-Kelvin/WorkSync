@@ -15,6 +15,7 @@ import {
 } from '../shared/viewFilter';
 import { useApp } from './appState';
 import { Icon } from './Icon';
+import { tr } from './i18n';
 
 const toggle = <T,>(list: T[], v: T) =>
   list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
@@ -85,18 +86,18 @@ export function FilterButton({
     <div className="fb-wrap" ref={ref}>
       <button
         className="btn"
-        aria-label="Filter"
+        aria-label={tr('Filter')}
         aria-expanded={open}
         aria-pressed={n > 0}
         onClick={() => setOpen(!open)}
-        title="Filter every view by person, status, priority and label"
+        title={tr('Filter every view by person, status, priority and label')}
       >
         <Icon name="sliders" />
-        <span className="lbl">Filter</span>
+        <span className="lbl">{tr('Filter')}</span>
         {n > 0 && <span className="badge">{n}</span>}
       </button>
       {open && (
-        <div className="fb-pop" role="dialog" aria-label="Filter">
+        <div className="fb-pop" role="dialog" aria-label={tr('Filter')}>
           {group(
             'Assignee or handled by',
             choices.people.slice(0, 30),
@@ -121,14 +122,14 @@ export function FilterButton({
           )}
           <div className="fb-foot">
             <span className="muted">
-              Applies to every view, together with the search.
+              {tr('Applies to every view, together with the search.')}
             </span>
             <button
               className="btn sm"
               disabled={!n}
               onClick={() => setFilter(NO_FILTER)}
             >
-              Clear
+              {tr('Clear')}
             </button>
           </div>
         </div>
@@ -158,14 +159,14 @@ export function FilterNotice({
     <div className="notice" role="status">
       <Icon name="sliders" />
       <span className="notice-text">
-        <b>Filtered</b> · {parts.join(', ')}
+        <b>{tr('Filtered')}</b> · {parts.join(', ')}
       </span>
       <span className="notice-actions">
         <button className="btn sm" onClick={onEdit}>
-          Change
+          {tr('Change')}
         </button>
         <button className="btn sm" onClick={() => setFilter(NO_FILTER)}>
-          Clear
+          {tr('Clear')}
         </button>
       </span>
     </div>

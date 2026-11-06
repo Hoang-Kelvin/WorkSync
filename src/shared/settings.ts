@@ -1,5 +1,6 @@
 /** App-wide settings (spec 03, Projects and settings) and backups (spec 06). */
 import type { LanguageCode } from './model';
+import type { UiLanguageChoice } from './i18n';
 
 export interface AppSettings {
   /** The working language a new project starts with. */
@@ -21,6 +22,8 @@ export interface AppSettings {
   quickSearchKey: string | null;
   /** Search files on this PC with Everything (Windows). */
   everything: boolean;
+  /** The language of WorkSync's own screens; projects keep their own languages. */
+  uiLanguage: UiLanguageChoice;
 }
 
 export type ThemeChoice = 'system' | 'light' | 'dark';
@@ -34,6 +37,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   reminders: true,
   quickSearchKey: 'CommandOrControl+Shift+F',
   everything: true,
+  uiLanguage: 'system',
 };
 
 export type BackupKind =

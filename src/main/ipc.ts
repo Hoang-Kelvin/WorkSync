@@ -29,6 +29,7 @@ import { assigneeText, linkKind, toIsoDate } from '../shared/model';
 import { OPEN_EVENT, SOURCES_EVENT, type OpenTarget } from '../shared/ipc';
 import { reminderKey, reminderText } from '../shared/myTasks';
 import { noteLinks } from '../shared/notes';
+import { resolveUiLanguage, translate } from '../shared/i18n';
 import { isApp, pathKey, type EntryKind } from '../shared/catalog';
 import { everythingStatus, searchEverything } from './everything';
 import { hideQuickSearch, setQuickSearchKey } from './quickSearch';
@@ -1058,7 +1059,13 @@ export function remindMyTasks(now = new Date()): number {
   for (const t of mine.listMyTasks()) {
     const key = reminderKey(t, now);
     if (!key || key === t.lastReminderKey) continue;
-    const text = reminderText(t, toIsoDate(now));
+    const lang = resolveUiLanguage(
+      store.getSettings().uiLanguage,
+      app.getLocale(),
+    );
+    const text = reminderText(t, toIsoDate(now), (s, v) =>
+      translate(lang, s, v),
+    );
     const n = new Notification({ title: text.title, body: text.body });
     // Kept until it is closed, so its click still reaches the window.
     shownNotes.add(n);

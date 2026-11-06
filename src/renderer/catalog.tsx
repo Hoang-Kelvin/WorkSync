@@ -18,6 +18,7 @@ import { useApp } from './appState';
 import { Icon } from './Icon';
 import type { HeaderSlot } from './mine';
 import { Modal } from './parts';
+import { tr } from './i18n';
 
 const SORT_KEY = 'worksync.catalog.sort';
 const SOURCE_KEY = 'worksync.catalog.source';
@@ -39,14 +40,17 @@ const keep = (key: string, v: string) => {
 };
 
 const ago = (iso: string | null) => {
-  if (!iso) return 'Never opened';
+  if (!iso) return tr('Never opened');
   const d = new Date(iso);
   const mins = Math.round((Date.now() - d.getTime()) / 60000);
-  if (mins < 1) return 'Opened just now';
-  if (mins < 60) return `Opened ${mins} min ago`;
-  if (mins < 24 * 60) return `Opened ${Math.round(mins / 60)} h ago`;
+  if (mins < 1) return tr('Opened just now');
+  if (mins < 60) return tr('Opened {n} min ago', { n: mins });
+  if (mins < 24 * 60)
+    return tr('Opened {n} h ago', { n: Math.round(mins / 60) });
   const p = (n: number) => String(n).padStart(2, '0');
-  return `Opened ${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())}`;
+  return tr('Opened {date}', {
+    date: `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())}`,
+  });
 };
 
 /**
@@ -153,7 +157,7 @@ export function CatalogView({
   };
   const copy = async (p: string) => {
     if (await attempt(() => window.worksync.copyText(p).then(() => true)))
-      toast('Path copied.');
+      toast(tr('Path copied.'));
   };
   const remove = async (e: CatalogEntry) => {
     const gone = await attempt(() => window.worksync.removeCatalogEntry(e.id));
@@ -211,17 +215,17 @@ export function CatalogView({
         createPortal(
           <div className="vh">
             <div>
-              <h1>Catalog</h1>
+              <h1>{tr('Catalog')}</h1>
               <div className="sub">
-                Apps, files and folders you open often.
+                {tr('Apps, files and folders you open often.')}
                 {settings.quickSearchKey && (
                   <>
                     {' '}
-                    Press{' '}
+                    {tr('Press')}{' '}
                     <span className="cat-kbd">
                       {shortcutLabel(settings.quickSearchKey)}
                     </span>{' '}
-                    anywhere to search them.
+                    {tr('anywhere to search them.')}
                   </>
                 )}
               </div>
@@ -229,11 +233,11 @@ export function CatalogView({
             <div className="vh-actions">
               <button className="btn" onClick={() => void add('folder')}>
                 <Icon name="folder" />
-                Add a folder
+                {tr('Add a folder')}
               </button>
               <button className="btn primary" onClick={() => void add('file')}>
                 <Icon name="plus" />
-                Add an app or file
+                {tr('Add an app or file')}
               </button>
             </div>
           </div>,
@@ -241,7 +245,7 @@ export function CatalogView({
         )}
       <div className="cat-tools">
         {windows && settings.everything && (
-          <div className="seg-ctl" role="group" aria-label="Search in">
+          <div className="seg-ctl" role="group" aria-label={tr('Search in')}>
             {(
               [
                 ['both', 'Both'],
@@ -254,14 +258,14 @@ export function CatalogView({
                 aria-pressed={source === k}
                 onClick={() => setSource(k)}
               >
-                {l}
+                {tr(l)}
               </button>
             ))}
           </div>
         )}
         {showCatalog && (
           <>
-            <div className="mt-chips" role="group" aria-label="Show">
+            <div className="mt-chips" role="group" aria-label={tr('Show')}>
               {filters.map(([k, l]) => (
                 <button
                   key={k}
@@ -269,28 +273,28 @@ export function CatalogView({
                   aria-pressed={filter === k}
                   onClick={() => setFilter(k)}
                 >
-                  {l} <b>{counts[k]}</b>
+                  {tr(l)} <b>{counts[k]}</b>
                 </button>
               ))}
             </div>
             <span className="grow" />
             <label className="cat-sort">
-              Sort
+              {tr('Sort')}
               <select
                 className="inp"
                 value={sort}
                 onChange={(e) => setSort(e.target.value as CatalogSort)}
               >
-                <option value="lastOpened">Last opened</option>
-                <option value="name">Name</option>
-                <option value="kind">Type</option>
-                <option value="added">Recently added</option>
+                <option value="lastOpened">{tr('Last opened')}</option>
+                <option value="name">{tr('Name')}</option>
+                <option value="kind">{tr('Type')}</option>
+                <option value="added">{tr('Recently added')}</option>
               </select>
             </label>
             <button
               className="icon-btn"
-              aria-label="Check the paths again"
-              title="Check the paths again"
+              aria-label={tr('Check the paths again')}
+              title={tr('Check the paths again')}
               onClick={reload}
             >
               <Icon name="refresh" />
@@ -301,7 +305,7 @@ export function CatalogView({
 
       <div className="cat-body">
         {showCatalog && (
-          <div className="cat-list" role="list" aria-label="Catalog">
+          <div className="cat-list" role="list" aria-label={tr('Catalog')}>
             {shown.map((e) => (
               <div
                 key={e.id}
@@ -322,7 +326,9 @@ export function CatalogView({
                   <span className="cat-name">
                     <b>{e.name}</b>
                     {e.favorite && <Icon name="star" className="fav" />}
-                    {e.missing && <span className="cat-miss">Not found</span>}
+                    {e.missing && (
+                      <span className="cat-miss">{tr('Not found')}</span>
+                    )}
                   </span>
                   <small className="cat-path" title={e.path}>
                     {e.path}
@@ -345,12 +351,12 @@ export function CatalogView({
                     disabled={e.missing}
                     onClick={() => void open(e)}
                   >
-                    Open
+                    {tr('Open')}
                   </button>
                   <button
                     className="icon-btn"
                     aria-label={`Show ${e.name} in its folder`}
-                    title="Show in folder"
+                    title={tr('Show in folder')}
                     disabled={e.missing}
                     onClick={() =>
                       void attempt(() =>
@@ -363,7 +369,7 @@ export function CatalogView({
                   <button
                     className="icon-btn"
                     aria-label={`Copy the path of ${e.name}`}
-                    title="Copy path"
+                    title={tr('Copy path')}
                     onClick={() => void copy(e.path)}
                   >
                     <Icon name="copy" />
@@ -373,7 +379,9 @@ export function CatalogView({
                     aria-pressed={e.favorite}
                     aria-label={`Favorite: ${e.name}`}
                     title={
-                      e.favorite ? 'Remove from favorites' : 'Add to favorites'
+                      e.favorite
+                        ? tr('Remove from favorites')
+                        : tr('Add to favorites')
                     }
                     onClick={() => void favorite(e)}
                   >
@@ -382,7 +390,7 @@ export function CatalogView({
                   <button
                     className="icon-btn"
                     aria-label={`Edit ${e.name}`}
-                    title="Edit"
+                    title={tr('Edit')}
                     onClick={() => setEditing(e)}
                   >
                     <Icon name="edit" />
@@ -390,7 +398,7 @@ export function CatalogView({
                   <button
                     className="icon-btn"
                     aria-label={`Remove ${e.name} from the Catalog`}
-                    title="Remove from the Catalog (the file stays)"
+                    title={tr('Remove from the Catalog (the file stays)')}
                     onClick={() => void remove(e)}
                   >
                     <Icon name="x" />
@@ -401,16 +409,18 @@ export function CatalogView({
             {!shown.length && (
               <div className="empty">
                 {entries.length
-                  ? 'No entry matches. Try another filter or search.'
-                  : 'Your Catalog is empty. Add the apps, files and folders you open often.'}
+                  ? tr('No entry matches. Try another filter or search.')
+                  : tr(
+                      'Your Catalog is empty. Add the apps, files and folders you open often.',
+                    )}
               </div>
             )}
           </div>
         )}
         {showFound && (
-          <section className="cat-found" aria-label="Files on this PC">
+          <section className="cat-found" aria-label={tr('Files on this PC')}>
             <div className="cat-found-head">
-              <span className="k">Files on this PC</span>
+              <span className="k">{tr('Files on this PC')}</span>
               <FoundState answer={found} query={query} />
             </div>
             <div className="cat-found-list">
@@ -434,12 +444,12 @@ export function CatalogView({
                         )
                       }
                     >
-                      Open
+                      {tr('Open')}
                     </button>
                     <button
                       className="icon-btn"
                       aria-label={`Show ${r.name} in its folder`}
-                      title="Show in folder"
+                      title={tr('Show in folder')}
                       onClick={() =>
                         void attempt(() =>
                           window.worksync.openFound(r.path, true),
@@ -451,7 +461,7 @@ export function CatalogView({
                     <button
                       className="icon-btn"
                       aria-label={`Copy the path of ${r.name}`}
-                      title="Copy path"
+                      title={tr('Copy path')}
                       onClick={() => void copy(r.path)}
                     >
                       <Icon name="copy" />
@@ -461,7 +471,7 @@ export function CatalogView({
                       disabled={r.saved}
                       onClick={() => void addFound(r)}
                     >
-                      {r.saved ? 'In the Catalog' : 'Add'}
+                      {r.saved ? tr('In the Catalog') : tr('Add')}
                     </button>
                   </span>
                 </div>
@@ -477,7 +487,7 @@ export function CatalogView({
           onSaved={(e) => {
             put(e);
             setEditing(null);
-            toast('Saved.');
+            toast(tr('Saved.'));
           }}
         />
       )}
@@ -543,18 +553,18 @@ function EntryEditor({
       footer={
         <>
           <button className="btn" onClick={onClose}>
-            Cancel
+            {tr('Cancel')}
           </button>
           <button className="btn primary" onClick={() => void save()}>
             <Icon name="check" />
-            Save
+            {tr('Save')}
           </button>
         </>
       }
     >
       <form className="form" onSubmit={(e) => void save(e)}>
         <label>
-          Name
+          {tr('Name')}
           <input
             className="inp"
             value={v.name}
@@ -562,7 +572,7 @@ function EntryEditor({
           />
         </label>
         <label>
-          Path
+          {tr('Path')}
           <input
             className="inp mono"
             value={v.path}
@@ -570,16 +580,16 @@ function EntryEditor({
           />
         </label>
         <label>
-          Tags
+          {tr('Tags')}
           <input
             className="inp"
             value={v.tags}
-            placeholder="office, customer"
+            placeholder={tr('office, customer')}
             onChange={(e) => setV({ ...v, tags: e.target.value })}
           />
         </label>
         <label>
-          Note
+          {tr('Note')}
           <textarea
             className="inp"
             rows={3}

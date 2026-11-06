@@ -11,17 +11,20 @@ import {
 import { useApp } from './appState';
 import { Icon } from './Icon';
 import type { HeaderSlot } from './mine';
+import { tr } from './i18n';
 
 const when = (iso: string | null) => {
   if (!iso) return '';
   const d = new Date(iso);
   const mins = Math.round((Date.now() - d.getTime()) / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min ago`;
+  if (mins < 1) return tr('just now');
+  if (mins < 60) return tr('{n} min ago', { n: mins });
   const p = (n: number) => String(n).padStart(2, '0');
   const today = new Date();
   if (d.toDateString() === today.toDateString())
-    return `today ${p(d.getHours())}:${p(d.getMinutes())}`;
+    return tr('today {time}', {
+      time: `${p(d.getHours())}:${p(d.getMinutes())}`,
+    });
   return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())}`;
 };
 
@@ -117,8 +120,8 @@ export function NotesView({
     if (!gone) return;
     setNotes((list) => list.filter((x) => x.id !== n.id));
     setSel(null);
-    toast(`Deleted “${n.title || 'Untitled note'}”.`, {
-      label: 'Undo',
+    toast(tr('Deleted “{title}”.', { title: n.title || tr('Untitled note') }), {
+      label: tr('Undo'),
       run: () =>
         void attempt(() => window.worksync.restoreNote(gone)).then((back) => {
           if (back) {
@@ -142,41 +145,43 @@ export function NotesView({
         createPortal(
           <div className="vh">
             <div>
-              <h1>Notes</h1>
+              <h1>{tr('Notes')}</h1>
               <div className="sub">
                 {inProject
                   ? `${inProject.name} · notes attached to this project. They also appear in Notes, with all your other notes.`
-                  : 'All your notes. A note can belong to a project, or to none.'}
+                  : tr(
+                      'All your notes. A note can belong to a project, or to none.',
+                    )}
               </div>
             </div>
             <button className="btn primary" onClick={() => void create()}>
               <Icon name="plus" />
-              {inProject ? 'New note in this project' : 'New note'}
+              {inProject ? tr('New note in this project') : tr('New note')}
             </button>
           </div>,
           head,
         )}
       <div className="notes-tools">
-        <div className="seg-ctl" role="group" aria-label="Show">
+        <div className="seg-ctl" role="group" aria-label={tr('Show')}>
           {filters.map(([k, l]) => (
             <button
               key={k}
               aria-pressed={filter === k}
               onClick={() => setFilter(k)}
             >
-              {l}
+              {tr(l)}
             </button>
           ))}
         </div>
         {!projectId && (
           <select
             className="inp"
-            aria-label="Project"
+            aria-label={tr('Project')}
             value={scope}
             onChange={(e) => setScope(e.target.value)}
           >
-            <option value="any">Any project</option>
-            <option value="none">No project</option>
+            <option value="any">{tr('Any project')}</option>
+            <option value="none">{tr('No project')}</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -185,11 +190,13 @@ export function NotesView({
           </select>
         )}
         <span className="muted notes-count">
-          {shown.length} note{shown.length === 1 ? '' : 's'}
+          {tr(shown.length === 1 ? '{n} note' : '{n} notes', {
+            n: shown.length,
+          })}
         </span>
       </div>
       <div className="notes-body">
-        <div className="notes-list" role="list" aria-label="Notes">
+        <div className="notes-list" role="list" aria-label={tr('Notes')}>
           {shown.map((n) => (
             <button
               key={n.id}
@@ -198,14 +205,14 @@ export function NotesView({
               onClick={() => open(n.id)}
             >
               <span className="note-item-top">
-                <b>{n.title || 'Untitled note'}</b>
+                <b>{n.title || tr('Untitled note')}</b>
                 {n.favorite && <Icon name="star" className="fav" />}
               </span>
               {preview(n) && <small>{preview(n)}</small>}
               <span className="note-item-meta">
                 {!projectId && n.projectId && (
                   <span className="note-proj">
-                    {project(n.projectId)?.name ?? 'Project'}
+                    {project(n.projectId)?.name ?? tr('Project')}
                   </span>
                 )}
                 {n.tags.map((t) => (
@@ -221,14 +228,16 @@ export function NotesView({
           {!shown.length && (
             <div className="empty">
               {scoped.length
-                ? 'No note matches. Try another filter.'
+                ? tr('No note matches. Try another filter.')
                 : inProject
-                  ? 'No notes in this project yet. Meeting notes and memos that aren’t about one task go well here.'
-                  : 'No notes yet. Choose New note to write one.'}
+                  ? tr(
+                      'No notes in this project yet. Meeting notes and memos that aren’t about one task go well here.',
+                    )
+                  : tr('No notes yet. Choose New note to write one.')}
             </div>
           )}
         </div>
-        <section className="note-editor" aria-label="Note">
+        <section className="note-editor" aria-label={tr('Note')}>
           {selected ? (
             <NoteEditor
               key={selected.id}
@@ -238,7 +247,9 @@ export function NotesView({
               fixedProject={!!projectId}
             />
           ) : (
-            <div className="empty">Choose a note, or make a new one.</div>
+            <div className="empty">
+              {tr('Choose a note, or make a new one.')}
+            </div>
           )}
         </section>
       </div>
@@ -315,8 +326,8 @@ function NoteEditor({
         <input
           id="noteTitle"
           className="note-title"
-          aria-label="Title"
-          placeholder="Untitled note"
+          aria-label={tr('Title')}
+          placeholder={tr('Untitled note')}
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
@@ -326,27 +337,29 @@ function NoteEditor({
         <span className={`note-state ${state}`} role="status">
           {state === 'saved' ? (
             <>
-              <Icon name="check" /> Saved
+              <Icon name="check" /> {tr('Saved')}
             </>
           ) : state === 'saving' ? (
-            'Saving…'
+            tr('Saving…')
           ) : (
-            'Editing'
+            tr('Editing')
           )}
         </span>
         <button
           className={`icon-btn ${note.favorite ? 'on-fav' : ''}`}
           aria-pressed={note.favorite}
-          aria-label="Favorite"
-          title={note.favorite ? 'Remove from favorites' : 'Add to favorites'}
+          aria-label={tr('Favorite')}
+          title={
+            note.favorite ? tr('Remove from favorites') : tr('Add to favorites')
+          }
           onClick={() => void save({ favorite: !note.favorite })}
         >
           <Icon name="star" />
         </button>
         <button
           className="icon-btn"
-          aria-label="Delete note"
-          title="Delete note"
+          aria-label={tr('Delete note')}
+          title={tr('Delete note')}
           onClick={onDelete}
         >
           <Icon name="trash" />
@@ -355,13 +368,13 @@ function NoteEditor({
       <div className="note-meta">
         {!fixedProject && (
           <label className="note-meta-field">
-            Project
+            {tr('Project')}
             <select
               className="inp"
               value={note.projectId ?? ''}
               onChange={(e) => void save({ projectId: e.target.value || null })}
             >
-              <option value="">No project</option>
+              <option value="">{tr('No project')}</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -387,8 +400,8 @@ function NoteEditor({
           ))}
           <input
             className="inp note-tag-inp"
-            aria-label="Add tags"
-            placeholder="Add tags"
+            aria-label={tr('Add tags')}
+            placeholder={tr('Add tags')}
             value={tagText}
             onChange={(e) => setTagText(e.target.value)}
             onKeyDown={(e) => {
@@ -403,8 +416,10 @@ function NoteEditor({
       </div>
       <textarea
         className="note-body"
-        aria-label="Note text"
-        placeholder="Write here. It saves as you type. Web addresses open with Ctrl+click."
+        aria-label={tr('Note text')}
+        placeholder={tr(
+          'Write here. It saves as you type. Web addresses open with Ctrl+click.',
+        )}
         value={body}
         onChange={(e) => {
           setBody(e.target.value);
@@ -422,7 +437,7 @@ function NoteEditor({
       />
       {links.length > 0 && (
         <div className="note-links">
-          <span className="muted">Links in this note</span>
+          <span className="muted">{tr('Links in this note')}</span>
           {links.map((u) => (
             <button
               key={u}
@@ -437,8 +452,12 @@ function NoteEditor({
         </div>
       )}
       <div className="note-foot muted">
-        <span>Created {when(note.createdAt)}</span>
-        <span>Changed {when(note.updatedAt)}</span>
+        <span>
+          {tr('Created')} {when(note.createdAt)}
+        </span>
+        <span>
+          {tr('Changed')} {when(note.updatedAt)}
+        </span>
       </div>
     </div>
   );

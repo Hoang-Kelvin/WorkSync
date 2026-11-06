@@ -7,6 +7,7 @@ import {
   type EverythingAnswer,
 } from '../shared/catalog';
 import { Icon } from './Icon';
+import { setUiLanguage, tr } from './i18n';
 
 /** Up to 8 Catalog entries and 8 files from Everything, as in FileManagement. */
 const CATALOG_LIMIT = 8;
@@ -35,8 +36,20 @@ export function QuickSearch() {
   const [sel, setSel] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const load = () =>
+  const [, rerender] = useState(0);
+  const load = () => {
     void window.worksync.listCatalog().then(setEntries, () => {});
+    // The app language may have changed in Settings.
+    void window.worksync.start().then(
+      (s) => {
+        if (s.ok) {
+          setUiLanguage(s.settings.uiLanguage);
+          rerender((n) => n + 1);
+        }
+      },
+      () => {},
+    );
+  };
   useEffect(() => {
     load();
     return window.worksync.onOpen((t) => {
@@ -148,27 +161,32 @@ export function QuickSearch() {
           : null;
 
   return (
-    <div className="qs" role="dialog" aria-label="Quick search">
+    <div className="qs" role="dialog" aria-label={tr('Quick search')}>
       <label className="qs-head">
         <Icon name="search" />
         <input
           ref={input}
           autoFocus
-          aria-label="Search"
-          placeholder="Search the Catalog and files on this PC"
+          aria-label={tr('Search')}
+          placeholder={tr('Search the Catalog and files on this PC')}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={onKey}
         />
-        <span className="qs-brand">WORKSYNC</span>
+        <span className="qs-brand">{tr('WORKSYNC')}</span>
       </label>
-      <div className="qs-list" ref={list} role="listbox" aria-label="Results">
-        {catalogRows > 0 && <div className="qs-cap">Catalog</div>}
+      <div
+        className="qs-list"
+        ref={list}
+        role="listbox"
+        aria-label={tr('Results')}
+      >
+        {catalogRows > 0 && <div className="qs-cap">{tr('Catalog')}</div>}
         {rows.map((r, i) => (
           <div key={i}>
             {i === catalogRows && (
               <div className="qs-cap">
-                Files on this PC <span>· from Everything</span>
+                {tr('Files on this PC')} <span>{tr('· from Everything')}</span>
               </div>
             )}
             <div
@@ -200,15 +218,19 @@ export function QuickSearch() {
                 <b>{r.kind === 'entry' ? r.entry.name : r.name}</b>
                 <small>{r.kind === 'entry' ? r.entry.path : r.folder}</small>
               </span>
-              {i === sel && <span className="qs-hint">Enter to open</span>}
+              {i === sel && (
+                <span className="qs-hint">{tr('Enter to open')}</span>
+              )}
             </div>
           </div>
         ))}
         {!rows.length && (
           <div className="qs-empty">
             {q.trim()
-              ? 'Nothing found.'
-              : 'Your Catalog is empty. Add apps, files and folders in WorkSync’s Catalog.'}
+              ? tr('Nothing found.')
+              : tr(
+                  'Your Catalog is empty. Add apps, files and folders in WorkSync’s Catalog.',
+                )}
           </div>
         )}
       </div>
@@ -222,17 +244,18 @@ export function QuickSearch() {
           <kbd>↑</kbd> <kbd>↓</kbd> move
         </span>
         <span>
-          <kbd>Enter</kbd> open
+          <kbd>{tr('Enter')}</kbd> open
         </span>
         <span>
-          <kbd>Ctrl</kbd>+<kbd>Enter</kbd> show in folder
+          <kbd>{tr('Ctrl')}</kbd>+<kbd>{tr('Enter')}</kbd>{' '}
+          {tr('show in folder')}
         </span>
         <span>
-          <kbd>Ctrl</kbd>+<kbd>C</kbd> copy path
+          <kbd>{tr('Ctrl')}</kbd>+<kbd>C</kbd> {tr('copy path')}
         </span>
         <span className="grow" />
         <span>
-          <kbd>Esc</kbd> close
+          <kbd>{tr('Esc')}</kbd> close
         </span>
       </div>
     </div>

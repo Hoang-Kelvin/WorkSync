@@ -7,6 +7,7 @@ import {
   Tray,
 } from 'electron';
 import type { AppSettings } from '../shared/settings';
+import { resolveUiLanguage, translate } from '../shared/i18n';
 
 /**
  * What the app does around its window: the theme, the tray icon, and
@@ -70,18 +71,27 @@ export function addTrayItem(item: Electron.MenuItemConstructorOptions): void {
   if (tray) tray.setContextMenu(trayMenu());
 }
 
-const trayMenu = () =>
-  Menu.buildFromTemplate([
-    { label: 'Open WorkSync', click: showMainWindow },
-    ...extraItems,
+/** The tray menu in the app language. */
+const trayMenu = () => {
+  const lang = resolveUiLanguage(
+    current?.uiLanguage ?? 'system',
+    app.getLocale(),
+  );
+  const tr = (s: string) => translate(lang, s);
+  return Menu.buildFromTemplate([
+    { label: tr('Open WorkSync'), click: showMainWindow },
+    ...extraItems.map((i) => ({ ...i, label: tr(String(i.label)) })),
     { type: 'separator' },
-    { label: 'Quit WorkSync', click: quitApp },
+    { label: tr('Quit WorkSync'), click: quitApp },
   ]);
+};
 
 /** Applies the settings that live outside the page: theme and tray. */
 export function applyAppSettings(s: AppSettings): void {
+  const languageChanged = current?.uiLanguage !== s.uiLanguage;
   current = s;
   nativeTheme.themeSource = s.theme;
+  if (tray && languageChanged) tray.setContextMenu(trayMenu());
   if (s.keepInTray && !tray) {
     try {
       tray = new Tray(trayIcon());

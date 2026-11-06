@@ -9,6 +9,12 @@ import {
   shortcutLabel,
   type EverythingState,
 } from '../shared/catalog';
+import { tr } from './i18n';
+import {
+  UI_LANGUAGES,
+  resolveUiLanguage,
+  type UiLanguageChoice,
+} from '../shared/i18n';
 
 const KIND_NAME: Record<BackupKind, string> = {
   daily: 'Daily',
@@ -73,7 +79,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
     if (!folder) return;
     if (await save({ backupFolder: folder })) {
       await reload();
-      toast('Backups now go to the folder you chose.');
+      toast(tr('Backups now go to the folder you chose.'));
     }
   };
 
@@ -83,7 +89,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
     setBusy(false);
     if (r) {
       setInfo(r);
-      toast('Backup made.');
+      toast(tr('Backup made.'));
     }
   };
 
@@ -113,14 +119,14 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   if (restoring)
     return (
       <Modal
-        title="Restore this backup?"
+        title={tr('Restore this backup?')}
         subtitle={restoring.name}
         onClose={() => setRestoring(null)}
         narrow
         footer={
           <>
             <button className="btn" onClick={() => setRestoring(null)}>
-              Cancel
+              {tr('Cancel')}
             </button>
             <button
               className="btn primary"
@@ -128,13 +134,14 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               onClick={() => void restore()}
             >
               <Icon name="refresh" />
-              {busy ? 'Restoring…' : 'Restore and restart'}
+              {busy ? tr('Restoring…') : tr('Restore and restart')}
             </button>
           </>
         }
       >
         <p>
-          The backup{restoring.at ? ` from ${when(restoring.at)}` : ''} holds{' '}
+          {tr('The backup')}
+          {restoring.at ? ` from ${when(restoring.at)}` : ''} holds{' '}
           <b>
             {restoring.projects} project{restoring.projects === 1 ? '' : 's'}
           </b>{' '}
@@ -145,35 +152,65 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           .
         </p>
         <p className="muted">
-          Everything changed since then is replaced. Your data as it is now is
-          backed up first, as “Before a restore”, so you can go back. WorkSync
-          then restarts with the restored data.
+          {tr(
+            'Everything changed since then is replaced. Your data as it is now is backed up first, as “Before a restore”, so you can go back. WorkSync then restarts with the restored data.',
+          )}
         </p>
       </Modal>
     );
 
   return (
     <Modal
-      title="Settings"
-      subtitle="For the whole app. Each project keeps its own settings too."
+      title={tr('Settings')}
+      subtitle={tr(
+        'For the whole app. Each project keeps its own settings too.',
+      )}
       onClose={onClose}
       footer={
         <button className="btn primary" onClick={onClose}>
-          Done
+          {tr('Done')}
         </button>
       }
     >
       <div className="form settings">
         <fieldset>
-          <legend>Appearance</legend>
+          <legend>{tr('Appearance')}</legend>
           <div className="set-row">
             <span>
-              <b>Theme</b>
+              <b>{tr('App language')}</b>
               <small>
-                System follows your computer’s light or dark setting.
+                {tr(
+                  'Menus, buttons and messages. A project’s languages, translations and reports don’t change.',
+                )}
               </small>
             </span>
-            <div className="seg-ctl" role="group" aria-label="Theme">
+            <select
+              className="inp set-select"
+              aria-label={tr('App language')}
+              value={settings.uiLanguage}
+              onChange={(e) =>
+                void save({ uiLanguage: e.target.value as UiLanguageChoice })
+              }
+            >
+              <option value="system">
+                {tr('Same as the computer ({lang})', {
+                  lang: UI_LANGUAGES[
+                    resolveUiLanguage('system', navigator.language)
+                  ],
+                })}
+              </option>
+              <option value="en">English</option>
+              <option value="ja">日本語</option>
+            </select>
+          </div>
+          <div className="set-row">
+            <span>
+              <b>{tr('Theme')}</b>
+              <small>
+                {tr('System follows your computer’s light or dark setting.')}
+              </small>
+            </span>
+            <div className="seg-ctl" role="group" aria-label={tr('Theme')}>
               {(
                 [
                   ['system', 'System'],
@@ -186,7 +223,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
                   aria-pressed={settings.theme === k}
                   onClick={() => void save({ theme: k })}
                 >
-                  {l}
+                  {tr(l)}
                 </button>
               ))}
             </div>
@@ -194,21 +231,21 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         </fieldset>
 
         <fieldset>
-          <legend>Running in the background</legend>
+          <legend>{tr('Running in the background')}</legend>
           <div className="set-row">
             <span>
-              <b>Keep running in the tray when I close the window</b>
+              <b>{tr('Keep running in the tray when I close the window')}</b>
               <small>
-                Reminders and the quick-search shortcut work only while WorkSync
-                runs. Open it again or quit from the tray icon. WorkSync doesn’t
-                start with your computer and writes nothing to the system.
+                {tr(
+                  'Reminders and the quick-search shortcut work only while WorkSync runs. Open it again or quit from the tray icon. WorkSync doesn’t start with your computer and writes nothing to the system.',
+                )}
               </small>
             </span>
             <button
               className="switch"
               role="switch"
               aria-checked={settings.keepInTray}
-              aria-label="Keep running in the tray"
+              aria-label={tr('Keep running in the tray')}
               onClick={() => void save({ keepInTray: !settings.keepInTray })}
             >
               <span />
@@ -216,17 +253,18 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           </div>
           <div className="set-row">
             <span>
-              <b>Reminders for My tasks</b>
+              <b>{tr('Reminders for My tasks')}</b>
               <small>
-                Notifications by each task’s status and priority. Turn one
-                task’s bell off in My tasks.
+                {tr(
+                  'Notifications by each task’s status and priority. Turn one task’s bell off in My tasks.',
+                )}
               </small>
             </span>
             <button
               className="switch"
               role="switch"
               aria-checked={settings.reminders}
-              aria-label="Reminders for My tasks"
+              aria-label={tr('Reminders for My tasks')}
               onClick={() => void save({ reminders: !settings.reminders })}
             >
               <span />
@@ -237,10 +275,10 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         <QuickSearchSettings save={save} />
 
         <fieldset>
-          <legend>New projects</legend>
+          <legend>{tr('New projects')}</legend>
           <div className="two">
             <label>
-              Working language
+              {tr('Working language')}
               <select
                 className="inp"
                 value={settings.workingLanguage}
@@ -258,7 +296,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               </select>
             </label>
             <label>
-              Due soon, in days
+              {tr('Due soon, in days')}
               <input
                 className="inp"
                 type="number"
@@ -277,21 +315,22 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             </label>
           </div>
           <span className="hint-text">
-            A new project starts with these. Change them for one project in its
-            Project settings.
+            {tr(
+              'A new project starts with these. Change them for one project in its Project settings.',
+            )}
           </span>
         </fieldset>
 
         <fieldset>
-          <legend>Data</legend>
+          <legend>{tr('Data')}</legend>
           <div className="set-row">
             <span>
-              <b>Data folder</b>
+              <b>{tr('Data folder')}</b>
               <code title={info?.dataFolder}>{info?.dataFolder ?? '…'}</code>
               <small>
-                A new version of WorkSync never touches it. On Windows it sits
-                beside the app folder: to move it, move the WorkSync folder and
-                its WorkSync-data folder together.
+                {tr(
+                  'A new version of WorkSync never touches it. On Windows it sits beside the app folder: to move it, move the WorkSync folder and its WorkSync-data folder together.',
+                )}
               </small>
             </span>
             <button
@@ -301,14 +340,16 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               }
             >
               <Icon name="folder" />
-              Open
+              {tr('Open')}
             </button>
           </div>
           <div className="set-row">
             <span>
-              <b>Log files</b>
+              <b>{tr('Log files')}</b>
               <code title={info?.logFolder}>{info?.logFolder ?? '…'}</code>
-              <small>Errors and steps such as backups, never task text.</small>
+              <small>
+                {tr('Errors and steps such as backups, never task text.')}
+              </small>
             </span>
             <button
               className="btn sm"
@@ -317,29 +358,33 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               }
             >
               <Icon name="folder" />
-              Open
+              {tr('Open')}
             </button>
           </div>
         </fieldset>
 
         <fieldset>
-          <legend>Backups</legend>
+          <legend>{tr('Backups')}</legend>
           <div className="set-row">
             <span>
-              <b>Backup folder</b>
+              <b>{tr('Backup folder')}</b>
               <code title={info?.backupFolder}>
                 {info?.backupFolder ?? '…'}
               </code>
               <small>
                 {info?.defaultBackupFolder
-                  ? 'In the data folder. A second drive or a USB drive is safer, because it survives a disk failure.'
-                  : 'WorkSync backs up when it starts and once a day, and keeps the last 14 days.'}
+                  ? tr(
+                      'In the data folder. A second drive or a USB drive is safer, because it survives a disk failure.',
+                    )
+                  : tr(
+                      'WorkSync backs up when it starts and once a day, and keeps the last 14 days.',
+                    )}
               </small>
             </span>
             <span className="set-actions">
               <button className="btn sm" onClick={() => void chooseFolder()}>
                 <Icon name="folder" />
-                Change
+                {tr('Change')}
               </button>
               {info && !info.defaultBackupFolder && (
                 <button
@@ -350,7 +395,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
                     })
                   }
                 >
-                  Use the data folder
+                  {tr('Use the data folder')}
                 </button>
               )}
             </span>
@@ -365,11 +410,11 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             <b>
               {info
                 ? `${info.backups.length} backup${info.backups.length === 1 ? '' : 's'}`
-                : 'Backups'}
+                : tr('Backups')}
             </b>
             <span className="set-actions">
               <button className="btn sm" onClick={() => void fromFile()}>
-                Restore from a file…
+                {tr('Restore from a file…')}
               </button>
               <button
                 className="btn sm"
@@ -377,7 +422,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
                 onClick={() => void backupNow()}
               >
                 <Icon name="save" />
-                Back up now
+                {tr('Back up now')}
               </button>
             </span>
           </div>
@@ -392,14 +437,15 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
                   onClick={() => void askRestore(b)}
                   aria-label={`Restore the backup from ${when(b.at)}`}
                 >
-                  Restore
+                  {tr('Restore')}
                 </button>
               </div>
             ))}
             {info && !info.backups.length && (
               <p className="muted">
-                No backups yet. The first one is made the next time WorkSync
-                starts, or now with Back up now.
+                {tr(
+                  'No backups yet. The first one is made the next time WorkSync starts, or now with Back up now.',
+                )}
               </p>
             )}
           </div>
@@ -435,14 +481,14 @@ function QuickSearchSettings({
   }, [settings.everything]);
   return (
     <fieldset>
-      <legend>Quick search</legend>
+      <legend>{tr('Quick search')}</legend>
       <div className="set-row">
         <span>
-          <b>Shortcut</b>
+          <b>{tr('Shortcut')}</b>
           <small>
-            Opens Catalog search from any app, while WorkSync runs.
+            {tr('Opens Catalog search from any app, while WorkSync runs.')}
             {recording
-              ? ' Press the keys you want, with Ctrl or Alt. Esc cancels.'
+              ? tr(' Press the keys you want, with Ctrl or Alt. Esc cancels.')
               : ''}
           </small>
         </span>
@@ -465,7 +511,7 @@ function QuickSearchSettings({
                 void save({ quickSearchKey: accel });
               }}
             >
-              Press the keys…
+              {tr('Press the keys…')}
             </button>
           ) : (
             <>
@@ -473,14 +519,14 @@ function QuickSearchSettings({
                 {shortcutLabel(settings.quickSearchKey, mac)}
               </span>
               <button className="btn sm" onClick={() => setRecording(true)}>
-                Change
+                {tr('Change')}
               </button>
               {settings.quickSearchKey && (
                 <button
                   className="btn sm"
                   onClick={() => void save({ quickSearchKey: null })}
                 >
-                  Turn off
+                  {tr('Turn off')}
                 </button>
               )}
             </>
@@ -490,9 +536,9 @@ function QuickSearchSettings({
       {win && (
         <div className="set-row">
           <span>
-            <b>Search files with Everything</b>
+            <b>{tr('Search files with Everything')}</b>
             <small>
-              Files on this PC appear under the Catalog results.{' '}
+              {tr('Files on this PC appear under the Catalog results.')}{' '}
               {state ? EVERYTHING_TEXT[state] : ''}
             </small>
           </span>
@@ -500,7 +546,7 @@ function QuickSearchSettings({
             className="switch"
             role="switch"
             aria-checked={settings.everything}
-            aria-label="Search files with Everything"
+            aria-label={tr('Search files with Everything')}
             onClick={() => void save({ everything: !settings.everything })}
           >
             <span />

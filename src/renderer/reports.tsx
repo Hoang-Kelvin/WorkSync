@@ -29,6 +29,7 @@ import {
 import { useApp } from './appState';
 import { Icon, type IconName } from './Icon';
 import { Modal } from './parts';
+import { tr } from './i18n';
 
 const ICONS: Record<ReportKind, IconName> = {
   progress: 'gauge',
@@ -149,7 +150,7 @@ export function ReportDialog({
 
   return (
     <Modal
-      title="Make a report"
+      title={tr('Make a report')}
       subtitle={`${project.name} · built from each task’s summary, situation and dates`}
       onClose={onClose}
       footer={
@@ -158,10 +159,10 @@ export function ReportDialog({
             className="muted"
             style={{ marginRight: 'auto', fontSize: 12.5 }}
           >
-            {count} task{count === 1 ? '' : 's'} in this report
+            {count} task{count === 1 ? '' : 's'} {tr('in this report')}
           </span>
           <button className="btn" onClick={onClose}>
-            Cancel
+            {tr('Cancel')}
           </button>
           <button
             className="btn primary"
@@ -169,12 +170,12 @@ export function ReportDialog({
             onClick={() => void make()}
           >
             <Icon name="save" />
-            {busy ? 'Making…' : `Make the ${FORMAT_NAME[o.format]} report`}
+            {busy ? tr('Making…') : `Make the ${FORMAT_NAME[o.format]} report`}
           </button>
         </>
       }
     >
-      <div className="report-kinds" role="radiogroup" aria-label="Report">
+      <div className="report-kinds" role="radiogroup" aria-label={tr('Report')}>
         {(Object.keys(REPORTS) as ReportKind[]).map((k) => (
           <button
             key={k}
@@ -196,22 +197,27 @@ export function ReportDialog({
         <p className="report-note">
           <Icon name="check" />
           <span>
-            Only the {o.taskIds.length} task
-            {o.taskIds.length === 1 ? '' : 's'} you selected in the Tasks table.
+            {tr('Only the')} {o.taskIds.length} task
+            {o.taskIds.length === 1 ? '' : 's'}{' '}
+            {tr('you selected in the Tasks table.')}
           </span>
           <button
             className="btn sm"
             onClick={() => set({ taskIds: undefined })}
           >
-            Use the whole project
+            {tr('Use the whole project')}
           </button>
         </p>
       )}
       <div className="form">
         <div className="two">
           <label>
-            Format
-            <div className="seg-ctl" role="radiogroup" aria-label="Format">
+            {tr('Format')}
+            <div
+              className="seg-ctl"
+              role="radiogroup"
+              aria-label={tr('Format')}
+            >
               {REPORTS[o.kind].formats.map((f) => (
                 <button
                   key={f}
@@ -226,7 +232,7 @@ export function ReportDialog({
             </div>
           </label>
           <label>
-            Language
+            {tr('Language')}
             <select
               className="inp"
               value={o.language}
@@ -238,9 +244,10 @@ export function ReportDialog({
                 {LANGUAGES[project.workingLanguage]}
               </option>
               <option value="original">
-                {original}, the customer’s language
+                {original}
+                {tr(', the customer’s language')}
               </option>
-              <option value="both">Both, side by side</option>
+              <option value="both">{tr('Both, side by side')}</option>
             </select>
           </label>
         </div>
@@ -268,7 +275,7 @@ export function ReportDialog({
                   onClick={() => setTranslating(true)}
                 >
                   <Icon name="spark" />
-                  Translate with Gemini
+                  {tr('Translate with Gemini')}
                 </button>
               )}
             </p>
@@ -276,7 +283,7 @@ export function ReportDialog({
         {o.kind === 'progress' && (
           <div className="two">
             <label>
-              Period from
+              {tr('Period from')}
               <input
                 className="inp"
                 type="date"
@@ -296,7 +303,7 @@ export function ReportDialog({
           </div>
         )}
         <fieldset>
-          <legend>Which tasks</legend>
+          <legend>{tr('Which tasks')}</legend>
           <div className="checks">
             {STATUSES.map((s) => (
               <label key={s} className="check">
@@ -319,44 +326,46 @@ export function ReportDialog({
                   checked={o.levels.includes(l)}
                   onChange={() => set({ levels: toggle<Level>(o.levels, l) })}
                 />{' '}
-                {LEVEL_NAME[l]}
+                {tr(LEVEL_NAME[l])}
               </label>
             ))}
           </div>
           <div className="two">
             <label>
-              Label
+              {tr('Label')}
               <select
                 className="inp"
                 value={o.label}
                 onChange={(e) => set({ label: e.target.value })}
               >
-                <option value="">Any label</option>
+                <option value="">{tr('Any label')}</option>
                 {labels.map((l) => (
                   <option key={l}>{l}</option>
                 ))}
               </select>
             </label>
             <label>
-              Assignee or handled by
+              {tr('Assignee or handled by')}
               <input
                 className="inp"
                 value={o.person}
                 onChange={(e) => set({ person: e.target.value })}
-                placeholder="Anyone"
+                placeholder={tr('Anyone')}
               />
             </label>
           </div>
           <span className="hint-text">
-            Leave a group unticked to include all of it.
+            {tr('Leave a group unticked to include all of it.')}
             {o.kind === 'progress'
-              ? ' The progress report covers open tasks and tasks that changed in the period.'
+              ? tr(
+                  ' The progress report covers open tasks and tasks that changed in the period.',
+                )
               : ''}
           </span>
         </fieldset>
         {o.kind === 'taskList' && (
           <fieldset>
-            <legend>Columns</legend>
+            <legend>{tr('Columns')}</legend>
             <div className="checks">
               {COLUMNS.filter((c) => c.key !== 'notes').map((c) => (
                 <label key={c.key} className="check">
@@ -381,12 +390,12 @@ export function ReportDialog({
         )}
         <div className="two">
           <label>
-            Prepared by
+            {tr('Prepared by')}
             <input
               className="inp"
               value={o.preparedBy}
               onChange={(e) => set({ preparedBy: e.target.value })}
-              placeholder="Your name, shown at the top"
+              placeholder={tr('Your name, shown at the top')}
             />
           </label>
           <label className="check" style={{ alignSelf: 'end' }}>
@@ -403,7 +412,7 @@ export function ReportDialog({
                 })
               }
             />{' '}
-            Include my notes
+            {tr('Include my notes')}
           </label>
         </div>
       </div>
@@ -445,7 +454,7 @@ export function OwnerTranslate({
     // Once, for the tasks that needed it when it opened.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  if (!batches) return <p className="muted">Preparing the request…</p>;
+  if (!batches) return <p className="muted">{tr('Preparing the request…')}</p>;
   const batch = batches[at];
   if (!batch) return null;
   const copy = async () => {
@@ -480,27 +489,29 @@ export function OwnerTranslate({
     <div className="owner-tr">
       <div className="owner-tr-head">
         <b>
-          Translate {what} · request {batch.number} of {batch.of}
+          {tr('Translate')} {what} {tr('· request')} {batch.number} of{' '}
+          {batch.of}
         </b>
         <button className="btn sm" onClick={() => void onDone()}>
-          Cancel
+          {tr('Cancel')}
         </button>
       </div>
       <ol className="owner-steps">
         <li>
           <button className="btn sm" onClick={() => void copy()}>
             <Icon name="copy" />
-            Copy request {batch.number}
+            {tr('Copy request')} {batch.number}
           </button>{' '}
-          and paste it into Gemini. {Object.keys(batch.keys).length} tasks.
+          {tr('and paste it into Gemini.')} {Object.keys(batch.keys).length}{' '}
+          tasks.
         </li>
         <li>
-          Paste Gemini’s whole answer here:
+          {tr('Paste Gemini’s whole answer here:')}
           <textarea
             className="inp"
             rows={5}
             value={answer}
-            aria-label="Gemini’s answer"
+            aria-label={tr('Gemini’s answer')}
             onChange={(e) => void check(e.target.value)}
           />
         </li>
@@ -513,7 +524,7 @@ export function OwnerTranslate({
               : 'muted'
           }
         >
-          {read.translations.length} translations found
+          {read.translations.length} {tr('translations found')}
           {read.missing.length
             ? ` · ${read.missing.length} tasks missing (${read.missing.join(', ')})`
             : ''}
@@ -532,7 +543,7 @@ export function OwnerTranslate({
           onClick={() => void save()}
         >
           <Icon name="check" />
-          Save {read?.translations.length ?? 0} translations
+          {tr('Save')} {read?.translations.length ?? 0} translations
         </button>
       </div>
     </div>

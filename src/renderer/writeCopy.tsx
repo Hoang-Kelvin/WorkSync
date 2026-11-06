@@ -4,6 +4,7 @@ import { useApp } from './appState';
 import { Icon } from './Icon';
 import { Modal } from './parts';
 import { OwnerTranslate } from './reports';
+import { tr } from './i18n';
 
 const dirOf = (file: string) => file.replace(/[\\/][^\\/]*$/, '');
 const nameOf = (file: string) => file.split(/[\\/]/).pop() ?? file;
@@ -78,28 +79,30 @@ export function WriteDialog({ onClose }: { onClose: () => void }) {
   const open = Object.keys(results).length > 0;
   return (
     <Modal
-      title="Write to your copy"
-      subtitle="Only these cells change. The customer’s file in Box is never touched."
+      title={tr('Write to your copy')}
+      subtitle={tr(
+        'Only these cells change. The customer’s file in Box is never touched.',
+      )}
       onClose={onClose}
       footer={
         <button className={`btn ${open ? 'primary' : ''}`} onClick={onClose}>
-          {open ? 'Done' : 'Close'}
+          {open ? tr('Done') : tr('Close')}
         </button>
       }
     >
-      {!plans && <p className="muted">Checking the linked files…</p>}
+      {!plans && <p className="muted">{tr('Checking the linked files…')}</p>}
       {plans && plans.length === 0 && !open && (
         <p className="muted">
-          No changes waiting. Changes you make in WorkSync to a task from a
-          file, such as its status, dates, priority, assignee or remarks, are
-          listed here until you write them to a copy.
+          {tr(
+            'No changes waiting. Changes you make in WorkSync to a task from a file, such as its status, dates, priority, assignee or remarks, are listed here until you write them to a copy.',
+          )}
         </p>
       )}
       {plans && plans.length > 0 && (
         <div className="field">
           <div className="k">
             <Icon name="folder" />
-            Save copies in
+            {tr('Save copies in')}
           </div>
           <div
             className="v"
@@ -114,7 +117,7 @@ export function WriteDialog({ onClose }: { onClose: () => void }) {
               {folder}
             </span>
             <button className="btn sm" onClick={() => void change()}>
-              Change
+              {tr('Change')}
             </button>
           </div>
         </div>
@@ -135,16 +138,16 @@ export function WriteDialog({ onClose }: { onClose: () => void }) {
             {r ? (
               <div className="write-done">
                 <p>
-                  <Icon name="check" /> Saved <b>{nameOf(r.file)}</b>:{' '}
-                  {r.written} cell{r.written === 1 ? '' : 's'} changed, and all{' '}
-                  {r.checkedCells.toLocaleString()} cells checked against the
-                  file it was made from.
+                  <Icon name="check" /> {tr('Saved')} <b>{nameOf(r.file)}</b>:{' '}
+                  {r.written} cell{r.written === 1 ? '' : 's'}{' '}
+                  {tr('changed, and all')} {r.checkedCells.toLocaleString()}{' '}
+                  {tr('cells checked against the file it was made from.')}
                 </p>
                 {r.skipped.length > 0 && (
                   <div className="keepnote warn">
                     <Icon name="alert" />
                     <span>
-                      Left alone, so update them in Excel:{' '}
+                      {tr('Left alone, so update them in Excel:')}{' '}
                       {r.skipped
                         .map(
                           (s) =>
@@ -163,7 +166,7 @@ export function WriteDialog({ onClose }: { onClose: () => void }) {
                       )
                     }
                   >
-                    Open the copy
+                    {tr('Open the copy')}
                   </button>
                   <button
                     className="btn sm"
@@ -171,7 +174,7 @@ export function WriteDialog({ onClose }: { onClose: () => void }) {
                       void attempt(() => window.worksync.openCopy(r.file, true))
                     }
                   >
-                    Show in folder
+                    {tr('Show in folder')}
                   </button>
                 </div>
               </div>
@@ -208,16 +211,18 @@ export function WriteDialog({ onClose }: { onClose: () => void }) {
                     <p className="report-note">
                       <Icon name="globe" />
                       <span>
-                        {ids.length} remark{ids.length === 1 ? ' is' : 's are'}{' '}
-                        not in the file’s language. The customer reads them, so
-                        translate them first.
+                        {ids.length} remark
+                        {ids.length === 1 ? tr(' is') : tr('s are')}{' '}
+                        {tr(
+                          'not in the file’s language. The customer reads them, so translate them first.',
+                        )}
                       </span>
                       <button
                         className="btn sm accent-outline"
                         onClick={() => setTranslating(plan.sourceId)}
                       >
                         <Icon name="spark" />
-                        Translate with Gemini
+                        {tr('Translate with Gemini')}
                       </button>
                     </p>
                   );
@@ -235,16 +240,18 @@ export function WriteDialog({ onClose }: { onClose: () => void }) {
                         />
                         <div style={{ minWidth: 0 }}>
                           <span className="tid">
-                            No. {c.customerId} · cell {c.cell}
+                            {tr('No.')} {c.customerId} {tr('· cell')} {c.cell}
                           </span>
                           <div className="title" style={{ fontSize: 14 }}>
                             {c.title}
                           </div>
                           <div className="chg">
                             {c.label}:{' '}
-                            <span className="old">{c.from || '(empty)'}</span>
+                            <span className="old">
+                              {c.from || tr('(empty)')}
+                            </span>
                             <span className="arrow">→</span>
-                            <span className="new">{c.to || '(empty)'}</span>
+                            <span className="new">{c.to || tr('(empty)')}</span>
                           </div>
                           {c.problem && (
                             <div className="chg warn-text">{c.problem}</div>
@@ -269,7 +276,7 @@ export function WriteDialog({ onClose }: { onClose: () => void }) {
                   >
                     <Icon name="save" />
                     {busy === plan.sourceId
-                      ? 'Saving…'
+                      ? tr('Saving…')
                       : `Save a copy with ${picked} change${picked === 1 ? '' : 's'}`}
                   </button>
                 </div>

@@ -31,6 +31,7 @@ import { useApp } from './appState';
 import { Icon } from './Icon';
 import { StatusChip } from './parts';
 import type { ViewProps } from './views';
+import { tr } from './i18n';
 
 const ROW = 40;
 const OVERSCAN = 12;
@@ -232,8 +233,8 @@ export function TasksView({
   return (
     <>
       {props.header(
-        'Tasks',
-        `${p.name} · ${rows.length === all.length ? `${all.length} tasks` : `${rows.length} of ${all.length} tasks shown`}${removed ? ` · ${removed} removed from the file` : ''}`,
+        tr('Tasks'),
+        `${p.name} · ${rows.length === all.length ? tr('{n} tasks', { n: all.length }) : tr('{shown} of {n} tasks shown', { shown: rows.length, n: all.length })}${removed ? ` · ${tr('{n} removed from the file', { n: removed })}` : ''}`,
         <div className="vh-actions">
           {filtered && (
             <button
@@ -241,7 +242,7 @@ export function TasksView({
               onClick={() => setSettings({ ...settings, filters: {} })}
             >
               <Icon name="x" />
-              Clear filters
+              {tr('Clear filters')}
             </button>
           )}
           <div className="tt-pop-wrap">
@@ -251,7 +252,7 @@ export function TasksView({
               onClick={() => setChooser(!chooser)}
             >
               <Icon name="sliders" />
-              Columns
+              {tr('Columns')}
             </button>
             {chooser && (
               <ColumnChooser
@@ -277,7 +278,7 @@ export function TasksView({
               type="checkbox"
               aria-label={
                 allShownSelected
-                  ? 'Clear the selection'
+                  ? tr('Clear the selection')
                   : `Select all ${rows.length} rows shown`
               }
               checked={allShownSelected}
@@ -355,7 +356,7 @@ export function TasksView({
                 onKeyDown={(e) => onRowKey(e, t, i)}
                 title={
                   t.fileState === 'removed'
-                    ? 'This row was removed from the file.'
+                    ? tr('This row was removed from the file.')
                     : undefined
                 }
               >
@@ -387,8 +388,8 @@ export function TasksView({
         {!rows.length && (
           <div className="tt-empty">
             {all.length
-              ? 'No task matches the filters.'
-              : 'No tasks in this project yet.'}
+              ? tr('No task matches the filters.')
+              : tr('No tasks in this project yet.')}
           </div>
         )}
       </div>
@@ -422,7 +423,9 @@ function Cell({ column, task: t }: { column: TableColumn; task: Task }) {
           lang={t.titleTranslation ? undefined : t.language}
         >
           {t.titleTranslation || t.titleOriginal}
-          {t.fileState === 'removed' && <em> · removed from the file</em>}
+          {t.fileState === 'removed' && (
+            <em> {tr('· removed from the file')}</em>
+          )}
         </span>
       );
     case 'original':
@@ -436,12 +439,12 @@ function Cell({ column, task: t }: { column: TableColumn; task: Task }) {
           className={`tt-pri ${l} ${t.priorityOverride ? 'ovr' : ''}`}
           title={
             t.priorityOverride
-              ? `Your priority. The task's own level is ${LEVEL_NAME[t.priority]}.`
+              ? `Your priority. The task's own level is ${tr(LEVEL_NAME[t.priority])}.`
               : undefined
           }
         >
           <i />
-          {LEVEL_NAME[l]}
+          {tr(LEVEL_NAME[l])}
           {t.priorityOverride && <Icon name="user" />}
         </span>
       );
@@ -483,7 +486,7 @@ function FilterInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
-        <option value="">Any</option>
+        <option value="">{tr('Any')}</option>
         {c.choices!.map(([v, label]) => (
           <option key={v} value={v}>
             {label}
@@ -495,10 +498,12 @@ function FilterInput({
     <input
       className={`tt-filter ${value ? 'on' : ''}`}
       aria-label={`Filter ${c.label}`}
-      placeholder={c.filter === 'date' ? 'e.g. 2026/11' : 'Filter'}
+      placeholder={c.filter === 'date' ? 'e.g. 2026/11' : tr('Filter')}
       title={
         c.filter === 'date'
-          ? 'A date or month such as 2026/11, a range such as 2026/11/01-2026/11/15, or none'
+          ? tr(
+              'A date or month such as 2026/11, a range such as 2026/11/01-2026/11/15, or none',
+            )
           : undefined
       }
       value={draft}
@@ -557,8 +562,8 @@ function ColumnChooser({
     onChange({ ...settings, columns, filters });
   };
   return (
-    <div className="tt-pop" ref={ref} role="dialog" aria-label="Columns">
-      <b>Columns</b>
+    <div className="tt-pop" ref={ref} role="dialog" aria-label={tr('Columns')}>
+      <b>{tr('Columns')}</b>
       <div className="tt-pop-list">
         {TABLE_COLUMNS.map((c) => (
           <label key={c.key} className="check">
@@ -575,10 +580,10 @@ function ColumnChooser({
       <button
         className="btn sm"
         onClick={() => onChange(DEFAULT_TABLE)}
-        title="The default columns and sort, with no filters"
+        title={tr('The default columns and sort, with no filters')}
       >
         <Icon name="refresh" />
-        Reset the table
+        {tr('Reset the table')}
       </button>
     </div>
   );
@@ -632,14 +637,14 @@ function BulkBar({
     : false;
 
   return (
-    <div className="tt-bulk" role="toolbar" aria-label="Selected tasks">
+    <div className="tt-bulk" role="toolbar" aria-label={tr('Selected tasks')}>
       <b>{n} selected</b>
       <span className="tt-bulk-group">
         <input
           className="inp sm"
           list="tt-labels"
-          placeholder="Label"
-          aria-label="Label to add or remove"
+          placeholder={tr('Label')}
+          aria-label={tr('Label to add or remove')}
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           onKeyDown={(e) => {
@@ -666,7 +671,7 @@ function BulkBar({
           }
         >
           <Icon name="plus" />
-          Add
+          {tr('Add')}
         </button>
         <button
           className="btn sm"
@@ -678,12 +683,12 @@ function BulkBar({
             ).then(() => setLabel(''))
           }
         >
-          Remove
+          {tr('Remove')}
         </button>
       </span>
       <select
         className="inp sm"
-        aria-label="Set the status"
+        aria-label={tr('Set the status')}
         value=""
         disabled={busy}
         onChange={(e) => {
@@ -695,7 +700,7 @@ function BulkBar({
             );
         }}
       >
-        <option value="">Status…</option>
+        <option value="">{tr('Status…')}</option>
         {STATUSES.map((s) => (
           <option key={s}>{s}</option>
         ))}
@@ -711,24 +716,24 @@ function BulkBar({
         }
       >
         <Icon name="pin" />
-        {allPinned ? 'Unpin' : 'Pin'}
+        {allPinned ? tr('Unpin') : tr('Pin')}
       </button>
       <button className="btn sm" onClick={onCopyForAi}>
         <Icon name="spark" />
-        Copy for AI
+        {tr('Copy for AI')}
       </button>
       <button className="btn sm" onClick={() => void copyBriefs()}>
         <Icon name="copy" />
-        Copy briefs
+        {tr('Copy briefs')}
       </button>
       <button className="btn sm" onClick={onReport}>
         <Icon name="note" />
-        Report
+        {tr('Report')}
       </button>
       <button
         className="btn sm ghost"
         onClick={onClear}
-        aria-label="Clear the selection"
+        aria-label={tr('Clear the selection')}
       >
         <Icon name="x" />
       </button>

@@ -12,6 +12,7 @@ import {
 import { useApp } from './appState';
 import { Icon } from './Icon';
 import { Modal } from './parts';
+import { tr } from './i18n';
 
 /** The batches prepared in this session, kept so Paste from AI can come later. */
 export interface AiSession {
@@ -150,34 +151,34 @@ export function AiDialog({
     step === 'choose' ? (
       <>
         <button className="btn" onClick={onClose}>
-          Cancel
+          {tr('Cancel')}
         </button>
         <button
           className="btn primary"
           disabled={!candidates.some((t) => picked.has(t.id))}
           onClick={() => void prepare()}
         >
-          Prepare the request
+          {tr('Prepare the request')}
         </button>
       </>
     ) : step === 'copy' ? (
       <>
         <button className="btn" onClick={() => setStep('choose')}>
-          Choose other tasks
+          {tr('Choose other tasks')}
         </button>
         <button className="btn" onClick={() => setStep('paste')}>
-          Paste the answer
+          {tr('Paste the answer')}
         </button>
         <button className="btn primary" onClick={() => void copy()}>
           <Icon name="copy" />
-          Copy request
+          {tr('Copy request')}
           {batch && batch.of > 1 ? ` ${batch.number} of ${batch.of}` : ''}
         </button>
       </>
     ) : (
       <>
         <button className="btn" onClick={() => setStep('copy')}>
-          Back to the request
+          {tr('Back to the request')}
         </button>
         {!read ? (
           <button
@@ -185,7 +186,7 @@ export function AiDialog({
             disabled={!answer.trim()}
             onClick={() => void readIt()}
           >
-            Read the answer
+            {tr('Read the answer')}
           </button>
         ) : (
           <button
@@ -194,7 +195,7 @@ export function AiDialog({
             onClick={() => void apply()}
           >
             <Icon name="check" />
-            Fill in {accept.size} task{accept.size === 1 ? '' : 's'}
+            {tr('Fill in')} {accept.size} task{accept.size === 1 ? '' : 's'}
           </button>
         )}
       </>
@@ -202,13 +203,17 @@ export function AiDialog({
 
   return (
     <Modal
-      title={step === 'paste' ? 'Paste from AI' : 'Copy for AI'}
+      title={step === 'paste' ? tr('Paste from AI') : tr('Copy for AI')}
       subtitle={
         step === 'choose'
           ? `${project.name} · choose the tasks to translate into ${working} and summarize`
           : step === 'copy'
-            ? 'Paste this request into the Gemini web app, then paste its answer back here.'
-            : 'Paste Gemini’s whole answer. WorkSync checks every task against the request.'
+            ? tr(
+                'Paste this request into the Gemini web app, then paste its answer back here.',
+              )
+            : tr(
+                'Paste Gemini’s whole answer. WorkSync checks every task against the request.',
+              )
       }
       onClose={onClose}
       footer={footer}
@@ -225,10 +230,10 @@ export function AiDialog({
                 className="linkbtn"
                 onClick={() => setPicked(new Set(candidates.map((t) => t.id)))}
               >
-                Select all
+                {tr('Select all')}
               </button>
               <button className="linkbtn" onClick={() => setPicked(new Set())}>
-                Clear
+                {tr('Clear')}
               </button>
               <label className="check">
                 <input
@@ -236,7 +241,7 @@ export function AiDialog({
                   checked={showAll}
                   onChange={(e) => setShowAll(e.target.checked)}
                 />{' '}
-                Show translated tasks too
+                {tr('Show translated tasks too')}
               </label>
             </span>
           </div>
@@ -256,9 +261,9 @@ export function AiDialog({
                   />
                   <div>
                     <span className="tid">
-                      No. {t.customerId} · {LANGUAGES[t.language]} ·{' '}
+                      {tr('No.')} {t.customerId} · {LANGUAGES[t.language]} ·{' '}
                       {t.translationState}
-                      {!t.summary ? ' · no summary' : ''}
+                      {!t.summary ? tr(' · no summary') : ''}
                     </span>
                     <div
                       className="title"
@@ -272,8 +277,9 @@ export function AiDialog({
               ))
             ) : (
               <p className="muted">
-                Every task is translated and summarized. Tick “Show translated
-                tasks too” to do some again.
+                {tr(
+                  'Every task is translated and summarized. Tick “Show translated tasks too” to do some again.',
+                )}
               </p>
             )}
           </div>
@@ -289,7 +295,7 @@ export function AiDialog({
             </span>
             <span className="chip">→ {working}</span>
             <span className="chip">
-              {batch.text.length.toLocaleString()} characters · batch{' '}
+              {batch.text.length.toLocaleString()} {tr('characters · batch')}{' '}
               {batch.number} of {batch.of}
             </span>
             {session && session.done.length > 0 && (
@@ -301,13 +307,15 @@ export function AiDialog({
           </pre>
           <ol className="how">
             <li>
-              Copy the request and paste it into a new chat in the Gemini web
-              app.
+              {tr(
+                'Copy the request and paste it into a new chat in the Gemini web app.',
+              )}
             </li>
-            <li>When Gemini has answered, copy its whole answer.</li>
+            <li>{tr('When Gemini has answered, copy its whole answer.')}</li>
             <li>
-              Come back and choose Paste the answer, or Paste from AI in the top
-              bar.
+              {tr(
+                'Come back and choose Paste the answer, or Paste from AI in the top bar.',
+              )}
             </li>
           </ol>
         </>
@@ -317,15 +325,15 @@ export function AiDialog({
         <>
           {!read ? (
             <label className="form-inline">
-              Gemini’s answer for batch {batch.number} of {batch.of}
+              {tr('Gemini’s answer for batch')} {batch.number} of {batch.of}
               <textarea
                 className="inp mono"
                 rows={12}
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
-                placeholder={
-                  '=== TASK 012 ===\nTITLE: …\nSUMMARY: …\n=== END ==='
-                }
+                placeholder={tr(
+                  '=== TASK 012 ===\nTITLE: …\nSUMMARY: …\n=== END ===',
+                )}
                 autoFocus
               />
             </label>
@@ -337,29 +345,30 @@ export function AiDialog({
                 </span>
                 {read.missing.length > 0 && (
                   <span className="chip over">
-                    Missing: {read.missing.join(', ')}
+                    {tr('Missing:')} {read.missing.join(', ')}
                   </span>
                 )}
                 {read.unknown.length > 0 && (
                   <span className="chip">
-                    Not in the request: {read.unknown.join(', ')}
+                    {tr('Not in the request:')} {read.unknown.join(', ')}
                   </span>
                 )}
                 <button className="linkbtn" onClick={() => setRead(null)}>
-                  Paste again
+                  {tr('Paste again')}
                 </button>
               </div>
               {read.items.length === 0 && (
                 <p className="muted">
-                  No tasks in the expected format. Each task should start with a
-                  line like === TASK 012 === and end with === END ===. Check
-                  that you copied Gemini’s whole answer.
+                  {tr(
+                    'No tasks in the expected format. Each task should start with a line like === TASK 012 === and end with === END ===. Check that you copied Gemini’s whole answer.',
+                  )}
                 </p>
               )}
               {read.missing.length > 0 && read.items.length > 0 && (
                 <p className="muted">
-                  Missing tasks stay as they are. Ask Gemini for them again, or
-                  prepare a new request with them.
+                  {tr(
+                    'Missing tasks stay as they are. Ask Gemini for them again, or prepare a new request with them.',
+                  )}
                 </p>
               )}
               <div className="review-list">
@@ -381,13 +390,15 @@ export function AiDialog({
                         }}
                       />
                       <div style={{ minWidth: 0 }}>
-                        <span className="tid">No. {t.customerId}</span>
+                        <span className="tid">
+                          {tr('No.')} {t.customerId}
+                        </span>
                         <div className="orig" lang={t.language}>
                           {t.titleOriginal}
                         </div>
                         {i.title ? (
                           <div className="chg">
-                            Title:{' '}
+                            {tr('Title:')}{' '}
                             {t.titleTranslation && (
                               <span className="old">{t.titleTranslation}</span>
                             )}
@@ -398,8 +409,9 @@ export function AiDialog({
                           </div>
                         ) : (
                           <div className="chg">
-                            No title in the answer, so this task is left as it
-                            is.
+                            {tr(
+                              'No title in the answer, so this task is left as it is.',
+                            )}
                           </div>
                         )}
                         {i.summary && (
@@ -415,17 +427,17 @@ export function AiDialog({
                               }}
                             />{' '}
                             {t.summary
-                              ? 'Replace your summary with: '
-                              : 'Summary: '}
+                              ? tr('Replace your summary with: ')
+                              : tr('Summary: ')}
                             <span className="new">{i.summary}</span>
                           </label>
                         )}
                         {i.description && (
                           <details className="skipped">
                             <summary>
-                              Description,{' '}
+                              {tr('Description,')}{' '}
                               {i.description.split(/\n\s*\n/).length}{' '}
-                              paragraph(s)
+                              {tr('paragraph(s)')}
                             </summary>
                             <div className="ai-desc">{i.description}</div>
                           </details>
@@ -440,7 +452,9 @@ export function AiDialog({
         </>
       )}
       {(step === 'copy' || step === 'paste') && !batch && (
-        <p className="muted">Nothing prepared yet. Choose tasks first.</p>
+        <p className="muted">
+          {tr('Nothing prepared yet. Choose tasks first.')}
+        </p>
       )}
     </Modal>
   );
@@ -496,12 +510,12 @@ export function GlossaryDialog({
   };
   return (
     <Modal
-      title="Glossary"
+      title={tr('Glossary')}
       subtitle={`${project.name} · Gemini batches use these translations exactly`}
       onClose={onClose}
       footer={
         <button className="btn primary" onClick={onClose}>
-          Done
+          {tr('Done')}
         </button>
       }
     >
@@ -514,24 +528,24 @@ export function GlossaryDialog({
       >
         <input
           className="inp"
-          placeholder="Term, such as 受入テスト"
+          placeholder={tr('Term, such as 受入テスト')}
           value={draft.term}
           onChange={(e) => setDraft({ ...draft, term: e.target.value })}
-          aria-label="Term"
+          aria-label={tr('Term')}
         />
         <input
           className="inp"
           placeholder={`In ${LANGUAGES[project.workingLanguage]}, such as acceptance test`}
           value={draft.translation}
           onChange={(e) => setDraft({ ...draft, translation: e.target.value })}
-          aria-label="Translation"
+          aria-label={tr('Translation')}
         />
         <input
           className="inp"
-          placeholder="Note (optional)"
+          placeholder={tr('Note (optional)')}
           value={draft.note}
           onChange={(e) => setDraft({ ...draft, note: e.target.value })}
-          aria-label="Note"
+          aria-label={tr('Note')}
         />
         <button
           className="btn"
@@ -539,7 +553,7 @@ export function GlossaryDialog({
           disabled={!draft.term.trim() || !draft.translation.trim()}
         >
           <Icon name="plus" />
-          Add
+          {tr('Add')}
         </button>
       </form>
       {terms && terms.length > 0 ? (
@@ -547,9 +561,9 @@ export function GlossaryDialog({
           <table>
             <thead>
               <tr>
-                <th>Term</th>
-                <th>Translation</th>
-                <th>Note</th>
+                <th>{tr('Term')}</th>
+                <th>{tr('Translation')}</th>
+                <th>{tr('Note')}</th>
                 <th />
               </tr>
             </thead>
@@ -604,8 +618,9 @@ export function GlossaryDialog({
       ) : (
         terms && (
           <p className="muted">
-            No terms yet. Add the technical words the customer uses, so
-            translations stay the same everywhere.
+            {tr(
+              'No terms yet. Add the technical words the customer uses, so translations stay the same everywhere.',
+            )}
           </p>
         )
       )}

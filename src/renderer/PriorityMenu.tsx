@@ -9,6 +9,7 @@ import {
 import { useApp } from './appState';
 import { Icon } from './Icon';
 import { useTaskLabel } from './parts';
+import { tr } from './i18n';
 
 export interface MenuAnchor {
   task: Task;
@@ -105,7 +106,7 @@ export function PriorityMenu({
             window.worksync.setPriorityOverride(t.id, null),
           )) ?? u;
       }
-      done(after, `${label(t)} is now ${LEVEL_NAME[level]}.`, async () => {
+      done(after, `${label(t)} is now ${tr(LEVEL_NAME[level])}.`, async () => {
         const r = await window.worksync.updateTask(t.id, {
           priority: before,
         });
@@ -122,8 +123,8 @@ export function PriorityMenu({
         done(
           u,
           u.priorityOverride
-            ? `${label(t)} is ${LEVEL_NAME[level]} for you. The file still says ${LEVEL_NAME[t.priority]}.`
-            : `Override removed. ${label(t)} is ${LEVEL_NAME[t.priority]}, as in the file.`,
+            ? `${label(t)} is ${tr(LEVEL_NAME[level])} for you. The file still says ${tr(LEVEL_NAME[t.priority])}.`
+            : `Override removed. ${label(t)} is ${tr(LEVEL_NAME[t.priority])}, as in the file.`,
           () => window.worksync.setPriorityOverride(t.id, before),
         );
     }
@@ -137,7 +138,7 @@ export function PriorityMenu({
     if (u)
       done(
         u,
-        `Override removed. ${label(t)} is ${LEVEL_NAME[t.priority]} again.`,
+        `Override removed. ${label(t)} is ${tr(LEVEL_NAME[t.priority])} again.`,
         () => window.worksync.setPriorityOverride(t.id, before),
       );
   };
@@ -177,7 +178,7 @@ export function PriorityMenu({
       onKeyDown={onKeyDown}
     >
       <div className="pm-head">
-        <b id="pmTitle">Priority</b>
+        <b id="pmTitle">{tr('Priority')}</b>
         <span className="tid">{label(t)}</span>
       </div>
       {fromFile ? (
@@ -185,35 +186,43 @@ export function PriorityMenu({
           <div
             className="seg-ctl pm-mode"
             role="radiogroup"
-            aria-label="Where to change it"
+            aria-label={tr('Where to change it')}
           >
             <button
               role="radio"
               aria-checked={mode === 'me'}
               onClick={() => setMode('me')}
             >
-              Only for me
+              {tr('Only for me')}
             </button>
             <button
               role="radio"
               aria-checked={mode === 'file'}
               onClick={() => setMode('file')}
             >
-              Change in the file
+              {tr('Change in the file')}
             </button>
           </div>
           <p className="pm-note">
             {mode === 'me'
-              ? 'Shown instead of the file’s value in every view. Never written to the customer’s file.'
-              : 'Changes the file’s value. Write to copy writes the file’s own word for it into your copy.'}
+              ? tr(
+                  'Shown instead of the file’s value in every view. Never written to the customer’s file.',
+                )
+              : tr(
+                  'Changes the file’s value. Write to copy writes the file’s own word for it into your copy.',
+                )}
           </p>
         </>
       ) : (
         <p className="pm-note">
-          Added by hand, so there is no customer file to write to.
+          {tr('Added by hand, so there is no customer file to write to.')}
         </p>
       )}
-      <div className="pm-list" role="radiogroup" aria-label="Priority level">
+      <div
+        className="pm-list"
+        role="radiogroup"
+        aria-label={tr('Priority level')}
+      >
         {LEVELS.map((k) => (
           <button
             key={k}
@@ -223,10 +232,10 @@ export function PriorityMenu({
             onClick={() => void pick(k)}
           >
             <i className="sw" />
-            <span>{LEVEL_NAME[k]}</span>
+            <span>{tr(LEVEL_NAME[k])}</span>
             <span className="fw">
               {fromFile && mode === 'me' && k === t.priority ? (
-                <small>File</small>
+                <small>{tr('File')}</small>
               ) : null}
             </span>
             <span className="ck">
@@ -242,7 +251,8 @@ export function PriorityMenu({
         >
           <Icon name="x" />
           <span>
-            Remove override, back to {LEVEL_NAME[t.priority]} from the file
+            {tr('Remove override, back to')} {tr(LEVEL_NAME[t.priority])}{' '}
+            {tr('from the file')}
           </span>
         </button>
       )}

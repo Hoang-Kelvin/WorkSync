@@ -8,6 +8,7 @@ import {
 import { useApp } from './appState';
 import { Icon } from './Icon';
 import { Modal } from './parts';
+import { tr } from './i18n';
 
 type Draft = Omit<Person, 'id' | 'projectId'> & { id?: string };
 const EMPTY: Draft = {
@@ -82,12 +83,12 @@ export function PeopleDialog({
 
   return (
     <Modal
-      title="People"
+      title={tr('People')}
       subtitle={`${project.name} · names in the files, shown in ${working}`}
       onClose={onClose}
       footer={
         <button className="btn primary" onClick={onClose}>
-          Done
+          {tr('Done')}
         </button>
       }
     >
@@ -99,16 +100,16 @@ export function PeopleDialog({
         }}
       >
         <label>
-          As written in the files
+          {tr('As written in the files')}
           <input
             className="inp"
-            placeholder="Such as 田中"
+            placeholder={tr('Such as 田中')}
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           />
         </label>
         <label>
-          Shown as
+          {tr('Shown as')}
           <input
             className="inp"
             placeholder={`In ${working}, such as Tanaka`}
@@ -119,7 +120,7 @@ export function PeopleDialog({
           />
         </label>
         <label>
-          Side
+          {tr('Side')}
           <select
             className="inp"
             value={draft.side}
@@ -127,15 +128,17 @@ export function PeopleDialog({
               setDraft({ ...draft, side: e.target.value as Person['side'] })
             }
           >
-            <option value="customer">Customer</option>
-            <option value="ours">Our company</option>
+            <option value="customer">{tr('Customer')}</option>
+            <option value="ours">{tr('Our company')}</option>
           </select>
         </label>
         <label className="wide">
-          Other spellings
+          {tr('Other spellings')}
           <input
             className="inp"
-            placeholder="Such as 田中太郎, Tanaka-san, separated by commas"
+            placeholder={tr(
+              'Such as 田中太郎, Tanaka-san, separated by commas',
+            )}
             value={spellings}
             onChange={(e) => setSpellings(e.target.value)}
           />
@@ -150,19 +153,21 @@ export function PeopleDialog({
                 setSpellings('');
               }}
             >
-              Cancel
+              {tr('Cancel')}
             </button>
           )}
           <button className="btn" type="submit" disabled={!draft.name.trim()}>
             <Icon name={editing ? 'check' : 'plus'} />
-            {editing ? 'Save' : 'Add'}
+            {editing ? tr('Save') : tr('Add')}
           </button>
         </span>
       </form>
 
       {unknown.length > 0 && (
         <div className="people-unknown">
-          <span className="muted">In the tasks, not in the list yet:</span>
+          <span className="muted">
+            {tr('In the tasks, not in the list yet:')}
+          </span>
           {unknown.slice(0, 12).map(([name, n]) => (
             <button
               key={name}
@@ -185,10 +190,10 @@ export function PeopleDialog({
           <table>
             <thead>
               <tr>
-                <th>In the files</th>
-                <th>Shown as</th>
-                <th>Side</th>
-                <th>Other spellings</th>
+                <th>{tr('In the files')}</th>
+                <th>{tr('Shown as')}</th>
+                <th>{tr('Side')}</th>
+                <th>{tr('Other spellings')}</th>
                 <th />
               </tr>
             </thead>
@@ -197,7 +202,9 @@ export function PeopleDialog({
                 <tr key={p.id} className={draft.id === p.id ? 'sel' : ''}>
                   <td>{p.name}</td>
                   <td>{p.displayName || <span className="muted">—</span>}</td>
-                  <td>{p.side === 'ours' ? 'Our company' : 'Customer'}</td>
+                  <td>
+                    {p.side === 'ours' ? tr('Our company') : tr('Customer')}
+                  </td>
                   <td>{p.spellings.join(', ')}</td>
                   <td className="row-actions">
                     <button
@@ -222,8 +229,10 @@ export function PeopleDialog({
         </div>
       ) : (
         <p className="muted">
-          No people yet. Add the names the files use, so assignees show in{' '}
-          {working} and different spellings count as one person.
+          {tr(
+            'No people yet. Add the names the files use, so assignees show in',
+          )}{' '}
+          {working} {tr('and different spellings count as one person.')}
         </p>
       )}
     </Modal>

@@ -39,6 +39,7 @@ import {
   DeadlineChip,
   priorityClass,
 } from './parts';
+import { tr, trReason } from './i18n';
 
 export interface ViewProps {
   query: string;
@@ -122,7 +123,7 @@ function FocusCard({
         )}
         <span className="sp" />
         {task.pinned && (
-          <span className="pin" title="Pinned">
+          <span className="pin" title={tr('Pinned')}>
             <Icon name="pin" />
           </span>
         )}
@@ -136,20 +137,22 @@ function FocusCard({
         <div className="tc-sit">
           <Icon name="user" />
           <span className="clamp2">
-            <b>{s.handledBy || 'Someone'}</b>
+            <b>{s.handledBy || tr('Someone')}</b>
             {s.doingNow ? ` · ${s.doingNow}` : ''}
           </span>
         </div>
       ) : (
         <div className="tc-sit muted">
           <Icon name="user" />
-          <span>No situation recorded yet</span>
+          <span>{tr('No situation recorded yet')}</span>
         </div>
       )}
       <div className="tc-foot">
         <MetaChips task={task} dueSoonDays={project.dueSoonDays} />
       </div>
-      {why.length > 0 && <div className="why">{why.join(' · ')}</div>}
+      {why.length > 0 && (
+        <div className="why">{why.map(trReason).join(' · ')}</div>
+      )}
     </article>
   );
 }
@@ -218,7 +221,7 @@ export function FocusView({
     .filter((t) => props.match(t))
     .sort(byPriority);
   const chips = (
-    <div className="qchips" role="group" aria-label="Quick filters">
+    <div className="qchips" role="group" aria-label={tr('Quick filters')}>
       {(Object.keys(QUICK) as QuickKey[]).map((k) => (
         <button
           key={k}
@@ -226,7 +229,7 @@ export function FocusView({
           aria-pressed={quick === k}
           onClick={() => setQuick(quick === k ? null : k)}
         >
-          {QUICK[k].label}{' '}
+          {tr(QUICK[k].label)}{' '}
           <b>
             {base.filter((t) => QUICK[k].test(flags(t, today, days(t)))).length}
           </b>
@@ -240,13 +243,16 @@ export function FocusView({
     month: 'long',
     year: 'numeric',
   });
-  const scopeName = all ? 'All projects' : (project(scope)?.name ?? '');
+  const scopeName = all ? tr('All projects') : (project(scope)?.name ?? '');
   const projectTasks = all ? tasks : tasks.filter((t) => t.projectId === scope);
   return (
     <>
       {props.header(
-        'Focus',
-        `${scopeName} · ${date} · sorted by priority, then due date · right-click a card to change its priority`,
+        tr('Focus'),
+        tr(
+          '{scope} · {date} · sorted by priority, then due date · right-click a card to change its priority',
+          { scope: scopeName, date },
+        ),
         chips,
       )}
       {shown.length ? (
@@ -264,16 +270,20 @@ export function FocusView({
       ) : (
         <div className="empty">
           {props.query || quick ? (
-            'No tasks match. Clear the search or the filter to see the full focus list.'
+            tr(
+              'No tasks match. Clear the search or the filter to see the full focus list.',
+            )
           ) : projectTasks.length ? (
-            'Nothing needs attention right now. Tasks appear here when they are pinned, urgent, overdue, due soon, late to start, with your next action due, or past their next step.'
+            tr(
+              'Nothing needs attention right now. Tasks appear here when they are pinned, urgent, overdue, due soon, late to start, with your next action due, or past their next step.',
+            )
           ) : (
             <>
-              <p style={{ margin: '0 0 12px' }}>No tasks yet.</p>
+              <p style={{ margin: '0 0 12px' }}>{tr('No tasks yet.')}</p>
               {!all && (
                 <button className="btn primary" onClick={onNewTask}>
                   <Icon name="plus" />
-                  New task
+                  {tr('New task')}
                 </button>
               )}
             </>
@@ -339,8 +349,11 @@ export function BoardView({
   return (
     <>
       {props.header(
-        'Board',
-        `${p.name} · drag a card to change its status, right-click it to change its priority`,
+        tr('Board'),
+        tr(
+          '{name} · drag a card to change its status, right-click it to change its priority',
+          { name: p.name },
+        ),
         <div style={{ display: 'flex', gap: 8 }}>
           {(p.board.hidden.length > 0 || showHidden) && (
             <button
@@ -350,13 +363,13 @@ export function BoardView({
               title={`Hidden: ${p.board.hidden.join(', ')}`}
             >
               {showHidden
-                ? 'Hide hidden columns'
-                : `Show hidden${inHidden ? ` (${inHidden})` : ''}`}
+                ? tr('Hide hidden columns')
+                : `${tr('Show hidden')}${inHidden ? ` (${inHidden})` : ''}`}
             </button>
           )}
           <button className="btn sm" onClick={() => setManaging(true)}>
             <Icon name="sliders" />
-            Columns
+            {tr('Columns')}
           </button>
         </div>,
       )}
@@ -445,7 +458,9 @@ export function BoardView({
                       <span
                         className="avatar"
                         title={
-                          t.situation.handledBy || t.assignee || 'Nobody yet'
+                          t.situation.handledBy ||
+                          t.assignee ||
+                          tr('Nobody yet')
                         }
                       >
                         {initials(t.situation.handledBy || t.assignee || '–')}
@@ -513,19 +528,19 @@ function BoardColumnsDialog({
   };
   return (
     <Modal
-      title="Board columns"
+      title={tr('Board columns')}
       subtitle={`${p.name} · each project keeps its own`}
       onClose={onClose}
       narrow
       footer={
         <button className="btn primary" onClick={onClose}>
-          Done
+          {tr('Done')}
         </button>
       }
     >
       <div className="form">
         <fieldset>
-          <legend>Status columns</legend>
+          <legend>{tr('Status columns')}</legend>
           {STATUSES.map((s) => {
             const n = tasks.filter(
               (t) => t.projectId === p.id && t.status === s,
@@ -557,12 +572,13 @@ function BoardColumnsDialog({
             );
           })}
           <span className="hint-text">
-            Hiding a column only hides it on the Board; its tasks keep their
-            status. Show hidden on the Board shows them again for a moment.
+            {tr(
+              'Hiding a column only hides it on the Board; its tasks keep their status. Show hidden on the Board shows them again for a moment.',
+            )}
           </span>
         </fieldset>
         <fieldset>
-          <legend>Your own columns</legend>
+          <legend>{tr('Your own columns')}</legend>
           {b.columns.map((c) => (
             <div key={c.id} className="bc-row">
               <input
@@ -626,14 +642,14 @@ function BoardColumnsDialog({
               className="inp sm"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Name, such as Waiting for test"
-              aria-label="New column name"
+              placeholder={tr('Name, such as Waiting for test')}
+              aria-label={tr('New column name')}
             />
             <select
               className="inp sm"
               value={under}
               onChange={(e) => setUnder(e.target.value as Status)}
-              aria-label="Status of the new column"
+              aria-label={tr('Status of the new column')}
             >
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -647,18 +663,19 @@ function BoardColumnsDialog({
               disabled={!name.trim() || !!clash}
             >
               <Icon name="plus" />
-              Add
+              {tr('Add')}
             </button>
           </form>
           {clash && (
             <span className="warn-text" role="alert">
-              There is already a column called {clash}. Choose another name.
+              {tr('There is already a column called')} {clash}. Choose another
+              name.
             </span>
           )}
           <span className="hint-text">
-            A card moved to your column takes its status, so the file and
-            reports see that status. If the status changes elsewhere, the card
-            goes back to the status column.
+            {tr(
+              'A card moved to your column takes its status, so the file and reports see that status. If the status changes elsewhere, the card goes back to the status column.',
+            )}
           </span>
         </fieldset>
       </div>

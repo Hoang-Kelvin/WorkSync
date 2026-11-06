@@ -2439,3 +2439,7 @@ html.quick #root {
   white-space: pre-wrap;
   margin-top: 2px;
 }
+
+.set-row .switch {
+  flex: none;
+}

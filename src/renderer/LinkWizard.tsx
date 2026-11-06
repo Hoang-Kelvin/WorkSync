@@ -28,6 +28,7 @@ import type { FileInspection, FormatPreview } from '../shared/sources';
 import { useApp } from './appState';
 import { Icon } from './Icon';
 import { Modal } from './parts';
+import { tr } from './i18n';
 
 const STEPS = ['File', 'Header rows', 'Columns', 'Values', 'Preview'] as const;
 
@@ -227,12 +228,12 @@ export function LinkWizard({
 
   return (
     <Modal
-      title="Link a customer file"
+      title={tr('Link a customer file')}
       subtitle={`${project.name} · the file is only ever read, never changed`}
       onClose={onClose}
       footer={
         <>
-          <ol className="steps" aria-label="Steps">
+          <ol className="steps" aria-label={tr('Steps')}>
             {STEPS.map((s, i) => (
               <li
                 key={s}
@@ -245,7 +246,7 @@ export function LinkWizard({
           </ol>
           {step > 0 && (
             <button className="btn" onClick={() => setStep(step - 1)}>
-              Back
+              {tr('Back')}
             </button>
           )}
           {step < 4 ? (
@@ -254,7 +255,7 @@ export function LinkWizard({
               disabled={!canNext || busy}
               onClick={() => setStep(step + 1)}
             >
-              Next
+              {tr('Next')}
             </button>
           ) : (
             <button
@@ -263,7 +264,7 @@ export function LinkWizard({
               onClick={() => void link()}
             >
               <Icon name="link" />
-              Link and import {preview?.rowCount ?? 0} task
+              {tr('Link and import')} {preview?.rowCount ?? 0} task
               {preview?.rowCount === 1 ? '' : 's'}
             </button>
           )}
@@ -279,18 +280,20 @@ export function LinkWizard({
               disabled={busy}
             >
               <Icon name="folder" />
-              {file ? 'Choose another file' : 'Choose the file'}
+              {file ? tr('Choose another file') : tr('Choose the file')}
             </button>
             <span className="path">
               {file ??
-                'An .xlsx, .xlsm, .xls or .csv file, for example in your Box Drive folder.'}
+                tr(
+                  'An .xlsx, .xlsm, .xls or .csv file, for example in your Box Drive folder.',
+                )}
             </span>
           </div>
           {!file && (
             <p className="muted step-help">
-              No customer file yet?{' '}
+              {tr('No customer file yet?')}{' '}
               <button type="button" className="linkbtn" onClick={onClose}>
-                Skip this and add tasks by hand
+                {tr('Skip this and add tasks by hand')}
               </button>
               . You can link a file later under Files.
             </p>
@@ -298,7 +301,7 @@ export function LinkWizard({
           {info && (
             <>
               <label>
-                Sheet with the tasks
+                {tr('Sheet with the tasks')}
                 <select
                   className="inp"
                   value={sheet}
@@ -312,14 +315,14 @@ export function LinkWizard({
                 </select>
               </label>
               <fieldset>
-                <legend>When the customer saves new versions</legend>
+                <legend>{tr('When the customer saves new versions')}</legend>
                 <label className="check">
                   <input
                     type="radio"
                     checked={!usePattern}
                     onChange={() => setUsePattern(false)}
                   />
-                  The file keeps its name. Read this file.
+                  {tr('The file keeps its name. Read this file.')}
                 </label>
                 <label className="check">
                   <input
@@ -327,20 +330,22 @@ export function LinkWizard({
                     checked={usePattern}
                     onChange={() => setUsePattern(true)}
                   />
-                  Each version gets a new name. Read the newest file named like
+                  {tr(
+                    'Each version gets a new name. Read the newest file named like',
+                  )}
                 </label>
                 {usePattern && (
                   <input
                     className="inp mono"
                     value={pattern}
                     onChange={(e) => setPattern(e.target.value)}
-                    placeholder="WBS_*.xlsx"
-                    aria-label="Name pattern"
+                    placeholder={tr('WBS_*.xlsx')}
+                    aria-label={tr('Name pattern')}
                   />
                 )}
                 {usePattern && (
                   <span className="hint-text">
-                    * stands for any text, such as a date.
+                    {tr('* stands for any text, such as a date.')}
                   </span>
                 )}
               </fieldset>
@@ -352,8 +357,9 @@ export function LinkWizard({
       {step === 1 && (
         <>
           <p className="muted step-help">
-            Click the header row. If the headers span two rows, such as 予定
-            over 開始 and 終了, Ctrl-click the second row too.
+            {tr(
+              'Click the header row. If the headers span two rows, such as 予定 over 開始 and 終了, Ctrl-click the second row too.',
+            )}
           </p>
           <div className="sheet-wrap">
             <table className="sheet">
@@ -387,8 +393,9 @@ export function LinkWizard({
       {step === 2 && (
         <>
           <p className="muted step-help">
-            These matches come from the header text. Change any that are wrong.
-            Columns left unmatched are kept as extra fields.
+            {tr(
+              'These matches come from the header text. Change any that are wrong. Columns left unmatched are kept as extra fields.',
+            )}
           </p>
           <ColumnMap
             columns={columns}
@@ -400,8 +407,9 @@ export function LinkWizard({
             <div className="keepnote">
               <Icon name="alert" />
               <span>
-                Without an ID column, tasks are matched between versions by
-                their exact title, which can make mistakes when a title changes.
+                {tr(
+                  'Without an ID column, tasks are matched between versions by their exact title, which can make mistakes when a title changes.',
+                )}
               </span>
             </div>
           )}
@@ -410,10 +418,10 @@ export function LinkWizard({
 
       {step === 3 && (
         <div className="form">
-          {!preview && <p className="muted">Reading the file…</p>}
+          {!preview && <p className="muted">{tr('Reading the file…')}</p>}
           {preview && preview.statusValues.length > 0 && (
             <fieldset>
-              <legend>What each status word in the file means</legend>
+              <legend>{tr('What each status word in the file means')}</legend>
               <div className="map-grid">
                 {preview.statusValues.map((v) => (
                   <label key={v}>
@@ -428,9 +436,11 @@ export function LinkWizard({
                         })
                       }
                     >
-                      <option value="">Choose…</option>
+                      <option value="">{tr('Choose…')}</option>
                       {STATUSES.map((s) => (
-                        <option key={s}>{s}</option>
+                        <option key={s} value={s}>
+                          {tr(s)}
+                        </option>
                       ))}
                     </select>
                   </label>
@@ -440,12 +450,14 @@ export function LinkWizard({
           )}
           {preview && columns.status === undefined && (
             <p className="muted">
-              No status column, so the status comes from the actual dates.
+              {tr(
+                'No status column, so the status comes from the actual dates.',
+              )}
             </p>
           )}
           {preview && preview.priorityValues.length > 0 && (
             <fieldset>
-              <legend>What each priority value means</legend>
+              <legend>{tr('What each priority value means')}</legend>
               <div className="map-grid">
                 {preview.priorityValues.map((v) => (
                   <label key={v}>
@@ -460,10 +472,10 @@ export function LinkWizard({
                         })
                       }
                     >
-                      <option value="">Choose…</option>
+                      <option value="">{tr('Choose…')}</option>
                       {LEVELS.map((l) => (
                         <option key={l} value={l}>
-                          {LEVEL_NAME[l]}
+                          {tr(LEVEL_NAME[l])}
                         </option>
                       ))}
                     </select>
@@ -474,21 +486,21 @@ export function LinkWizard({
           )}
           {preview && preview.dates.length > 0 && (
             <fieldset>
-              <legend>How the dates were read</legend>
+              <legend>{tr('How the dates were read')}</legend>
               <label className="check" style={{ marginBottom: 8 }}>
-                Dates such as 3/11 mean
+                {tr('Dates such as 3/11 mean')}
                 <select
                   className="inp sm"
                   style={{ marginLeft: 8 }}
                   value={dayFirst ? 'day' : 'month'}
                   onChange={(e) => setDayFirst(e.target.value === 'day')}
-                  aria-label="Order of month and day"
+                  aria-label={tr('Order of month and day')}
                 >
                   <option value="month">
-                    11 March, month first (Japan, US)
+                    {tr('11 March, month first (Japan, US)')}
                   </option>
                   <option value="day">
-                    3 November, day first (Vietnam, UK)
+                    {tr('3 November, day first (Vietnam, UK)')}
                   </option>
                 </select>
               </label>
@@ -507,11 +519,11 @@ export function LinkWizard({
                               {s.text} →{' '}
                               {s.date
                                 ? s.date.replaceAll('-', '/')
-                                : 'not a date'}
+                                : tr('not a date')}
                             </span>
                           ))
                         ) : (
-                          <span className="muted">Empty</span>
+                          <span className="muted">{tr('Empty')}</span>
                         )}
                       </td>
                     </tr>
@@ -521,7 +533,7 @@ export function LinkWizard({
             </fieldset>
           )}
           <label>
-            Main language of the file
+            {tr('Main language of the file')}
             <select
               className="inp"
               value={mainLanguage}
@@ -540,7 +552,7 @@ export function LinkWizard({
       {step === 4 && preview && (
         <>
           <label className="form-inline">
-            Name of this file format
+            {tr('Name of this file format')}
             <input
               className="inp"
               value={name}
@@ -548,21 +560,21 @@ export function LinkWizard({
             />
           </label>
           <p className="muted step-help">
-            {preview.rowCount} task{preview.rowCount === 1 ? '' : 's'} will be
-            added. The first {Math.min(20, preview.rowCount)} are shown as they
-            will appear.
+            {preview.rowCount} task{preview.rowCount === 1 ? '' : 's'}{' '}
+            {tr('will be added. The first')} {Math.min(20, preview.rowCount)}{' '}
+            {tr('are shown as they will appear.')}
           </p>
           <div className="sheet-wrap">
             <table className="sheet preview">
               <thead>
                 <tr>
-                  <th>Row</th>
-                  <th>ID</th>
-                  <th>Title</th>
-                  <th>Status</th>
-                  <th>Priority</th>
-                  <th>Planned</th>
-                  <th>Assignee</th>
+                  <th>{tr('Row')}</th>
+                  <th>{tr('ID')}</th>
+                  <th>{tr('Title')}</th>
+                  <th>{tr('Status')}</th>
+                  <th>{tr('Priority')}</th>
+                  <th>{tr('Planned')}</th>
+                  <th>{tr('Assignee')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -577,7 +589,7 @@ export function LinkWizard({
                         <span className="muted"> · {r.statusWord}</span>
                       )}
                     </td>
-                    <td>{LEVEL_NAME[r.priority]}</td>
+                    <td>{tr(LEVEL_NAME[r.priority])}</td>
                     <td className="mono">
                       {(r.plannedStart ?? '').replaceAll('-', '/')} →{' '}
                       {(r.plannedEnd ?? '').replaceAll('-', '/')}
@@ -592,13 +604,16 @@ export function LinkWizard({
             <details className="skipped">
               <summary>
                 {preview.skipped.length} row
-                {preview.skipped.length === 1 ? '' : 's'} skipped, such as blank
-                rows, totals and section titles
+                {preview.skipped.length === 1 ? '' : 's'}{' '}
+                {tr('skipped, such as blank rows, totals and section titles')}
               </summary>
               <ul>
                 {preview.skipped.slice(0, 50).map((s) => (
                   <li key={s.row}>
-                    <span className="mono">Row {s.row}</span> · {s.reason} ·{' '}
+                    <span className="mono">
+                      {tr('Row')} {s.row}
+                    </span>{' '}
+                    · {s.reason} ·{' '}
                     <span lang={mainLanguage}>{s.text.slice(0, 80)}</span>
                   </li>
                 ))}
@@ -632,7 +647,7 @@ export function ColumnMap({
         {IMPORT_FIELDS.map((f: ImportField) => (
           <label key={f}>
             {FIELD_NAMES[f]}
-            {f === 'title' && <span className="hint"> · required</span>}
+            {f === 'title' && <span className="hint"> {tr('· required')}</span>}
             <select
               className="inp"
               value={columns[f] ?? ''}
@@ -644,11 +659,13 @@ export function ColumnMap({
                 })
               }
             >
-              <option value="">Not in this file</option>
+              <option value="">{tr('Not in this file')}</option>
               {headers.map((h, i) => (
                 <option key={i} value={i} disabled={!columnFree(columns, f, i)}>
-                  {columnLetter(i)} · {h || '(no header)'}
-                  {f === 'title' && columns.customerId === i ? ' (the ID)' : ''}
+                  {columnLetter(i)} · {h || tr('(no header)')}
+                  {f === 'title' && columns.customerId === i
+                    ? tr(' (the ID)')
+                    : ''}
                   {sample(i) ? ` — ${String(sample(i)).slice(0, 24)}` : ''}
                 </option>
               ))}
@@ -664,16 +681,19 @@ export function ColumnMap({
             onClick={() =>
               setColumns({ ...columns, title: columns.customerId })
             }
-            title="Tasks are shown and found by their ID, as you call them in meetings"
+            title={tr(
+              'Tasks are shown and found by their ID, as you call them in meetings',
+            )}
           >
-            Use the ID as the title
+            {tr('Use the ID as the title')}
           </button>
         )}
       {columns.customerId !== undefined &&
         columns.title === columns.customerId && (
           <p className="muted step-help">
-            The title is the ID. Tasks show and are found by their ID; the other
-            columns are kept as fields from the file.
+            {tr(
+              'The title is the ID. Tasks show and are found by their ID; the other columns are kept as fields from the file.',
+            )}
           </p>
         )}
     </>
