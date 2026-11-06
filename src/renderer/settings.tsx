@@ -160,6 +160,58 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
     >
       <div className="form settings">
         <fieldset>
+          <legend>Appearance</legend>
+          <div className="set-row">
+            <span>
+              <b>Theme</b>
+              <small>
+                System follows your computer’s light or dark setting.
+              </small>
+            </span>
+            <div className="seg-ctl" role="group" aria-label="Theme">
+              {(
+                [
+                  ['system', 'System'],
+                  ['light', 'Light'],
+                  ['dark', 'Dark'],
+                ] as const
+              ).map(([k, l]) => (
+                <button
+                  key={k}
+                  aria-pressed={settings.theme === k}
+                  onClick={() => void save({ theme: k })}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Running in the background</legend>
+          <div className="set-row">
+            <span>
+              <b>Keep running in the tray when I close the window</b>
+              <small>
+                Reminders and the quick-search shortcut work only while WorkSync
+                runs. Open it again or quit from the tray icon. WorkSync doesn’t
+                start with your computer and writes nothing to the system.
+              </small>
+            </span>
+            <button
+              className="switch"
+              role="switch"
+              aria-checked={settings.keepInTray}
+              aria-label="Keep running in the tray"
+              onClick={() => void save({ keepInTray: !settings.keepInTray })}
+            >
+              <span />
+            </button>
+          </div>
+        </fieldset>
+
+        <fieldset>
           <legend>New projects</legend>
           <div className="two">
             <label>
@@ -212,9 +264,9 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               <b>Data folder</b>
               <code title={info?.dataFolder}>{info?.dataFolder ?? '…'}</code>
               <small>
-                Beside the app folder, so a new version never touches it. To
-                move it, move the WorkSync folder and its WorkSync-data folder
-                together.
+                A new version of WorkSync never touches it. On Windows it sits
+                beside the app folder: to move it, move the WorkSync folder and
+                its WorkSync-data folder together.
               </small>
             </span>
             <button

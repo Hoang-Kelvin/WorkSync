@@ -8,12 +8,32 @@ export interface AppSettings {
   dueSoonDays: number;
   /** Where backups go; null means the backups folder in the data folder. */
   backupFolder: string | null;
+  /** System follows the operating system's light or dark setting. */
+  theme: ThemeChoice;
+  /** Closing the window keeps WorkSync running in the tray. */
+  keepInTray: boolean;
+  /** Windows notifications for My tasks. */
+  reminders: boolean;
+  /**
+   * The shortcut that opens Catalog search from any app, as an Electron
+   * accelerator such as CommandOrControl+Shift+F; null turns it off.
+   */
+  quickSearchKey: string | null;
+  /** Search files on this PC with Everything (Windows). */
+  everything: boolean;
 }
+
+export type ThemeChoice = 'system' | 'light' | 'dark';
 
 export const DEFAULT_SETTINGS: AppSettings = {
   workingLanguage: 'en',
   dueSoonDays: 7,
   backupFolder: null,
+  theme: 'system',
+  keepInTray: true,
+  reminders: true,
+  quickSearchKey: 'CommandOrControl+Shift+F',
+  everything: true,
 };
 
 export type BackupKind =

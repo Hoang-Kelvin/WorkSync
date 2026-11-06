@@ -39,7 +39,13 @@ import {
 } from './backups';
 import { log, logFolder, startLog } from './log';
 import { exportProject, importProject, readExport } from './projectTransfer';
-import { sharedFolderWarning, type StorageInfo } from '../shared/settings';
+import {
+  DEFAULT_SETTINGS,
+  sharedFolderWarning,
+  type AppSettings,
+  type StorageInfo,
+} from '../shared/settings';
+import { applyAppSettings, getMainWindow } from './appShell';
 import { addSampleProject } from './sample';
 import { FileLinks } from './fileLinks';
 import { CopyWriter } from './copyWriter';
@@ -314,14 +320,18 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
       // Never inside Box or beside a linked customer file (spec 06).
       if (problem) throw new Error(problem);
     }
-    return need().updateSettings(patch);
+    const saved = need().updateSettings(patch);
+    applyAppSettings(saved);
+    return saved;
   },
   storageInfo: async () => storageInfo(),
   chooseBackupFolder: async () => {
     if (process.env.WORKSYNC_TEST_BACKUP_FOLDER)
       return process.env.WORKSYNC_TEST_BACKUP_FOLDER;
     const win =
-      BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+      BrowserWindow.getFocusedWindow() ??
+      getMainWindow() ??
+      BrowserWindow.getAllWindows()[0];
     const r = await dialog.showOpenDialog(win, {
       title: 'Choose the backup folder',
       defaultPath: backupFolder(),
@@ -340,7 +350,9 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
     let file: string | null = test ?? null;
     if (!test) {
       const win =
-        BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+        BrowserWindow.getFocusedWindow() ??
+        getMainWindow() ??
+        BrowserWindow.getAllWindows()[0];
       const r = await dialog.showOpenDialog(win, {
         title: 'Choose a WorkSync backup',
         defaultPath: backupFolder(),
@@ -388,7 +400,9 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
     let file = process.env.WORKSYNC_TEST_EXPORT_FILE ?? null;
     if (!file) {
       const win =
-        BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+        BrowserWindow.getFocusedWindow() ??
+        getMainWindow() ??
+        BrowserWindow.getAllWindows()[0];
       const r = await dialog.showSaveDialog(win, {
         title: 'Save a copy of the project',
         defaultPath: path.join(
@@ -420,7 +434,9 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
     let file = process.env.WORKSYNC_TEST_IMPORT_FILE ?? null;
     if (!file) {
       const win =
-        BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+        BrowserWindow.getFocusedWindow() ??
+        getMainWindow() ??
+        BrowserWindow.getAllWindows()[0];
       const r = await dialog.showOpenDialog(win, {
         title: 'Import a WorkSync project',
         filters: [{ name: 'WorkSync project', extensions: ['worksync'] }],
@@ -487,7 +503,9 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
     let file = process.env.WORKSYNC_TEST_PICK_FILE ?? null;
     if (!file) {
       const win =
-        BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+        BrowserWindow.getFocusedWindow() ??
+        getMainWindow() ??
+        BrowserWindow.getAllWindows()[0];
       const r = await dialog.showOpenDialog(win, {
         title: `Find ${path.basename(src.currentFile)}`,
         properties: ['openFile'],
@@ -583,7 +601,9 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
       return testPick;
     }
     const win =
-      BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+      BrowserWindow.getFocusedWindow() ??
+      getMainWindow() ??
+      BrowserWindow.getAllWindows()[0];
     const r = await dialog.showOpenDialog(win, {
       title: 'Choose the customer’s Excel file',
       properties: ['openFile'],
@@ -684,7 +704,9 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
 
   choosePublishFolder: async (projectId) => {
     const win =
-      BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+      BrowserWindow.getFocusedWindow() ??
+      getMainWindow() ??
+      BrowserWindow.getAllWindows()[0];
     const current = need().getProject(projectId).publishFolder;
     // Automated tests cannot click through the system dialog; they name the folder instead.
     let folder = process.env.WORKSYNC_TEST_PICK_FOLDER ?? null;
@@ -744,7 +766,9 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
     if (process.env.WORKSYNC_TEST_COPY_FOLDER)
       return process.env.WORKSYNC_TEST_COPY_FOLDER;
     const win =
-      BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+      BrowserWindow.getFocusedWindow() ??
+      getMainWindow() ??
+      BrowserWindow.getAllWindows()[0];
     const r = await dialog.showOpenDialog(win, {
       title: 'Choose where to save your copies',
       defaultPath: current,
@@ -785,7 +809,9 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged'> = {
     else {
       fs.mkdirSync(folder, { recursive: true });
       const win =
-        BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+        BrowserWindow.getFocusedWindow() ??
+        getMainWindow() ??
+        BrowserWindow.getAllWindows()[0];
       const r = await dialog.showSaveDialog(win, {
         title: 'Save the report',
         defaultPath: path.join(folder, name),
@@ -858,6 +884,12 @@ export function backupTick(): void {
   } catch (error) {
     log('warn', `Daily backup failed: ${String(error)}`);
   }
+}
+
+/** The app-wide settings, opening the data on first use; defaults if it can't open. */
+export function appSettings(): AppSettings {
+  open();
+  return store?.getSettings() ?? DEFAULT_SETTINGS;
 }
 
 export function registerIpcHandlers(): void {

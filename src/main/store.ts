@@ -122,6 +122,11 @@ export class Store {
       !(Number.isInteger(days) && days >= 1 && days <= 60)
     )
       throw new Error('Due soon must be between 1 and 60 days.');
+    if (
+      patch.theme !== undefined &&
+      !['system', 'light', 'dark'].includes(patch.theme)
+    )
+      throw new Error('Choose System, Light or Dark.');
     this.tx(() => {
       const put = this.db.prepare(
         'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',

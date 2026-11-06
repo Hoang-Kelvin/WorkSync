@@ -1,6 +1,14 @@
 import { app, BrowserWindow, nativeTheme, session } from 'electron';
 import path from 'node:path';
 import {
+  applyAppSettings,
+  attachMainWindow,
+  inTray,
+  markQuitting,
+  showMainWindow,
+} from './appShell';
+import {
+  appSettings,
   backupTick,
   checkLinkedFiles,
   closeStore,
@@ -43,12 +51,20 @@ const createWindow = (): void => {
     );
   }
 
+  attachMainWindow(mainWindow);
   if (!app.isPackaged) {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
 };
 
+// One WorkSync at a time: a second start brings the running one to the front,
+// so two copies never write the same database.
+const primary = app.requestSingleInstanceLock();
+if (!primary) app.quit();
+app.on('second-instance', showMainWindow);
+
 app.whenReady().then(() => {
+  if (!primary) return;
   // See spellcheck above: no dictionary downloads on Linux.
   if (process.platform === 'linux') {
     session.defaultSession.setSpellCheckerEnabled(false);
@@ -57,6 +73,7 @@ app.whenReady().then(() => {
     );
   }
   registerIpcHandlers();
+  applyAppSettings(appSettings());
   createWindow();
   setInterval(checkLinkedFiles, CHECK_EVERY_MS);
   // The day's backup, taken once the date changes while the app runs.
@@ -75,7 +92,7 @@ app.whenReady().then(() => {
 // Quit when all windows are closed, except on macOS, where apps stay active
 // until the user quits explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  if (process.platform !== 'darwin' && !inTray()) {
     app.quit();
   }
 });
@@ -83,6 +100,8 @@ app.on('window-all-closed', () => {
 // Publish first, while the database is still open (spec 05, publish when it closes).
 let published = false;
 app.on('before-quit', () => {
+  // The window may close now (it only hides while WorkSync keeps running).
+  markQuitting();
   if (published) return;
   published = true;
   publishOnClose();
