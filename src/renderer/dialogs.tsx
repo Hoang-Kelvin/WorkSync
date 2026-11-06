@@ -305,9 +305,10 @@ function DeleteProject({
           glossary, people, linked files and Tasks table settings.
         </p>
         <p className="muted">
-          The customer’s files, your written copies, reports and the published
-          page stay where they are. WorkSync backs up your data first, so you
-          can restore it from Settings.
+          The project’s notes stay, under “No project” in Notes. The customer’s
+          files, your written copies, reports and the published page stay where
+          they are. WorkSync backs up your data first, so you can restore it
+          from Settings.
         </p>
         <label>
           Type the project name to confirm
@@ -889,7 +890,7 @@ function ExportCopy({ project }: { project: Project }) {
             checked={notes}
             onChange={(e) => setNotes(e.target.checked)}
           />{' '}
-          Include my notes and next actions
+          Include my notes, next actions and the project’s notes
         </label>
       </span>
       <button

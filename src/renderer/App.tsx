@@ -43,10 +43,13 @@ import { AiDialog, GlossaryDialog, type AiSession } from './ai';
 import type { SourceFile } from '../shared/sources';
 import type { MyTask } from '../shared/myTasks';
 import { MyTasksView } from './mine';
+import { NotesView } from './notes';
+import type { Note } from '../shared/notes';
 
 type Route =
   | { view: 'focus'; scope: 'all' | string }
-  | { view: 'mine'; page: 'tasks' }
+  | { view: 'mine'; page: 'tasks' | 'notes' }
+  | { view: 'projectNotes'; projectId: string }
   | {
       view:
         | 'board'
@@ -148,9 +151,19 @@ function Shell({
     [],
   );
   const [myFocus, setMyFocus] = useState<string | null>(null);
+  const [notes, setNotesState] = useState<Note[]>([]);
+  const setNotes = useCallback(
+    (f: (list: Note[]) => Note[]) => setNotesState(f),
+    [],
+  );
   useEffect(() => {
     void window.worksync.listMyTasks().then(setMyTasksState, () => {});
+    void window.worksync.listNotes().then(setNotesState, () => {});
   }, []);
+  // A deleted project leaves its notes without a project.
+  useEffect(() => {
+    void window.worksync.listNotes().then(setNotesState, () => {});
+  }, [projects.length]);
   const [aiSession, setAiSession] = useState<AiSession | null>(null);
   const [dataWarning, setDataWarning] = useState(warning);
   const [filter, setFilterState] = useState<ViewFilter>(() => {
@@ -175,7 +188,9 @@ function Shell({
 
   // Keep the route valid when a view is turned off or a project changes.
   useEffect(() => {
-    if (
+    if (route.view === 'projectNotes') {
+      if (!project(route.projectId)) setRoute({ view: 'mine', page: 'notes' });
+    } else if (
       route.view !== 'focus' &&
       route.view !== 'mine' &&
       !project(route.projectId)?.views[route.view]
@@ -282,17 +297,35 @@ function Shell({
     }
   };
 
-  const mine = route.view === 'mine';
+  const mine = route.view === 'mine' || route.view === 'projectNotes';
   const currentProjectId =
-    route.view === 'mine'
-      ? active
-      : route.view !== 'focus'
-        ? route.projectId
-        : route.scope !== 'all'
-          ? route.scope
-          : active;
+    route.view === 'projectNotes'
+      ? route.projectId
+      : route.view === 'mine'
+        ? active
+        : route.view !== 'focus'
+          ? route.projectId
+          : route.scope !== 'all'
+            ? route.scope
+            : active;
   const body =
-    route.view === 'mine' ? (
+    route.view === 'projectNotes' ? (
+      <NotesView
+        key={route.projectId}
+        notes={notes}
+        setNotes={setNotes}
+        projectId={route.projectId}
+        query={query}
+        head={headEl}
+      />
+    ) : route.view === 'mine' && route.page === 'notes' ? (
+      <NotesView
+        notes={notes}
+        setNotes={setNotes}
+        query={query}
+        head={headEl}
+      />
+    ) : route.view === 'mine' ? (
       <MyTasksView
         tasks={myTasks}
         setTasks={setMyTasks}
@@ -412,6 +445,19 @@ function Shell({
                 <span className="grow">My tasks</span>
                 <span className="count">{myTasks.length}</span>
               </button>
+              <button
+                className="nav-item"
+                aria-current={
+                  route.view === 'mine' && route.page === 'notes'
+                    ? 'page'
+                    : undefined
+                }
+                onClick={() => go({ view: 'mine', page: 'notes' })}
+              >
+                <Icon name="note" />
+                <span className="grow">Notes</span>
+                <span className="count">{notes.length}</span>
+              </button>
             </div>
           </div>
           <div>
@@ -472,6 +518,25 @@ function Shell({
                             <span className="grow">{viewName(k)}</span>
                           </button>
                         ))}
+                        <button
+                          className="nav-item"
+                          aria-current={
+                            route.view === 'projectNotes' &&
+                            route.projectId === p.id
+                              ? 'page'
+                              : undefined
+                          }
+                          onClick={() =>
+                            go({ view: 'projectNotes', projectId: p.id })
+                          }
+                        >
+                          <Icon name="note" />
+                          <span className="grow">Notes</span>
+                          <span className="count">
+                            {notes.filter((n) => n.projectId === p.id).length ||
+                              ''}
+                          </span>
+                        </button>
                         <button
                           className="nav-item custom"
                           onClick={() =>
@@ -582,9 +647,11 @@ function Shell({
                 ref={search}
                 type="search"
                 placeholder={
-                  mine
+                  route.view === 'mine' && route.page === 'tasks'
                     ? 'Search my tasks'
-                    : 'Search by number, label, title or person'
+                    : mine
+                      ? 'Search notes: title, text or tags'
+                      : 'Search by number, label, title or person'
                 }
                 autoComplete="off"
                 value={query}

@@ -6,6 +6,7 @@ import type {
   MyTask,
   MyTaskInput,
 } from '../shared/myTasks';
+import { parseTags, type Note, type NoteInput } from '../shared/notes';
 
 /**
  * The owner's own things, kept apart from projects: My tasks (and, next,
@@ -160,5 +161,135 @@ export class Mine {
     this.db
       .prepare('UPDATE my_tasks SET last_reminder_key = ? WHERE id = ?')
       .run(key, id);
+  }
+
+  // ------------------------------------------------------------ Notes
+
+  private toNote(r: Row): Note {
+    return {
+      id: str(r.id),
+      projectId: r.project_id == null ? null : str(r.project_id),
+      title: str(r.title),
+      body: str(r.body),
+      tags: JSON.parse(str(r.tags) || '[]'),
+      favorite: Number(r.favorite) === 1,
+      createdAt: str(r.created_at),
+      updatedAt: str(r.updated_at),
+      viewedAt: r.viewed_at == null ? null : str(r.viewed_at),
+    };
+  }
+
+  listNotes(): Note[] {
+    return (
+      this.db
+        .prepare('SELECT * FROM notes ORDER BY updated_at DESC')
+        .all() as Row[]
+    ).map((r) => this.toNote(r));
+  }
+
+  getNote(id: string): Note {
+    const r = this.db.prepare('SELECT * FROM notes WHERE id = ?').get(id) as
+      | Row
+      | undefined;
+    if (!r)
+      throw new Error('This note was not found. It may have been deleted.');
+    return this.toNote(r);
+  }
+
+  private checkProject(projectId: string | null) {
+    if (
+      projectId &&
+      !this.db.prepare('SELECT 1 FROM projects WHERE id = ?').get(projectId)
+    )
+      throw new Error('That project no longer exists.');
+  }
+
+  /** Adds a note, or changes one when id is given. Only the parts given change. */
+  saveNote(input: Partial<NoteInput>, id?: string): Note {
+    const now = this.now();
+    const before = id ? this.getNote(id) : null;
+    const v: NoteInput = {
+      projectId:
+        input.projectId === undefined
+          ? (before?.projectId ?? null)
+          : input.projectId,
+      title: (input.title ?? before?.title ?? '').slice(0, 300),
+      body: input.body ?? before?.body ?? '',
+      tags: parseTags((input.tags ?? before?.tags ?? []).join(',')),
+      favorite: input.favorite ?? before?.favorite ?? false,
+    };
+    this.checkProject(v.projectId);
+    if (before && id) {
+      this.db
+        .prepare(
+          'UPDATE notes SET project_id = ?, title = ?, body = ?, tags = ?, favorite = ?, updated_at = ? WHERE id = ?',
+        )
+        .run(
+          v.projectId,
+          v.title,
+          v.body,
+          JSON.stringify(v.tags),
+          v.favorite ? 1 : 0,
+          now,
+          id,
+        );
+      return this.getNote(id);
+    }
+    const newId = randomUUID();
+    this.db
+      .prepare(
+        'INSERT INTO notes (id, project_id, title, body, tags, favorite, created_at, updated_at, viewed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        newId,
+        v.projectId,
+        v.title,
+        v.body,
+        JSON.stringify(v.tags),
+        v.favorite ? 1 : 0,
+        now,
+        now,
+        now,
+      );
+    return this.getNote(newId);
+  }
+
+  /** Records that a note was opened, for Recent; its change time stays. */
+  viewNote(id: string): Note {
+    this.db
+      .prepare('UPDATE notes SET viewed_at = ? WHERE id = ?')
+      .run(this.now(), id);
+    return this.getNote(id);
+  }
+
+  deleteNote(id: string): Note {
+    const n = this.getNote(id);
+    this.db.prepare('DELETE FROM notes WHERE id = ?').run(id);
+    return n;
+  }
+
+  /** Puts back a note deleted a moment ago (Undo). */
+  restoreNote(n: Note): Note {
+    const projectId =
+      n.projectId &&
+      this.db.prepare('SELECT 1 FROM projects WHERE id = ?').get(n.projectId)
+        ? n.projectId
+        : null;
+    this.db
+      .prepare(
+        'INSERT OR REPLACE INTO notes (id, project_id, title, body, tags, favorite, created_at, updated_at, viewed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        n.id,
+        projectId,
+        n.title,
+        n.body,
+        JSON.stringify(parseTags(n.tags.join(','))),
+        n.favorite ? 1 : 0,
+        n.createdAt,
+        n.updatedAt,
+        n.viewedAt,
+      );
+    return this.getNote(n.id);
   }
 }

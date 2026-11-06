@@ -230,6 +230,21 @@ const MIGRATIONS: string[] = [
     updated_at TEXT NOT NULL
   );
   `,
+  // 18: Notes, on their own or attached to a project; deleting the project keeps them
+  `
+  CREATE TABLE notes (
+    id TEXT PRIMARY KEY,
+    project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
+    title TEXT NOT NULL DEFAULT '',
+    body TEXT NOT NULL DEFAULT '',
+    tags TEXT NOT NULL DEFAULT '[]',
+    favorite INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    viewed_at TEXT
+  );
+  CREATE INDEX notes_project ON notes(project_id);
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

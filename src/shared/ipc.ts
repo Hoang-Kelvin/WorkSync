@@ -28,6 +28,7 @@ import type { Batch, ReadAnswer } from './aiBatch';
 import type { PendingChange, WritePlan, WriteResult } from './writes';
 import type { ReportOptions } from './reports';
 import type { MyTask, MyTaskInput } from './myTasks';
+import type { Note, NoteInput } from './notes';
 import type {
   AiResult,
   GlossaryTerm,
@@ -268,6 +269,18 @@ export interface WorkSyncApi {
   /** Puts back a task completed a moment ago. */
   restoreMyTask(task: MyTask): Promise<MyTask>;
 
+  /** Notes: on their own or attached to a project. */
+  listNotes(): Promise<Note[]>;
+  /** Adds a note, or changes the one with this id; only the parts given change. */
+  saveNote(input: Partial<NoteInput>, id?: string): Promise<Note>;
+  /** Records that a note was opened, for Recent. */
+  viewNote(id: string): Promise<Note>;
+  deleteNote(id: string): Promise<Note>;
+  /** Puts back a note deleted a moment ago. */
+  restoreNote(note: Note): Promise<Note>;
+  /** Opens a web address written in a note, in the browser. */
+  openNoteLink(noteId: string, url: string): Promise<void>;
+
   /** Called whenever linked files change state. Returns a function that stops listening. */
   onSourcesChanged(listener: (sources: SourceFile[]) => void): () => void;
   /** Called when something outside the window asks to show a page, such as a reminder being clicked. */
@@ -289,6 +302,12 @@ export const API_METHODS = [
   'saveMyTask',
   'completeMyTask',
   'restoreMyTask',
+  'listNotes',
+  'saveNote',
+  'viewNote',
+  'deleteNote',
+  'restoreNote',
+  'openNoteLink',
   'start',
   'updateSettings',
   'storageInfo',

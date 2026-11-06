@@ -28,6 +28,7 @@ import {
 import { assigneeText, linkKind, toIsoDate } from '../shared/model';
 import { OPEN_EVENT, SOURCES_EVENT, type OpenTarget } from '../shared/ipc';
 import { reminderKey, reminderText } from '../shared/myTasks';
+import { noteLinks } from '../shared/notes';
 import { Mine } from './mine';
 import { dataFolderPath, isNetworkPath } from './dataFolder';
 import { writeTargetProblem } from './fileLinks';
@@ -255,6 +256,17 @@ const handlers: Omit<WorkSyncApi, 'onSourcesChanged' | 'onOpen'> = {
   saveMyTask: async (input, id) => needMine().saveMyTask(input, id),
   completeMyTask: async (id) => needMine().deleteMyTask(id),
   restoreMyTask: async (t) => needMine().restoreMyTask(t),
+  listNotes: async () => needMine().listNotes(),
+  saveNote: async (input, id) => needMine().saveNote(input, id),
+  viewNote: async (id) => needMine().viewNote(id),
+  deleteNote: async (id) => needMine().deleteNote(id),
+  restoreNote: async (n) => needMine().restoreNote(n),
+  openNoteLink: async (noteId, url) => {
+    // Only a web address written in that note opens, and only in the browser.
+    if (!noteLinks(needMine().getNote(noteId).body).includes(url))
+      throw new Error('This address is not in the note.');
+    await shell.openExternal(url);
+  },
   getAppInfo: async (): Promise<AppInfo> => ({
     name: app.getName(),
     version: app.getVersion(),

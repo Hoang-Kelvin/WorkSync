@@ -51,3 +51,35 @@ describe('My tasks', () => {
     ).toThrow(/Urgent, Normal or Low/);
   });
 });
+
+describe('Notes', () => {
+  it('keeps a project note when the project is deleted, as a note on its own', () => {
+    const db = new DatabaseSync(':memory:');
+    db.exec('PRAGMA foreign_keys = ON');
+    migrate(db);
+    const m = new Mine(db, () => '2026-11-06T01:00:00.000Z');
+    db.prepare(
+      "INSERT INTO projects (id, name, customer, original_languages, working_language, views, due_soon_days, created_at) VALUES ('p', 'Portal', '', '[\"ja\"]', 'en', '{}', 7, '2026-11-01')",
+    ).run();
+    const n = m.saveNote({
+      title: 'Minutes',
+      body: 'See https://example.com/spec.',
+      projectId: 'p',
+      tags: ['#meeting', 'Meeting', 'q4'],
+    });
+    expect(n).toMatchObject({ projectId: 'p', tags: ['meeting', 'q4'] });
+    db.prepare("DELETE FROM projects WHERE id = 'p'").run();
+    expect(m.getNote(n.id).projectId).toBeNull();
+    expect(() => m.saveNote({ projectId: 'gone' }, n.id)).toThrow(
+      /no longer exists/,
+    );
+  });
+  it('changes only what is given, and puts a deleted note back', () => {
+    const n = mine.saveNote({ title: 'A', body: 'one' });
+    const u = mine.saveNote({ body: 'two' }, n.id);
+    expect(u).toMatchObject({ title: 'A', body: 'two', favorite: false });
+    const gone = mine.deleteNote(n.id);
+    expect(mine.listNotes()).toHaveLength(0);
+    expect(mine.restoreNote(gone).body).toBe('two');
+  });
+});

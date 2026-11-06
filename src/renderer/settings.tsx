@@ -209,6 +209,24 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               <span />
             </button>
           </div>
+          <div className="set-row">
+            <span>
+              <b>Reminders for My tasks</b>
+              <small>
+                Notifications by each task’s status and priority. Turn one
+                task’s bell off in My tasks.
+              </small>
+            </span>
+            <button
+              className="switch"
+              role="switch"
+              aria-checked={settings.reminders}
+              aria-label="Reminders for My tasks"
+              onClick={() => void save({ reminders: !settings.reminders })}
+            >
+              <span />
+            </button>
+          </div>
         </fieldset>
 
         <fieldset>

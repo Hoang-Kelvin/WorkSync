@@ -73,6 +73,11 @@ const TABLES: {
     refs: { task_id: 'tasks' },
   },
   {
+    name: 'notes',
+    where: 'project_id = :p',
+    refs: { project_id: 'projects' },
+  },
+  {
     name: 'deleted_rows',
     where: 'source_id IN (SELECT id FROM source_files WHERE project_id = :p)',
     refs: { source_id: 'source_files' },
@@ -101,6 +106,8 @@ export function exportProject(
   // The copy never publishes over the owner's page.
   project.publish_folder = null;
   project.publish_on_close = 0;
+  // A project's notes are the owner's own, like task notes.
+  if (!o.includeNotes) tables.notes = [];
   if (!o.includeNotes)
     for (const t of tables.tasks) {
       t.notes = '';

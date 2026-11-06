@@ -14,6 +14,7 @@ import {
 } from './projectTransfer';
 import { Sources, type ReadVersion } from './sources';
 import { Store } from './store';
+import { Mine } from './mine';
 
 const FORMAT: FileFormat = {
   name: 'WBS',
@@ -131,6 +132,12 @@ function setUp() {
   });
   a.store.setPublishOptions(p.id, { folder: '/share/Portal', onClose: true });
   a.store.createTask(p.id, input());
+  new Mine(a.db).saveNote({
+    title: 'Minutes',
+    body: 'Kick-off',
+    projectId: p.id,
+  });
+  new Mine(a.db).saveNote({ title: 'Mine alone', body: '' });
   return { a, p, v };
 }
 
@@ -168,6 +175,10 @@ describe('giving a project to another WorkSync user', () => {
       source: 'file',
     });
     expect(b.store.listGlossary(q.id)).toHaveLength(1);
+    // The project's notes come along, attached to the new project; other notes stay.
+    expect(
+      new Mine(b.db).listNotes().map((x) => [x.title, x.projectId]),
+    ).toEqual([['Minutes', q.id]]);
     expect(b.store.listPeople(q.id)[0].displayName).toBe('Tanaka');
     expect(b.store.listActivity(t.id).length).toBeGreaterThan(0);
     // The translation of a difficulty follows the difficulty's new id.
@@ -236,6 +247,7 @@ describe('giving a project to another WorkSync user', () => {
     importProject(b.db, file, path.join(dir, 'sb'), '2026-11-04T11:00:00Z');
     const t = b.store.listTasks().find((x) => x.customerId === '1')!;
     expect(t).toMatchObject({ notes: '', nextAction: '', summary: 'Mine' });
+    expect(new Mine(b.db).listNotes()).toHaveLength(0);
   });
 
   it('refuses a file that is not a WorkSync project', () => {
